@@ -1,0 +1,83 @@
+---
+
+version: '3'
+
+# Please make sure DB_ADDR is set in your .envrc file.
+dotenv: [./.env]
+
+env:
+  out: bin/gh-rel-to-rss
+  cov_file: cover.out
+  cov_xml_file: cover.xml
+  test_xml_file: "test-report.xml"
+  src: ./cmd/
+  # GRC is a command line colorizer. If you don't have it installed, you can remove it from the
+  # command.
+  grc: $(if command -v grc > /dev/null; then echo "grc"; else echo ""; fi)
+
+tasks:
+  default:
+    cmds:
+      - task: test
+      - task: lint
+      - task: generate-test-reports
+
+  format:
+    cmds:
+      - go fmt ./...
+
+  build:
+    deps: [check-deps]
+    cmds:
+      - cmd: go build -o {{.out}} {{.src}}
+      - cmd: codesign -f -s "RCD Local" {{.out}} --deep
+        platforms: [darwin] # Only sign the binary on macOS.
+    generates:
+      - ./{{.out}}
+
+  run:
+    deps: [build]
+    cmds:
+      - cmd: ./{{.out}}
+
+  test:
+    deps: [build]
+    cmds:
+      # Colorize the output of the test command if GRC is installed.
+      - "{{.grc}} go test $(go list ./... | grep -v utils) -race -v -coverprofile={{.cov_file}}"
+
+  lint:
+    deps: [install-tools]
+    cmds:
+      - golangci-lint run
+
+  clean:
+    cmds:
+      - rm -f {{.out}} {{.cov_file}} {{.cov_xml_file}} {{.test_xml_file}}
+
+  check-deps:
+    cmds:
+      - go mod tidy
+      - go mod verify
+
+  install-tools:
+    cmds:
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - go install gotest.tools/gotestsum@latest
+      - go install github.com/axw/gocov/gocov@latest
+      - go install github.com/aleksi/gocov-xml@latest
+
+  generate-test-reports:
+    deps: [install-tools, test]
+    cmds:
+      - gotestsum --junitfile={{.ado_test_file}}
+      - gocov convert {{.cov_file}} | gocov-xml > {{.cov_xml_file}}
+
+  generate-html-coverage:
+    deps: [install-tools, test]
+    cmds:
+      - go tool cover -html={{.cov_file}} -o coverage.html
+
+  update-deps:
+    cmds:
+      - go get -u ./...
