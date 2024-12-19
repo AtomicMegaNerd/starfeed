@@ -132,3 +132,8 @@ func (gh *GitHubStarredFeedBuilder) processGithubResponse(r *http.Response) (*Gi
 
 	return &GithubResponse{data: data}, nil
 }
+
+func (gh *GitHubStarredFeedBuilder) CheckIfFeedHasEntries(feedUrl string) bool {
+	// TODO implement this
+	return false
+}

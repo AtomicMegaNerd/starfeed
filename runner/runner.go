@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"golang.org/x/sync/semaphore"
 	"net/http"
 	"sync"
 
@@ -57,6 +58,8 @@ func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 
 	var wg sync.WaitGroup
 	wg.Add(len(starredRepos))
+
+	// TODO: Add a Semaphore to limit the number of concurrent requests
 
 	for _, repo := range starredRepos {
 		logger.Infof("Found starred repo: %s", repo.String())
