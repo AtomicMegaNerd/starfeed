@@ -15,16 +15,15 @@ const (
 	freshRssTokenKey = "FRESHRSS_API_TOKEN"
 )
 
-var logger *log.Logger
-
-func checkForMissingEnvVar(key, value string) {
+func checkForMissingEnvVar(key, value string, logger *log.Logger) {
 	if value == "" {
 		logger.Fatalf("Cannot run the app without the %s env var being set", key)
 	}
 }
 
 func main() {
-	logger = log.NewWithOptions(os.Stderr, log.Options{
+
+	logger := log.NewWithOptions(os.Stderr, log.Options{
 		ReportCaller:    true,
 		ReportTimestamp: true,
 	})
@@ -33,19 +32,32 @@ func main() {
 	logger.Info(" Welcome to Github Releases to RSS Publisher!")
 	logger.Info("***********************************************")
 
+	debug := os.Getenv("GH_REL_TO_RSS_DEBUG")
+	if debug == "true" {
+		logger.Info("Debug mode enabled")
+		logger.SetLevel(log.DebugLevel)
+	}
+
 	ghToken := os.Getenv(ghTokenKey)
-	checkForMissingEnvVar(ghTokenKey, ghToken)
+	checkForMissingEnvVar(ghTokenKey, ghToken, logger)
 
 	freshRssUrl := os.Getenv(freshRssUrlKey)
-	checkForMissingEnvVar(freshRssUrlKey, freshRssUrl)
+	checkForMissingEnvVar(freshRssUrlKey, freshRssUrl, logger)
 
 	freshRssUser := os.Getenv(freshRssUserKey)
-	checkForMissingEnvVar(freshRssUserKey, freshRssUser)
+	checkForMissingEnvVar(freshRssUserKey, freshRssUser, logger)
 
 	freshRssToken := os.Getenv(freshRssTokenKey)
-	checkForMissingEnvVar(freshRssTokenKey, freshRssToken)
+	checkForMissingEnvVar(freshRssTokenKey, freshRssToken, logger)
 
-	publisher := runner.NewRepoRSSPublisher(ghToken, freshRssUrl, freshRssUser, freshRssToken, http.DefaultClient, logger)
+	publisher := runner.NewRepoRSSPublisher(
+		ghToken,
+		freshRssUrl,
+		freshRssUser,
+		freshRssToken,
+		http.DefaultClient,
+		logger,
+	)
 	publisher.QueryAndPublishFeeds()
 
 }

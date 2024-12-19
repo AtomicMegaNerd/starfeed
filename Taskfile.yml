@@ -32,8 +32,6 @@ tasks:
       - cmd: go build -o {{.out}} {{.src}}
       - cmd: codesign -f -s "RCD Local" {{.out}} --deep
         platforms: [darwin] # Only sign the binary on macOS.
-    generates:
-      - ./{{.out}}
 
   run:
     deps: [build]

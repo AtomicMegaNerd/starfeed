@@ -2,16 +2,18 @@ package runner
 
 import (
 	"net/http"
+	"sync"
 
+	"github.com/atomicmeganerd/gh-rhel-to-rss/freshrss"
 	"github.com/atomicmeganerd/gh-rhel-to-rss/github"
 	"github.com/charmbracelet/log"
 )
 
 type RepoRSSPublisher struct {
-	ghToken       string // WARNING: Do not log this value as it is a secret
+	ghToken       string // WARNING: Do not logger.this value as it is a secret
 	freshRssUrl   string
 	freshRssUser  string
-	freshRssToken string // WARNING: Do not log this value as it is a secret
+	freshRssToken string // WARNING: Do not logger.this value as it is a secret
 	client        *http.Client
 	logger        *log.Logger
 }
@@ -32,16 +34,49 @@ func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 
 	logger := p.logger
 
-	gh := github.NewGitHubStarredFeedBuilder(p.ghToken, http.DefaultClient, logger)
+	gh := github.NewGitHubStarredFeedBuilder(p.ghToken, p.client, p.logger)
 
-	repos, err := gh.GetStarredRepos()
+	fr := freshrss.NewFreshRSSFeedPublisher(
+		p.freshRssUrl,
+		p.freshRssUser,
+		p.freshRssToken,
+		p.client,
+		p.logger,
+	)
+
+	err := fr.Authenticate()
+	if err != nil {
+		logger.Fatalf("Could not authenticate with FreshRSS: %s", err)
+	}
+
+	starredRepos, err := gh.GetStarredRepos()
 
 	if err != nil {
-		log.Fatal("Could not get repos from Github: ", err)
+		logger.Fatal("Could not get repos from Github: ", err)
 	}
 
-	for _, repo := range repos {
-		log.Infof("Found starred repo: %s", repo.String())
+	var wg sync.WaitGroup
+	wg.Add(len(starredRepos))
+
+	for _, repo := range starredRepos {
+		logger.Infof("Found starred repo: %s", repo.String())
+		go p.AddToFreshRSS(&wg, fr, &repo)
 	}
 
+	wg.Wait()
+	logger.Info("All feeds published to FreshRSS")
+}
+
+func (p *RepoRSSPublisher) AddToFreshRSS(
+	wg *sync.WaitGroup,
+	fr *freshrss.FreshRSSFeedPublisher,
+	repo *github.GitHubRepo,
+) {
+	defer wg.Done()
+
+	err := fr.AddFeed(repo.ReleasesAtomFeed, repo.Name, "Github")
+	if err != nil {
+		p.logger.Errorf("Error publishing feed %s to FreshRSS: %s", repo.ReleasesAtomFeed, err.Error())
+		return
+	}
 }
