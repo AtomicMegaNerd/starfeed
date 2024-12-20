@@ -1,7 +1,12 @@
-# gh-rel-to-rss
+# Starfeed
 
-This program scans the current list of Github stars and creates an RSS feed for the releases
-of the starred repositories. It will also prune any RSS feeds that are no longer starred.
+Starfeed scans the current list of your Github stars, grabs the Releases RSS feed for each repo
+it finds, and publishes them to your own self-hosted [FreshRSS](https://www.freshrss.org/) RSS aggregator.
+Then by hooking up an RSS client to your FreshRSS server you can easily follow the releases for
+any of the repos that you have starred.
+
+Starfeed is written in Go. When done, Starfeed will be deployable as a Docker container in your
+home lab where it will happily update your GitHub RSS feeds on a interval.
 
 ## In Progress
 
@@ -20,7 +25,8 @@ The GitHub API token needs read starred repos access. The FreshRSS API token nee
 
 ## Build and run
 
-This app uses Taskfile to build and run the app. You can use the following command to build the app:
+This app uses [Taskfile](https://taskfile.dev) to build and run the app. You can use the following
+command to build the app:
 
 ```bash
 task build
@@ -45,9 +51,12 @@ task test
 - [x] Add a semaphore to throttle the requests to FreshRSS
 - [ ] Only add feeds that are not already in FreshRSS
 - [x] Only add a feed if it has entries
+- [x] Come up with a better name
 - [ ] Implement pruning of old feeds once they are no longer starred
-- [ ] Dockerize the app
+- [ ] Containerize the app
 - [ ] Make the app run on a schedule inside the container
 - [ ] GitHub pipeline to build and publish the Docker image
-- [ ] Finish documentation
+- [ ] Write end-user documentation
 - [ ] Add more tests
+- [ ] Add some performance profiling
+- [ ] Draw a cute logo in [Aseprite](https://www.aseprite.org/)

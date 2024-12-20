@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/atomicmeganerd/gh-rhel-to-rss/runner"
+	"github.com/atomicmeganerd/starfeed/runner"
 	"github.com/charmbracelet/log"
 )
 
@@ -36,7 +36,7 @@ func main() {
 	log.Info(" Welcome to Github Releases to RSS Publisher!")
 	log.Info("***********************************************")
 
-	debug := os.Getenv("GH_REL_TO_RSS_DEBUG")
+	debug := os.Getenv("STARFEED_DEBUG")
 	if debug == "true" {
 		log.Info("Debug mode enabled")
 		log.SetLevel(log.DebugLevel)

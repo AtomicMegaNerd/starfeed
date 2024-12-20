@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	mocks "github.com/atomicmeganerd/gh-rhel-to-rss/utils"
+	mocks "github.com/atomicmeganerd/starfeed/utils"
 )
 
 const (

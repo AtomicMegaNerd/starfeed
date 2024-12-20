@@ -6,7 +6,7 @@ version: '3'
 dotenv: [./.env]
 
 env:
-  out: bin/gh-rel-to-rss
+  out: bin/starfeed
   cov_file: cover.out
   cov_xml_file: cover.xml
   test_xml_file: "test-report.xml"

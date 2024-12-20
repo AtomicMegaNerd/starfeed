@@ -7,9 +7,9 @@ import (
 
 	"golang.org/x/sync/semaphore"
 
-	"github.com/atomicmeganerd/gh-rhel-to-rss/atom"
-	"github.com/atomicmeganerd/gh-rhel-to-rss/freshrss"
-	"github.com/atomicmeganerd/gh-rhel-to-rss/github"
+	"github.com/atomicmeganerd/starfeed/atom"
+	"github.com/atomicmeganerd/starfeed/freshrss"
+	"github.com/atomicmeganerd/starfeed/github"
 	"github.com/charmbracelet/log"
 )
 

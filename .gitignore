@@ -2,8 +2,6 @@ tmp
 .env
 .envrc
 bin/
-.rcd-gopher-social
-rcd-gopher-social
 .direnv
 
 # Logs

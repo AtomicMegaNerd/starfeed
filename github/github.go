@@ -67,7 +67,7 @@ func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 	headers := map[string]string{
 		"Authorization":        fmt.Sprintf("Bearer %s", gh.token),
 		"X-Github-Api-Version": "2022-11-28",
-		"User-Agent":           "github.com/atomicmeganerd/gh-rel-to-rss",
+		"User-Agent":           "github.com/atomicmeganerd/starfeed",
 		"Content-Type":         "application/json",
 		"Accept":               "application/json",
 	}
