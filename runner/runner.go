@@ -1,10 +1,13 @@
 package runner
 
 import (
-	"golang.org/x/sync/semaphore"
+	"context"
 	"net/http"
 	"sync"
 
+	"golang.org/x/sync/semaphore"
+
+	"github.com/atomicmeganerd/gh-rhel-to-rss/atom"
 	"github.com/atomicmeganerd/gh-rhel-to-rss/freshrss"
 	"github.com/atomicmeganerd/gh-rhel-to-rss/github"
 	"github.com/charmbracelet/log"
@@ -15,71 +18,84 @@ type RepoRSSPublisher struct {
 	freshRssUrl   string
 	freshRssUser  string
 	freshRssToken string // WARNING: Do not logger.this value as it is a secret
+	ctx           context.Context
 	client        *http.Client
-	logger        *log.Logger
 }
 
 func NewRepoRSSPublisher(ghToken, freshRssUrl, freshRssUser, freshRssToken string,
-	client *http.Client, logger *log.Logger) RepoRSSPublisher {
+	client *http.Client) RepoRSSPublisher {
+	ctx := context.Background()
 	return RepoRSSPublisher{
 		ghToken,
 		freshRssUrl,
 		freshRssUser,
 		freshRssToken,
+		ctx,
 		client,
-		logger,
 	}
 }
 
 func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 
-	logger := p.logger
-
-	gh := github.NewGitHubStarredFeedBuilder(p.ghToken, p.client, p.logger)
+	gh := github.NewGitHubStarredFeedBuilder(p.ghToken, p.client)
 
 	fr := freshrss.NewFreshRSSFeedPublisher(
 		p.freshRssUrl,
 		p.freshRssUser,
 		p.freshRssToken,
 		p.client,
-		p.logger,
 	)
+
+	at := atom.NewAtomFeedChecker(p.client)
 
 	err := fr.Authenticate()
 	if err != nil {
-		logger.Fatalf("Could not authenticate with FreshRSS: %s", err)
+		log.Fatalf("Could not authenticate with FreshRSS: %s", err)
 	}
 
 	starredRepos, err := gh.GetStarredRepos()
 
 	if err != nil {
-		logger.Fatal("Could not get repos from Github: ", err)
+		log.Fatal("Could not get repos from Github: ", err)
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(len(starredRepos))
 
-	// TODO: Add a Semaphore to limit the number of concurrent requests
+	// Limit the number of concurrent requests to FreshRSS so we don't smack it too hard
+	sem := semaphore.NewWeighted(int64(3))
 
 	for _, repo := range starredRepos {
-		logger.Infof("Found starred repo: %s", repo.String())
-		go p.AddToFreshRSS(&wg, fr, &repo)
+		if at.CheckFeedHasEntries(repo.ReleasesAtomFeed) {
+			log.Infof(
+				"Found starred repo %s that has a valid release feed. Publishing to FreshRSS...",
+				repo.Name,
+			)
+			wg.Add(1)
+			err := sem.Acquire(p.ctx, 1)
+			if err != nil {
+				log.Errorf("Error acquiring semaphore: %s", err)
+				return
+			}
+			go p.AddToFreshRSS(&wg, sem, fr, &repo)
+		}
 	}
 
 	wg.Wait()
-	logger.Info("All feeds published to FreshRSS")
+	log.Info("All feeds published to FreshRSS")
 }
 
 func (p *RepoRSSPublisher) AddToFreshRSS(
 	wg *sync.WaitGroup,
+	sem *semaphore.Weighted,
 	fr *freshrss.FreshRSSFeedPublisher,
 	repo *github.GitHubRepo,
 ) {
 	defer wg.Done()
+	defer sem.Release(1)
 
 	err := fr.AddFeed(repo.ReleasesAtomFeed, repo.Name, "Github")
 	if err != nil {
-		p.logger.Errorf("Error publishing feed %s to FreshRSS: %s", repo.ReleasesAtomFeed, err.Error())
+		log.Errorf("Error publishing feed %s to FreshRSS: %s", repo.ReleasesAtomFeed, err.Error())
 		return
 	}
 }

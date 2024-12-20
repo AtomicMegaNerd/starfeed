@@ -42,9 +42,9 @@ task test
 
 - [x] Query Github for starred repos
 - [x] Implement FreshRSS publishing
-- [ ] Add a semaphore to throttle the requests to FreshRSS
+- [x] Add a semaphore to throttle the requests to FreshRSS
 - [ ] Only add feeds that are not already in FreshRSS
-- [ ] Only add a feed if it has entries
+- [x] Only add a feed if it has entries
 - [ ] Implement pruning of old feeds once they are no longer starred
 - [ ] Dockerize the app
 - [ ] Make the app run on a schedule inside the container

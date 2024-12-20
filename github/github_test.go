@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	mocks "github.com/atomicmeganerd/gh-rhel-to-rss/utils"
-	"github.com/charmbracelet/log"
 )
 
 const (
@@ -62,7 +61,7 @@ func TestGetStarredRepoTestWorks(t *testing.T) {
 			Transport: &mockRoundTripper,
 		}
 
-		gh := NewGitHubStarredFeedBuilder(fakeToken, mockClient, log.Default())
+		gh := NewGitHubStarredFeedBuilder(fakeToken, mockClient)
 		repos, err := gh.GetStarredRepos()
 
 		if tc.expectError {
@@ -130,7 +129,7 @@ func TestCheckForNextPage(t *testing.T) {
 			Transport: &mockRoundTripper,
 		}
 
-		gh := NewGitHubStarredFeedBuilder(fakeToken, mockClient, log.Default())
+		gh := NewGitHubStarredFeedBuilder(fakeToken, mockClient)
 		res, err := gh.client.Get("https://api.github.com/user/starred")
 		if err != nil {
 			t.Error("unexpected error", err)

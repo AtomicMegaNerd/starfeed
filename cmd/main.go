@@ -15,40 +15,44 @@ const (
 	freshRssTokenKey = "FRESHRSS_API_TOKEN"
 )
 
-func checkForMissingEnvVar(key, value string, logger *log.Logger) {
+func checkForMissingEnvVar(key, value string) {
 	if value == "" {
-		logger.Fatalf("Cannot run the app without the %s env var being set", key)
+		log.Fatalf("Cannot run the app without the %s env var being set", key)
 	}
+}
+
+func init() {
+	log.SetDefault(
+		log.NewWithOptions(os.Stderr, log.Options{
+			ReportCaller:    true,
+			ReportTimestamp: true,
+		}),
+	)
 }
 
 func main() {
 
-	logger := log.NewWithOptions(os.Stderr, log.Options{
-		ReportCaller:    true,
-		ReportTimestamp: true,
-	})
-
-	logger.Info("***********************************************")
-	logger.Info(" Welcome to Github Releases to RSS Publisher!")
-	logger.Info("***********************************************")
+	log.Info("***********************************************")
+	log.Info(" Welcome to Github Releases to RSS Publisher!")
+	log.Info("***********************************************")
 
 	debug := os.Getenv("GH_REL_TO_RSS_DEBUG")
 	if debug == "true" {
-		logger.Info("Debug mode enabled")
-		logger.SetLevel(log.DebugLevel)
+		log.Info("Debug mode enabled")
+		log.SetLevel(log.DebugLevel)
 	}
 
 	ghToken := os.Getenv(ghTokenKey)
-	checkForMissingEnvVar(ghTokenKey, ghToken, logger)
+	checkForMissingEnvVar(ghTokenKey, ghToken)
 
 	freshRssUrl := os.Getenv(freshRssUrlKey)
-	checkForMissingEnvVar(freshRssUrlKey, freshRssUrl, logger)
+	checkForMissingEnvVar(freshRssUrlKey, freshRssUrl)
 
 	freshRssUser := os.Getenv(freshRssUserKey)
-	checkForMissingEnvVar(freshRssUserKey, freshRssUser, logger)
+	checkForMissingEnvVar(freshRssUserKey, freshRssUser)
 
 	freshRssToken := os.Getenv(freshRssTokenKey)
-	checkForMissingEnvVar(freshRssTokenKey, freshRssToken, logger)
+	checkForMissingEnvVar(freshRssTokenKey, freshRssToken)
 
 	publisher := runner.NewRepoRSSPublisher(
 		ghToken,
@@ -56,7 +60,6 @@ func main() {
 		freshRssUser,
 		freshRssToken,
 		http.DefaultClient,
-		logger,
 	)
 	publisher.QueryAndPublishFeeds()
 
