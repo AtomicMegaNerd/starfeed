@@ -31,6 +31,8 @@ ENV PATH=/app/bin:$PATH
 ENV USER=starfeed
 ENV UID=10001
 ENV GID=10001
+ENV COLORTERM=truecolor
+ENV TERM=xterm-256color
 
 WORKDIR /app/bin
 COPY --from=builder /app/bin/starfeed /app/bin/starfeed
