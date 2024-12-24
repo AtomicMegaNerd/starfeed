@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+env:
+  REPO_NAME: ${{ github.repository.toLowerCase() }}
+  DOCKER_REGISTRY: ghrc.io/$REPO_NAME
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -62,8 +66,8 @@ jobs:
         context: .
         push: true
         tags: |
-          ghcr.io/${{ github.repository }}/starfeed:latest
-          ghcr.io/${{ github.repository }}/starfeed:${{ env.VERSION }}
+          ${{ env.DOCKER_REGISTRY }}/starfeed:latest
+          ${{ env.DOCKER_REGISTRY }}/starfeed:${{ env.VERSION }}
 
     - name: Create Git tag
       run: git tag ${{ env.VERSION }} && git push origin ${{ env.VERSION }}
