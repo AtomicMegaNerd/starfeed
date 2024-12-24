@@ -1,0 +1,80 @@
+name: Starfeed Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Read version
+      id: get_version
+      run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+
+    - name: Check if tag exists
+      id: check_tag
+      run: |
+        if git rev-parse "refs/tags/${{ env.VERSION }}" >/dev/null 2>&1; then
+          echo "Tag ${{ env.VERSION }} already exists"
+          exit 1
+        fi
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23.4'
+
+    - name: Install Task
+      uses: arduino/setup-task@v2
+      with:
+        version: 3.x
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install dependencies
+      run: go mod tidy
+
+
+    - name: Build binary
+      run: task build
+
+    - name: Run lints
+      run: task lint
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: |
+          ghcr.io/${{ github.repository }}/starfeed:latest
+          ghcr.io/${{ github.repository }}/starfeed:${{ env.VERSION }}
+
+    - name: Create Git tag
+      run: git tag ${{ env.VERSION }} && git push origin ${{ env.VERSION }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.VERSION }}
+        files: bin/starfeed
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

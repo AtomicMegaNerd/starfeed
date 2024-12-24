@@ -22,10 +22,6 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
 
 # Editor directories and files
 .vscode/*
@@ -38,5 +34,6 @@ dist-ssr
 *.sln
 *.sw?
 
+# Test Coverage
 cover*
 test-report*
