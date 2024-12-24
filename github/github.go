@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
-
-	"github.com/charmbracelet/log"
 )
 
 // This object handles buidling an Atom Feed of all starred repos for the authenticated
@@ -18,6 +17,7 @@ type GitHubStarredFeedBuilder struct {
 	token  string // WARNING: Do not log this value as it is a secret
 	ctx    context.Context
 	client *http.Client
+	re     *regexp.Regexp
 }
 
 func NewGitHubStarredFeedBuilder(
@@ -25,6 +25,7 @@ func NewGitHubStarredFeedBuilder(
 	ctx context.Context,
 	client *http.Client,
 ) *GitHubStarredFeedBuilder {
+
 	return &GitHubStarredFeedBuilder{token: token, ctx: ctx, client: client}
 }
 
@@ -32,8 +33,15 @@ func NewGitHubStarredFeedBuilder(
 // It returns a map of relaseFeedUrl -> GitHubRepo
 func (gh *GitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, error) {
 	allFeeds := make(map[string]GitHubRepo)
-	getUrl := "http://api.github.com/user/starred?per_page=100&fields=id,name,full_name,html_url"
-	log.Debugf("Querying Github for starred repos: %s", getUrl)
+	getUrl := "http://api.github.com/user/starred?per_page=100"
+	slog.Debug("Querying Github for starred repos", "url", getUrl)
+
+	pattern := `<([^>]+)>; rel="next"`
+	var err error
+	gh.re, err = regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
 
 	for {
 		ghResponse, err := gh.doApiRequest(getUrl)
@@ -56,7 +64,7 @@ func (gh *GitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, er
 			return allFeeds, nil
 		}
 
-		log.Debugf("Found next page: %s", ghResponse.nextPage)
+		slog.Debug("Found next page", "url", ghResponse.nextPage)
 		getUrl = ghResponse.nextPage
 	}
 }
@@ -73,7 +81,7 @@ func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 
 	httpRequest, err := http.NewRequestWithContext(gh.ctx, "GET", url, nil)
 	if err != nil {
-		log.Error("Unable to build request to github", err)
+		slog.Error("Unable to build request to Github", "error", err.Error())
 		return nil, err
 	}
 
@@ -83,7 +91,7 @@ func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 
 	res, err := gh.client.Do(httpRequest)
 	if err != nil {
-		log.Error("Unable to make request to Github", err)
+		slog.Error("Unable to make request to Github", "error", err.Error())
 		return nil, err
 
 	}
@@ -95,7 +103,7 @@ func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 
 	ghResponse, err := gh.processGithubResponse(res)
 	if err != nil {
-		log.Error("Unable to parse response from github", err)
+		slog.Error("Unable to parse response from Github", "error", err)
 		return nil, err
 	}
 
@@ -112,16 +120,9 @@ func (gh *GitHubStarredFeedBuilder) processGithubResponse(r *http.Response) (*Gi
 	}
 
 	linkRaw := r.Header.Get("link")
-	pattern := `<([^>]+)>; rel="next"`
-
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		return nil, err
-	}
-
 	links := strings.Split(linkRaw, ",")
 	for _, link := range links {
-		matches := re.FindStringSubmatch(link)
+		matches := gh.re.FindStringSubmatch(link)
 		if len(matches) == 2 {
 			return &GithubResponse{data: data, nextPage: matches[1]}, nil
 		}

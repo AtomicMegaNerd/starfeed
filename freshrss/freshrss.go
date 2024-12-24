@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/charmbracelet/log"
+	"log/slog"
 )
 
 type FreshRSSFeedManager struct {
@@ -41,7 +41,7 @@ func NewFreshRSSFeedManager(
 func (f *FreshRSSFeedManager) Authenticate() error {
 
 	reqUrl := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", f.baseUrl)
-	log.Debugf("Authenticating with FreshRSS at %s", reqUrl)
+	slog.Debug("Authenticating with FreshRSS", "url", reqUrl)
 
 	formData := url.Values{
 		"Email":  {f.user},
@@ -57,7 +57,7 @@ func (f *FreshRSSFeedManager) Authenticate() error {
 		return err
 	}
 
-	log.Info("Authenticated with FreshRSS")
+	slog.Info("Authenticated with FreshRSS")
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (f *FreshRSSFeedManager) AddFeed(feedUrl, name, category string) error {
 		"quickadd": {feedUrl},
 	}
 
-	log.Debugf("Adding feed to FreshRSS %s: %s", addUrl, formData.Encode())
+	slog.Debug("Adding feed to FreshRSS", "url", addUrl)
 	res, err := f.doApiRequest(addUrl, []byte(formData.Encode()), true)
 	if err != nil {
 		return err
@@ -79,17 +79,17 @@ func (f *FreshRSSFeedManager) AddFeed(feedUrl, name, category string) error {
 	// Parse the response
 	var resData FreshRSSAddFeedResponse
 	if err = json.Unmarshal(res, &resData); err != nil {
-		log.Error("Unable to parse FreshRSS response", err)
+		slog.Error("Unable to parse FreshRSS response", "error", err)
 		return err
 	}
 
 	// Add the sub to the category
 	if err = f.addFeedToCategory(resData.StreamId, name, category); err != nil {
-		log.Error("Unable to add feed to category", err)
+		slog.Error("Unable to add feed to category", "error", err)
 		return err
 	}
 
-	log.Infof("Successfully added feed %s to FreshRSS", feedUrl)
+	slog.Info("Successfully added feed to FreshRSS", "feed", feedUrl)
 	return nil
 }
 
@@ -172,7 +172,7 @@ func (f *FreshRSSFeedManager) doApiRequest(
 	reader := bytes.NewReader(payload)
 	req, err := http.NewRequestWithContext(f.ctx, "POST", url, reader)
 	if err != nil {
-		log.Error("Unable to create request to FreshRSS", err)
+		slog.Error("Unable to create request to FreshRSS", "error", err)
 		return nil, err
 	}
 
@@ -184,18 +184,18 @@ func (f *FreshRSSFeedManager) doApiRequest(
 	// Make request
 	res, err := f.client.Do(req)
 	if err != nil {
-		log.Error("Unable to make request to FreshRSS", err)
+		slog.Error("Unable to make request to FreshRSS", "error", err)
 		return nil, err
 	}
 	defer res.Body.Close()
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		log.Error("Unable to get response data from FreshRSS", err)
+		slog.Error("Unable to get response data from FreshRSS", "error", err)
 		return nil, err
 	}
 
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
-		log.Errorf("FreshRSS response %s", data)
+		slog.Error("FreshRSS response", "response", data)
 		return nil, fmt.Errorf("FreshRSS returned an http error code %d", res.StatusCode)
 	}
 
@@ -212,7 +212,7 @@ func (f *FreshRSSFeedManager) parsePlainTextAuthResponse(respData []byte) error 
 	}
 
 	if f.authToken == "" {
-		log.Error("Unable to parse FreshRSS auth response")
+		slog.Error("Unable to parse FreshRSS auth response")
 		return fmt.Errorf("unable to parse FreshRSS auth response")
 	}
 

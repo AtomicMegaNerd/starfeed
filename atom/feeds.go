@@ -4,9 +4,8 @@ import (
 	"context"
 	"encoding/xml"
 	"io"
+	"log/slog"
 	"net/http"
-
-	"github.com/charmbracelet/log"
 )
 
 type AtomFeedChecker struct {
@@ -25,26 +24,26 @@ func NewAtomFeedChecker(ctx context.Context, client *http.Client) *AtomFeedCheck
 func (a *AtomFeedChecker) CheckFeedHasEntries(feedUrl string) bool {
 	req, err := http.NewRequestWithContext(a.ctx, "GET", feedUrl, nil)
 	if err != nil {
-		log.Errorf("Could not create request %s", err)
+		slog.Error("Could not create request", "error", err.Error())
 		return false
 	}
 
 	res, err := a.client.Do(req)
 	if err != nil {
-		log.Errorf("Error making request to check ATOM feed %s", err)
+		slog.Error("Error making request to check ATOM feed", "feed", feedUrl, "error", err.Error())
 		return false
 	}
 	defer res.Body.Close()
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		log.Errorf("Error reading response from ATOM feed %s", err)
+		slog.Error("Error reading response from ATOM feed", "feed", feedUrl, "error", err.Error())
 		return false
 	}
 
 	var feed AtomFeed
 	if err = xml.Unmarshal(data, &feed); err != nil {
-		log.Errorf("Error parsing XML data from response %s", err)
+		slog.Error("Error parsing XML data from response", "error", err.Error())
 		return false
 	}
 

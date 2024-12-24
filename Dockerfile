@@ -8,7 +8,6 @@ ENV GOTASK_VERSION=3.40.0-r0
 
 WORKDIR /app
 
-
 # for caching	copy go mod and sum files first and download dependencies
 COPY ./go.mod ./go.sum /app
 RUN go mod download
@@ -31,8 +30,6 @@ ENV PATH=/app/bin:$PATH
 ENV USER=starfeed
 ENV UID=10001
 ENV GID=10001
-ENV COLORTERM=truecolor
-ENV TERM=xterm-256color
 
 WORKDIR /app/bin
 COPY --from=builder /app/bin/starfeed /app/bin/starfeed
