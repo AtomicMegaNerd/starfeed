@@ -4,8 +4,7 @@ import (
 	"context"
 	"net/http"
 	"sync"
-
-	"golang.org/x/sync/semaphore"
+	"time"
 
 	"github.com/atomicmeganerd/starfeed/atom"
 	"github.com/atomicmeganerd/starfeed/freshrss"
@@ -37,9 +36,12 @@ func NewRepoRSSPublisher(ghToken, freshRssUrl, freshRssUser, freshRssToken strin
 
 func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 
+	log.Info("Starting main workflow....")
+	start := time.Now()
+
 	gh := github.NewGitHubStarredFeedBuilder(p.ghToken, p.client)
 
-	fr := freshrss.NewFreshRSSFeedPublisher(
+	fr := freshrss.NewFreshRSSSubManager(
 		p.freshRssUrl,
 		p.freshRssUser,
 		p.freshRssToken,
@@ -53,49 +55,58 @@ func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 		log.Fatalf("Could not authenticate with FreshRSS: %s", err)
 	}
 
-	starredRepos, err := gh.GetStarredRepos()
+	// Get existing subscriptions
+	log.Infof("Querying existing subs in FreshRSS... ")
+	subMap, err := fr.GetExistingFeeds()
+	if err != nil {
+		log.Fatalf("Error getting list of existing subs from FreshRSS: %s", err)
+	}
+	duration := time.Since(start)
+	log.Infof("Queried existing subs in FreshRSS, time: %s", duration)
 
+	starredRepos, err := gh.GetStarredRepos()
 	if err != nil {
 		log.Fatal("Could not get repos from Github: ", err)
 	}
+	duration = time.Since(start)
+	log.Infof("Queried list of starred repos in Github, time: %s", duration)
 
 	var wg sync.WaitGroup
-
-	// Limit the number of concurrent requests to FreshRSS so we don't smack it too hard
-	sem := semaphore.NewWeighted(int64(3))
-
 	for _, repo := range starredRepos {
-		if at.CheckFeedHasEntries(repo.ReleasesAtomFeed) {
-			log.Infof(
-				"Found starred repo %s that has a valid release feed. Publishing to FreshRSS...",
-				repo.Name,
-			)
-			wg.Add(1)
-			err := sem.Acquire(p.ctx, 1)
-			if err != nil {
-				log.Errorf("Error acquiring semaphore: %s", err)
-				return
-			}
-			go p.AddToFreshRSS(&wg, sem, fr, &repo)
-		}
+		wg.Add(1)
+		go p.PublishToFreshRSS(&wg, fr, at, subMap, &repo)
 	}
 
 	wg.Wait()
-	log.Info("All feeds published to FreshRSS")
+	duration = time.Since(start)
+	log.Infof("All feeds published to FreshRSS, time: %s", duration)
 }
 
-func (p *RepoRSSPublisher) AddToFreshRSS(
+func (p *RepoRSSPublisher) PublishToFreshRSS(
 	wg *sync.WaitGroup,
-	sem *semaphore.Weighted,
-	fr *freshrss.FreshRSSFeedPublisher,
+	fr *freshrss.FreshRSSFeedManager,
+	at *atom.AtomFeedChecker,
+	subMap map[string]struct{},
 	repo *github.GitHubRepo,
 ) {
 	defer wg.Done()
-	defer sem.Release(1)
+	feedUrl := repo.ReleasesFeedUrl
 
-	err := fr.AddFeed(repo.ReleasesAtomFeed, repo.Name, "Github")
+	// If we find that a matching repo in FreshRSS we don't want to add it again...
+	if _, exists := subMap[feedUrl]; exists {
+		log.Warnf("Not adding feed %s as it is already in FreshRSS", feedUrl)
+		return
+	}
+
+	if !at.CheckFeedHasEntries(feedUrl) {
+		log.Warnf("Feed %s has no entries and so will not be published to RSS",
+			repo.ReleasesFeedUrl)
+		return
+	}
+
+	err := fr.AddFeed(feedUrl, repo.Name, "Github")
 	if err != nil {
-		log.Errorf("Error publishing feed %s to FreshRSS: %s", repo.ReleasesAtomFeed, err.Error())
+		log.Errorf("Error publishing feed %s to FreshRSS: %s", repo.ReleasesFeedUrl, err.Error())
 		return
 	}
 }

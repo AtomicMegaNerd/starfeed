@@ -33,7 +33,6 @@ func (gh *GitHubStarredFeedBuilder) GetStarredRepos() ([]GitHubRepo, error) {
 	var allRepos []GitHubRepo
 	url := "http://api.github.com/user/starred"
 
-	log.Info("Querying GitHub for starred repos...")
 	for {
 		ghResponse, err := gh.doApiRequest(url)
 		if err != nil {
@@ -47,7 +46,7 @@ func (gh *GitHubStarredFeedBuilder) GetStarredRepos() ([]GitHubRepo, error) {
 		}
 
 		for i := range repos {
-			repos[i].BuildAtomFeedUrl()
+			repos[i].BuildReleasesFeedURL()
 			allRepos = append(allRepos, repos[i])
 		}
 

@@ -2,10 +2,7 @@ module github.com/atomicmeganerd/starfeed
 
 go 1.23.3
 
-require (
-	github.com/charmbracelet/log v0.4.0
-	golang.org/x/sync v0.10.0
-)
+require github.com/charmbracelet/log v0.4.0
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

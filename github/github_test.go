@@ -44,10 +44,10 @@ func TestGetStarredRepoTestWorks(t *testing.T) {
 `,
 			expectedRepos: map[int64]GitHubRepo{
 				1296269: {
-					ID:               1296269,
-					Name:             "Hello-World",
-					HtmlUrl:          "https://github.com/octocat/Hello-World",
-					ReleasesAtomFeed: "https://github.com/octocat/Hello-World/releases.atom",
+					ID:              1296269,
+					Name:            "Hello-World",
+					HtmlUrl:         "https://github.com/octocat/Hello-World",
+					ReleasesFeedUrl: "https://github.com/octocat/Hello-World/releases.atom",
 				},
 			},
 			statusCode:  200,
@@ -96,8 +96,8 @@ func TestGetStarredRepoTestWorks(t *testing.T) {
 				t.Errorf("expected releases url %s but got %s", expectedRepo.HtmlUrl, repo.HtmlUrl)
 			}
 
-			if repo.ReleasesAtomFeed != expectedRepo.ReleasesAtomFeed {
-				t.Errorf("expected releases atom feed %s but got %s", expectedRepo.ReleasesAtomFeed, repo.ReleasesAtomFeed)
+			if repo.ReleasesFeedUrl != expectedRepo.ReleasesFeedUrl {
+				t.Errorf("expected releases atom feed %s but got %s", expectedRepo.ReleasesFeedUrl, repo.ReleasesFeedUrl)
 			}
 		}
 	}

@@ -51,7 +51,6 @@ func (a *AtomFeedChecker) CheckFeedHasEntries(feedUrl string) bool {
 	}
 
 	if feed.Entries == nil || len(feed.Entries) < 1 {
-		log.Warnf("The feed %s has no entries and will not be pushed to FreshRSS", feedUrl)
 		return false
 	}
 

@@ -12,7 +12,7 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-type FreshRSSFeedPublisher struct {
+type FreshRSSFeedManager struct {
 	baseUrl   string
 	user      string
 	apiToken  string // WARNING: Do not log this value as it is a secret
@@ -20,13 +20,13 @@ type FreshRSSFeedPublisher struct {
 	client    *http.Client
 }
 
-func NewFreshRSSFeedPublisher(
+func NewFreshRSSSubManager(
 	baseUrl string,
 	user string,
 	apiToken string,
 	client *http.Client,
-) *FreshRSSFeedPublisher {
-	return &FreshRSSFeedPublisher{
+) *FreshRSSFeedManager {
+	return &FreshRSSFeedManager{
 		baseUrl:  baseUrl,
 		user:     user,
 		apiToken: apiToken,
@@ -34,7 +34,7 @@ func NewFreshRSSFeedPublisher(
 	}
 }
 
-func (f *FreshRSSFeedPublisher) Authenticate() error {
+func (f *FreshRSSFeedManager) Authenticate() error {
 
 	reqUrl := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", f.baseUrl)
 	log.Debugf("Authenticating with FreshRSS at %s", reqUrl)
@@ -58,45 +58,41 @@ func (f *FreshRSSFeedPublisher) Authenticate() error {
 	return nil
 }
 
-func (f *FreshRSSFeedPublisher) AddFeed(feed, name, category string) error {
+func (f *FreshRSSFeedManager) AddFeed(sub, name, category string) error {
 
 	addUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/quickadd", f.baseUrl,
 	)
-
 	formData := url.Values{
-		"quickadd": {feed},
+		"quickadd": {sub},
 	}
 
 	log.Debugf("Adding feed to FreshRSS %s: %s", addUrl, formData.Encode())
-
 	res, err := f.doApiRequest(addUrl, []byte(formData.Encode()), true)
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("Response from FreshRSS: %s", res)
-
+	// Parse the response
 	var resData FreshRSSAddFeedResponse
 	err = json.Unmarshal(res, &resData)
-
 	if err != nil {
 		log.Error("Unable to parse FreshRSS response", err)
 		return err
 	}
 
-	// Add the feed to the category
-	err = f.editFeed(resData.StreamId, name, category)
+	// Add the sub to the category
+	err = f.addFeedToCategory(resData.StreamId, name, category)
 	if err != nil {
 		log.Error("Unable to add feed to category", err)
 		return err
 	}
 
-	log.Infof("Successfully added feed %s to FreshRSS", feed)
+	log.Infof("Successfully added feed %s to FreshRSS", sub)
 	return nil
 }
 
-func (f *FreshRSSFeedPublisher) editFeed(streamId, name, category string) error {
+func (f *FreshRSSFeedManager) addFeedToCategory(streamId, name, category string) error {
 
 	addUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit", f.baseUrl,
@@ -109,8 +105,6 @@ func (f *FreshRSSFeedPublisher) editFeed(streamId, name, category string) error 
 		"a":  {fmt.Sprintf("user/%s/label/%s", f.user, category)},
 	}
 
-	log.Debugf("Adding feed to FreshRSS %s: %s", addUrl, formData.Encode())
-
 	_, err := f.doApiRequest(addUrl, []byte(formData.Encode()), true)
 	if err != nil {
 		return err
@@ -119,7 +113,34 @@ func (f *FreshRSSFeedPublisher) editFeed(streamId, name, category string) error 
 	return nil
 }
 
-func (f *FreshRSSFeedPublisher) doApiRequest(
+func (f *FreshRSSFeedManager) GetExistingFeeds() (map[string]struct{}, error) {
+
+	getUrl := fmt.Sprintf(
+		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.baseUrl,
+	)
+	log.Debug("Querying feeds in FreshRSS %s", getUrl)
+
+	// Perform the request
+	res, err := f.doApiRequest(getUrl, nil, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the response
+	var feeds RSSFeedList
+	err = json.Unmarshal(res, &feeds)
+	if err != nil {
+		return nil, err
+	}
+
+	var feedMap map[string]struct{} = make(map[string]struct{})
+	for _, feed := range feeds.Feeds {
+		feedMap[feed.Url] = struct{}{}
+	}
+	return feedMap, nil
+}
+
+func (f *FreshRSSFeedManager) doApiRequest(
 	url string, payload []byte, authHeader bool) ([]byte, error) {
 
 	// Set headers
@@ -151,21 +172,20 @@ func (f *FreshRSSFeedPublisher) doApiRequest(
 	}
 	defer res.Body.Close()
 	data, err := io.ReadAll(res.Body)
-
 	if err != nil {
 		log.Error("Unable to get response data from FreshRSS", err)
 		return nil, err
 	}
 
+	log.Debugf("FreshRSS response %s", data)
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
-		log.Errorf("Response from FreshRSS %s", data)
-		return nil, fmt.Errorf("freshrss returned an http error code %d", res.StatusCode)
+		return nil, fmt.Errorf("FreshRSS returned an http error code %d", res.StatusCode)
 	}
 
 	return data, nil
 }
 
-func (f *FreshRSSFeedPublisher) parsePlainTextAuthResponse(respData []byte) error {
+func (f *FreshRSSFeedManager) parsePlainTextAuthResponse(respData []byte) error {
 
 	lines := strings.Split(string(respData), "\n")
 	for _, line := range lines {
