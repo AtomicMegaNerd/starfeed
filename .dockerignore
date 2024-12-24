@@ -1,0 +1,52 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Output files
+*.out
+*.xml
+
+# Go specific
+*.test
+
+# Logs
+*.log
+
+# Dependency directories
+vendor/
+
+# IDE specific
+.vscode/
+.idea/
+*.swp
+
+# Docker specific
+Dockerfile
+.dockerignore
+
+# Environment files
+.env
+.envrc
+
+# Git
+.git
+.gitignore
+
+# Node modules (if any)
+node_modules/
+
+# Coverage files
+coverage/
+*.coverprofile
+*.cover.out
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
