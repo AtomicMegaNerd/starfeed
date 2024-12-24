@@ -3,9 +3,7 @@ package runner
 import (
 	"context"
 	"net/http"
-	"os"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/atom"
@@ -20,13 +18,11 @@ type RepoRSSPublisher struct {
 	freshRssUser  string
 	freshRssToken string // WARNING: Do not logger.this value as it is a secret
 	ctx           context.Context
-	sigChan       chan<- os.Signal
 	client        *http.Client
 }
 
 func NewRepoRSSPublisher(ghToken, freshRssUrl, freshRssUser, freshRssToken string,
 	ctx context.Context,
-	sigChan chan<- os.Signal,
 	client *http.Client) RepoRSSPublisher {
 	return RepoRSSPublisher{
 		ghToken,
@@ -34,7 +30,6 @@ func NewRepoRSSPublisher(ghToken, freshRssUrl, freshRssUser, freshRssToken strin
 		freshRssUser,
 		freshRssToken,
 		ctx,
-		sigChan,
 		client,
 	}
 }
@@ -49,9 +44,9 @@ func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 	)
 	at := atom.NewAtomFeedChecker(p.ctx, p.client)
 
+	// Authenticate to FreshRSS
 	if err := fr.Authenticate(); err != nil {
 		log.Errorf("Could not authenticate with FreshRSS: %s", err)
-		p.sigChan <- syscall.SIGTERM
 		return
 	}
 
@@ -60,10 +55,8 @@ func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 	rssFeedMap, err := fr.GetExistingFeeds()
 	if err != nil {
 		log.Errorf("Error getting list of existing feeds from FreshRSS: %s", err)
-		p.sigChan <- syscall.SIGTERM
 		return
 	}
-
 	duration := time.Since(start)
 	log.Infof("Queried %d feeds in FreshRSS, time: %s", len(rssFeedMap), duration)
 
@@ -71,7 +64,6 @@ func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 	starredRepoMap, err := gh.GetStarredRepos()
 	if err != nil {
 		log.Errorf("Could not get repos from Github: %s", err)
-		p.sigChan <- syscall.SIGTERM
 		return
 	}
 	duration = time.Since(start)
@@ -107,12 +99,12 @@ func (p *RepoRSSPublisher) PublishToFreshRSS(
 
 	// If we find that a matching repo in FreshRSS we don't want to add it again...
 	if _, exists := rssFeedMap[repoFeed]; exists {
-		log.Warnf("Not adding feed %s as it is already in FreshRSS", repoFeed)
+		log.Infof("Not adding feed %s as it is already in FreshRSS", repoFeed)
 		return
 	}
 
 	if !at.CheckFeedHasEntries(repoFeed) {
-		log.Warnf("Feed %s has no entries and so will not be published to RSS", repoFeed)
+		log.Infof("Not adding feed %s as it has zero entries", repoFeed)
 		return
 	}
 

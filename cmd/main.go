@@ -82,7 +82,6 @@ func main() {
 		freshRssUser,
 		freshRssToken,
 		ctx,
-		sigChan,
 		http.DefaultClient,
 	)
 
