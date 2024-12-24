@@ -7,6 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  IMAGE_NAME: atomicmeganerd/starfeed/starfeed
 
 jobs:
   build:
@@ -70,7 +71,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: ${{ env.REGISTRY }}/atomicmeganerd/starfeed
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             latest
             ${{ env.VERSION }}
