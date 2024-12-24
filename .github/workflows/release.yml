@@ -67,7 +67,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: ghcr.io/atomicmeganerd/starfeed
+          images: ghcr.io/atomicmeganerd/starfeed/starfeed
           tags: |
             latest
             ${{ env.VERSION }}
