@@ -1,16 +1,20 @@
 # Starfeed
 
+![Starfeed](./img/starfeed.png)
+
 Starfeed scans the current list of your Github stars, grabs the Releases RSS feed for each repo it finds, and publishes them to your own self-hosted [FreshRSS](https://www.freshrss.org/) RSS aggregator. Then by hooking up an RSS client to your FreshRSS server you can easily follow the releases for any of the repos that you have starred.
 
 Starfeed will omit any RSS feeds from Github that are empty. It will also remove any feeds for repos that you are no longer starring.
 
 Starfeed is written in Go and currently relies purely on the standard library with no external dependencies. The Docker image for this app is a little bigger than 25MB!
 
-## Building and Running Locally
+## Pre-Requisites
 
-### Pre-Requisites
+### Required Software
 
 - You must have [FreshRSS](https://www.freshrss.org) deployed in your local network. It much be reachable from the Starfeed Docker container.
+- You must have an API token generated in FreshRSS that has permissions to create/edit/delete feeds.
+- You must have an API token for Github with permission to read starred repos.
 - You must have [Docker](https://docker.com) or [Podman](https://podman.io) setup to run the container.
 - To build and run the app locally you need to install [Go](https://go.dev), [Taskfile](https://taskfile.dev), and [Direnv](https://direnv.net/).
 
@@ -44,16 +48,29 @@ direnv allow
 
 This will load all of the environment variables in `.env` into your environment while you are in the project directory. See the direnv docs for more information.
 
-### Remote permissions
+## Pulling and Running Docker Image
 
-The GitHub API token needs read starred repos access. The FreshRSS API token needs write access.
+The docker image is now on [Docker Hub](https://hub.docker.com/repository/docker/atomicmeganerd/starfeed/general). You can pull this image:
+
+```bash
+docker pull atomicmeganerd/starfeed:latest
+```
+
+You can run this easily:
+
+```bash
+docker run --env-file $PATH_TO_ENV_FILE -t atomicmeganerd/starfeed:latest
+```
+
+
+## Local Development
 
 ### Build and run the Docker image
 
-After setting the `.env` file above, you can build and run the container with the included shell script. From the root of the project run:
+For local development you can use the `docker-compose` file to build and run the app.
 
 ```bash
-./scripts/run_docker.sh
+docker-compose up
 ```
 
 ### Build and run Go Binary
@@ -91,8 +108,8 @@ task test
 - [x] Implement pruning of old feeds once they are no longer starred
 - [x] Containerize the app
 - [x] Make the app run on a schedule inside the container
-- [ ] GitHub pipeline to build and publish the Docker image
+- [x] GitHub pipeline to build and publish the Docker image
 - [x] Write end-user documentation
-- [ ] Add more tests
 - [x] Add some performance profiling
-- [ ] Draw a cute logo in [Aseprite](https://www.aseprite.org/)
+- [x] Draw a cute logo
+- [ ] Add some test coverage

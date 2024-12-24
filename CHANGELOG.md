@@ -5,11 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.6] - 2024-12-25
+## [0.1.0] - 2024-12-24
 
 ### Added
 
-- Added a github action to build and push the Docker image to Docker Hub.
+- Added a cute logo. This is the first release ready for consumption.
+- Added docker-compose file for local development.
+- Updated documentation to reflect the new changes.
+
+## [0.0.6] - 2024-12-24
+
+### Added
+
+- Added a github action to build and push the docker image to docker hub.
 
 ## [0.0.5] - 2024-12-24
 
