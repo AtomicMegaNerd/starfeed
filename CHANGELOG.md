@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.5] - 2024-12-24
+
+### Added
+
+- Added single run mode to sync feeds once and exit.
+
+### Changed
+
+- Migrated to log/slog for logging.
+- Many small fixes for Docker and logging.
+
 ## [0.0.4] - 2024-12-23
 
 ### Added

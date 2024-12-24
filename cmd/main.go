@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,20 +14,43 @@ import (
 )
 
 const (
-	ghTokenKey       = "GITHUB_API_TOKEN"
-	freshRssUrlKey   = "FRESHRSS_URL"
-	freshRssUserKey  = "FRESHRSS_USER"
-	freshRssTokenKey = "FRESHRSS_API_TOKEN"
-	starfeedDebugKey = "STARFEED_DEBUG"
+	ghTokenKey       = "STARFEED_GITHUB_API_TOKEN"
+	freshRssUrlKey   = "STARFEED_FRESHRSS_URL"
+	freshRssUserKey  = "STARFEED_FRESHRSS_USER"
+	freshRssTokenKey = "STARFEED_FRESHRSS_API_TOKEN"
+	debugModeKey     = "STARFEED_DEBUG_MODE"
+	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
 
 	httpTimeoutInSeconds = 10
 )
 
-func checkForMissingEnvVar(key, value string, sigChan chan<- os.Signal) {
-	if value == "" {
-		slog.Error("Cannot run this app without the env var being set", "key", key)
-		sigChan <- syscall.SIGTERM
+type Config struct {
+	GithubToken   string
+	FreshRssUrl   string
+	FreshRssUser  string
+	FreshRssToken string
+	DebugMode     bool
+	SingleRunMode bool
+}
+
+func NewConfig() (*Config, error) {
+	// Check for required environment variables
+	if os.Getenv(ghTokenKey) == "" ||
+		os.Getenv(freshRssUrlKey) == "" ||
+		os.Getenv(freshRssUserKey) == "" ||
+		os.Getenv(freshRssTokenKey) == "" {
+		slog.Error("Missing required environment variables")
+		return nil, errors.New("missing required environment variables")
 	}
+
+	return &Config{
+		GithubToken:   os.Getenv(ghTokenKey),
+		FreshRssUrl:   os.Getenv(freshRssUrlKey),
+		FreshRssUser:  os.Getenv(freshRssUserKey),
+		FreshRssToken: os.Getenv(freshRssTokenKey),
+		DebugMode:     os.Getenv(debugModeKey) == "true",
+		SingleRunMode: os.Getenv(singleRunModeKey) == "true",
+	}, nil
 }
 
 func main() {
@@ -38,11 +62,16 @@ func main() {
 	slog.Info(" Welcome to Github Releases to RSS Publisher!")
 	slog.Info("***********************************************")
 
-	debug := os.Getenv(starfeedDebugKey)
+	cfg, err := NewConfig()
+	if err != nil {
+		slog.Error("Failed to load configuration", "error", err.Error())
+		os.Exit(1)
+	}
+
 	handler := &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}
-	if debug == "true" {
+	if cfg.DebugMode {
 		slog.Info("Debug mode enabled")
 		handler = &slog.HandlerOptions{
 			Level: slog.LevelDebug,
@@ -64,23 +93,11 @@ func main() {
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 
-	ghToken := os.Getenv(ghTokenKey)
-	checkForMissingEnvVar(ghTokenKey, ghToken, sigChan)
-
-	freshRssUrl := os.Getenv(freshRssUrlKey)
-	checkForMissingEnvVar(freshRssUrlKey, freshRssUrl, sigChan)
-
-	freshRssUser := os.Getenv(freshRssUserKey)
-	checkForMissingEnvVar(freshRssUserKey, freshRssUser, sigChan)
-
-	freshRssToken := os.Getenv(freshRssTokenKey)
-	checkForMissingEnvVar(freshRssTokenKey, freshRssToken, sigChan)
-
 	publisher := runner.NewRepoRSSPublisher(
-		ghToken,
-		freshRssUrl,
-		freshRssUser,
-		freshRssToken,
+		cfg.GithubToken,
+		cfg.FreshRssUrl,
+		cfg.FreshRssUser,
+		cfg.FreshRssToken,
 		ctx,
 		&http.Client{Timeout: httpTimeoutInSeconds * time.Second},
 	)
@@ -88,6 +105,12 @@ func main() {
 	// Initial publish
 	publisher.QueryAndPublishFeeds()
 	slog.Info("Sleeping for 24 hours...")
+
+	if cfg.SingleRunMode {
+		slog.Info("Running in single run mode, exiting...")
+		cancel()
+		return
+	}
 
 	for {
 		select {
