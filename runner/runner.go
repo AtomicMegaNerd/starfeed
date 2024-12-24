@@ -35,55 +35,47 @@ func NewRepoRSSPublisher(ghToken, freshRssUrl, freshRssUser, freshRssToken strin
 }
 
 func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
-
 	log.Info("Starting main workflow....")
 	start := time.Now()
 
 	gh := github.NewGitHubStarredFeedBuilder(p.ghToken, p.client)
-
-	fr := freshrss.NewFreshRSSSubManager(
-		p.freshRssUrl,
-		p.freshRssUser,
-		p.freshRssToken,
-		p.client,
-	)
-
+	fr := freshrss.NewFreshRSSSubManager(p.freshRssUrl, p.freshRssUser, p.freshRssToken, p.client)
 	at := atom.NewAtomFeedChecker(p.client)
 
-	err := fr.Authenticate()
-	if err != nil {
+	if err := fr.Authenticate(); err != nil {
 		log.Fatalf("Could not authenticate with FreshRSS: %s", err)
 	}
 
 	// Get existing subscriptions
 	log.Infof("Querying existing RSS feeds in FreshRSS... ")
-	rssFeeds, err := fr.GetExistingFeeds()
+	rssFeedMap, err := fr.GetExistingFeeds()
 	if err != nil {
 		log.Fatalf("Error getting list of existing feeds from FreshRSS: %s", err)
 	}
 	duration := time.Since(start)
-	log.Infof("Queried %d feeds in FreshRSS, time: %s", len(rssFeeds), duration)
+	log.Infof("Queried %d feeds in FreshRSS, time: %s", len(rssFeedMap), duration)
 
-	starredRepos, err := gh.GetStarredRepos()
+	// Get starred repos
+	starredRepoMap, err := gh.GetStarredRepos()
 	if err != nil {
 		log.Fatal("Could not get repos from Github: ", err)
 	}
 	duration = time.Since(start)
-	log.Infof("Queried %d starred repos in Github, time: %s", len(starredRepos), duration)
+	log.Infof("Queried %d starred repos in Github, time: %s", len(starredRepoMap), duration)
 
+	// Sync feeds
 	var wg sync.WaitGroup
-
-	for repoFeed, repoName := range starredRepos {
+	for _, repo := range starredRepoMap {
 		wg.Add(1)
-		go p.PublishToFreshRSS(&wg, fr, at, rssFeeds, repoFeed, repoName)
+		go p.PublishToFreshRSS(&wg, fr, at, rssFeedMap, repo)
 	}
-
-	for feed := range rssFeeds {
+	for feed := range rssFeedMap {
 		wg.Add(1)
-		go p.RemoveStaleFeeds(&wg, fr, starredRepos, feed)
+		go p.RemoveStaleFeeds(&wg, fr, starredRepoMap, feed)
 	}
-
 	wg.Wait()
+
+	// Report success
 	duration = time.Since(start)
 	log.Infof("FreshRSS feeds synced with Github successfully, time: %s", duration)
 }
@@ -92,26 +84,25 @@ func (p *RepoRSSPublisher) PublishToFreshRSS(
 	wg *sync.WaitGroup,
 	fr *freshrss.FreshRSSFeedManager,
 	at *atom.AtomFeedChecker,
-	rssFeeds map[string]struct{},
-	repoFeed string,
-	repoName string,
+	rssFeedMap map[string]struct{},
+	repo github.GitHubRepo,
 ) {
 	defer wg.Done()
 
+	repoFeed := repo.FeedUrl
+
 	// If we find that a matching repo in FreshRSS we don't want to add it again...
-	if _, exists := rssFeeds[repoFeed]; exists {
+	if _, exists := rssFeedMap[repoFeed]; exists {
 		log.Warnf("Not adding feed %s as it is already in FreshRSS", repoFeed)
 		return
 	}
 
 	if !at.CheckFeedHasEntries(repoFeed) {
-		log.Warnf("Feed %s has no entries and so will not be published to RSS",
-			repoFeed)
+		log.Warnf("Feed %s has no entries and so will not be published to RSS", repoFeed)
 		return
 	}
 
-	err := fr.AddFeed(repoFeed, repoName, "Github")
-	if err != nil {
+	if err := fr.AddFeed(repoFeed, repo.Name, "Github"); err != nil {
 		log.Errorf("Error publishing feed %s to FreshRSS: %s", repoFeed, err.Error())
 		return
 	}
@@ -120,17 +111,15 @@ func (p *RepoRSSPublisher) PublishToFreshRSS(
 func (p *RepoRSSPublisher) RemoveStaleFeeds(
 	wg *sync.WaitGroup,
 	fr *freshrss.FreshRSSFeedManager,
-	repos map[string]string,
+	starredRepoMap map[string]github.GitHubRepo, // The key is the release ATOM feed
 	rssFeed string,
 ) {
 	defer wg.Done()
 
 	// If a FreshRSS feed does not exist in Github remove it
-	if _, exists := repos[rssFeed]; !exists {
+	if _, exists := starredRepoMap[rssFeed]; !exists {
 		log.Infof("Removing feed %s from FreshRSS as it is no longer starred in Github", rssFeed)
-		err := fr.RemoveFeed(rssFeed)
-
-		if err != nil {
+		if err := fr.RemoveFeed(rssFeed); err != nil {
 			log.Errorf("Error removing feed %s from FreshRSS: %s", rssFeed, err)
 		}
 	}

@@ -49,8 +49,7 @@ func (f *FreshRSSFeedManager) Authenticate() error {
 		return err
 	}
 
-	err = f.parsePlainTextAuthResponse(data)
-	if err != nil {
+	if err = f.parsePlainTextAuthResponse(data); err != nil {
 		return err
 	}
 
@@ -75,15 +74,13 @@ func (f *FreshRSSFeedManager) AddFeed(feedUrl, name, category string) error {
 
 	// Parse the response
 	var resData FreshRSSAddFeedResponse
-	err = json.Unmarshal(res, &resData)
-	if err != nil {
+	if err = json.Unmarshal(res, &resData); err != nil {
 		log.Error("Unable to parse FreshRSS response", err)
 		return err
 	}
 
 	// Add the sub to the category
-	err = f.addFeedToCategory(resData.StreamId, name, category)
-	if err != nil {
+	if err = f.addFeedToCategory(resData.StreamId, name, category); err != nil {
 		log.Error("Unable to add feed to category", err)
 		return err
 	}
@@ -106,8 +103,7 @@ func (f *FreshRSSFeedManager) GetExistingFeeds() (map[string]struct{}, error) {
 
 	// Parse the response
 	var feeds RSSFeedList
-	err = json.Unmarshal(res, &feeds)
-	if err != nil {
+	if err = json.Unmarshal(res, &feeds); err != nil {
 		return nil, err
 	}
 

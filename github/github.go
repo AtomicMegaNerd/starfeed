@@ -29,8 +29,9 @@ func NewGitHubStarredFeedBuilder(
 }
 
 // This will return all starred repos including the Atom feeds for their releases
-func (gh *GitHubStarredFeedBuilder) GetStarredRepos() (map[string]string, error) {
-	allFeeds := make(map[string]string)
+// It returns a map of relaseFeedUrl -> GitHubRepo
+func (gh *GitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, error) {
+	allFeeds := make(map[string]GitHubRepo)
 	getUrl := "http://api.github.com/user/starred?per_page=100&fields=id,name,full_name,html_url"
 	log.Debugf("Querying Github for starred repos: %s", getUrl)
 
@@ -41,14 +42,13 @@ func (gh *GitHubStarredFeedBuilder) GetStarredRepos() (map[string]string, error)
 		}
 
 		var repos []GitHubRepo
-		err = json.Unmarshal(ghResponse.data, &repos)
-		if err != nil {
+		if err = json.Unmarshal(ghResponse.data, &repos); err != nil {
 			return nil, err
 		}
 
 		for _, repo := range repos {
 			repo.BuildReleasesFeedURL()
-			allFeeds[repo.FeedUrl] = repo.Name
+			allFeeds[repo.FeedUrl] = repo
 		}
 
 		// If there is no next page we are done...
@@ -63,7 +63,6 @@ func (gh *GitHubStarredFeedBuilder) GetStarredRepos() (map[string]string, error)
 
 // This method handles making API requests to GitHub using its REST API.
 func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, error) {
-
 	headers := map[string]string{
 		"Authorization":        fmt.Sprintf("Bearer %s", gh.token),
 		"X-Github-Api-Version": "2022-11-28",
@@ -88,7 +87,6 @@ func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 		return nil, err
 
 	}
-
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
@@ -117,7 +115,6 @@ func (gh *GitHubStarredFeedBuilder) processGithubResponse(r *http.Response) (*Gi
 	pattern := `<([^>]+)>; rel="next"`
 
 	re, err := regexp.Compile(pattern)
-
 	if err != nil {
 		return nil, err
 	}
@@ -131,9 +128,4 @@ func (gh *GitHubStarredFeedBuilder) processGithubResponse(r *http.Response) (*Gi
 	}
 
 	return &GithubResponse{data: data}, nil
-}
-
-func (gh *GitHubStarredFeedBuilder) CheckIfFeedHasEntries(feedUrl string) bool {
-	// TODO implement this
-	return false
 }

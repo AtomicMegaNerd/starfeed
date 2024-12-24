@@ -44,8 +44,7 @@ func (a *AtomFeedChecker) CheckFeedHasEntries(feedUrl string) bool {
 	}
 
 	var feed AtomFeed
-	err = xml.Unmarshal(data, &feed)
-	if err != nil {
+	if err = xml.Unmarshal(data, &feed); err != nil {
 		log.Errorf("Error parsing XML data from response %s", err)
 		return false
 	}
