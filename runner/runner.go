@@ -3,7 +3,9 @@ package runner
 import (
 	"context"
 	"net/http"
+	"os"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/atom"
@@ -18,18 +20,21 @@ type RepoRSSPublisher struct {
 	freshRssUser  string
 	freshRssToken string // WARNING: Do not logger.this value as it is a secret
 	ctx           context.Context
+	sigChan       chan<- os.Signal
 	client        *http.Client
 }
 
 func NewRepoRSSPublisher(ghToken, freshRssUrl, freshRssUser, freshRssToken string,
+	ctx context.Context,
+	sigChan chan<- os.Signal,
 	client *http.Client) RepoRSSPublisher {
-	ctx := context.Background()
 	return RepoRSSPublisher{
 		ghToken,
 		freshRssUrl,
 		freshRssUser,
 		freshRssToken,
 		ctx,
+		sigChan,
 		client,
 	}
 }
@@ -38,27 +43,36 @@ func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 	log.Info("Starting main workflow....")
 	start := time.Now()
 
-	gh := github.NewGitHubStarredFeedBuilder(p.ghToken, p.client)
-	fr := freshrss.NewFreshRSSSubManager(p.freshRssUrl, p.freshRssUser, p.freshRssToken, p.client)
-	at := atom.NewAtomFeedChecker(p.client)
+	gh := github.NewGitHubStarredFeedBuilder(p.ghToken, p.ctx, p.client)
+	fr := freshrss.NewFreshRSSFeedManager(
+		p.freshRssUrl, p.freshRssUser, p.freshRssToken, p.ctx, p.client,
+	)
+	at := atom.NewAtomFeedChecker(p.ctx, p.client)
 
 	if err := fr.Authenticate(); err != nil {
-		log.Fatalf("Could not authenticate with FreshRSS: %s", err)
+		log.Errorf("Could not authenticate with FreshRSS: %s", err)
+		p.sigChan <- syscall.SIGTERM
+		return
 	}
 
 	// Get existing subscriptions
 	log.Infof("Querying existing RSS feeds in FreshRSS... ")
 	rssFeedMap, err := fr.GetExistingFeeds()
 	if err != nil {
-		log.Fatalf("Error getting list of existing feeds from FreshRSS: %s", err)
+		log.Errorf("Error getting list of existing feeds from FreshRSS: %s", err)
+		p.sigChan <- syscall.SIGTERM
+		return
 	}
+
 	duration := time.Since(start)
 	log.Infof("Queried %d feeds in FreshRSS, time: %s", len(rssFeedMap), duration)
 
 	// Get starred repos
 	starredRepoMap, err := gh.GetStarredRepos()
 	if err != nil {
-		log.Fatal("Could not get repos from Github: ", err)
+		log.Errorf("Could not get repos from Github: %s", err)
+		p.sigChan <- syscall.SIGTERM
+		return
 	}
 	duration = time.Since(start)
 	log.Infof("Queried %d starred repos in Github, time: %s", len(starredRepoMap), duration)

@@ -2,6 +2,7 @@ package freshrss
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,19 +18,22 @@ type FreshRSSFeedManager struct {
 	user      string
 	apiToken  string // WARNING: Do not log this value as it is a secret
 	authToken string // WARNING: Do not log this value as it is a secret
+	ctx       context.Context
 	client    *http.Client
 }
 
-func NewFreshRSSSubManager(
+func NewFreshRSSFeedManager(
 	baseUrl string,
 	user string,
 	apiToken string,
+	ctx context.Context,
 	client *http.Client,
 ) *FreshRSSFeedManager {
 	return &FreshRSSFeedManager{
 		baseUrl:  baseUrl,
 		user:     user,
 		apiToken: apiToken,
+		ctx:      ctx,
 		client:   client,
 	}
 }
@@ -166,7 +170,7 @@ func (f *FreshRSSFeedManager) doApiRequest(
 
 	// Create request
 	reader := bytes.NewReader(payload)
-	req, err := http.NewRequest("POST", url, reader)
+	req, err := http.NewRequestWithContext(f.ctx, "POST", url, reader)
 	if err != nil {
 		log.Error("Unable to create request to FreshRSS", err)
 		return nil, err

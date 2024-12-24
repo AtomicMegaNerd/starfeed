@@ -14,8 +14,7 @@ type AtomFeedChecker struct {
 	ctx    context.Context
 }
 
-func NewAtomFeedChecker(client *http.Client) *AtomFeedChecker {
-	ctx := context.Background()
+func NewAtomFeedChecker(ctx context.Context, client *http.Client) *AtomFeedChecker {
 	return &AtomFeedChecker{
 		client: client,
 		ctx:    ctx,

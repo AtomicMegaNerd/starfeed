@@ -22,9 +22,9 @@ type GitHubStarredFeedBuilder struct {
 
 func NewGitHubStarredFeedBuilder(
 	token string,
+	ctx context.Context,
 	client *http.Client,
 ) *GitHubStarredFeedBuilder {
-	ctx := context.Background()
 	return &GitHubStarredFeedBuilder{token: token, ctx: ctx, client: client}
 }
 
