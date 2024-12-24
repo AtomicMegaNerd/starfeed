@@ -29,12 +29,13 @@ func NewGitHubStarredFeedBuilder(
 }
 
 // This will return all starred repos including the Atom feeds for their releases
-func (gh *GitHubStarredFeedBuilder) GetStarredRepos() ([]GitHubRepo, error) {
-	var allRepos []GitHubRepo
-	url := "http://api.github.com/user/starred"
+func (gh *GitHubStarredFeedBuilder) GetStarredRepos() (map[string]string, error) {
+	allFeeds := make(map[string]string)
+	getUrl := "http://api.github.com/user/starred?per_page=100&fields=id,name,full_name,html_url"
+	log.Debugf("Querying Github for starred repos: %s", getUrl)
 
 	for {
-		ghResponse, err := gh.doApiRequest(url)
+		ghResponse, err := gh.doApiRequest(getUrl)
 		if err != nil {
 			return nil, err
 		}
@@ -45,18 +46,18 @@ func (gh *GitHubStarredFeedBuilder) GetStarredRepos() ([]GitHubRepo, error) {
 			return nil, err
 		}
 
-		for i := range repos {
-			repos[i].BuildReleasesFeedURL()
-			allRepos = append(allRepos, repos[i])
+		for _, repo := range repos {
+			repo.BuildReleasesFeedURL()
+			allFeeds[repo.FeedUrl] = repo.Name
 		}
 
 		// If there is no next page we are done...
 		if ghResponse.nextPage == "" {
-			return allRepos, nil
+			return allFeeds, nil
 		}
 
 		log.Debugf("Found next page: %s", ghResponse.nextPage)
-		url = ghResponse.nextPage
+		getUrl = ghResponse.nextPage
 	}
 }
 

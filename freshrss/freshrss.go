@@ -58,13 +58,13 @@ func (f *FreshRSSFeedManager) Authenticate() error {
 	return nil
 }
 
-func (f *FreshRSSFeedManager) AddFeed(sub, name, category string) error {
+func (f *FreshRSSFeedManager) AddFeed(feedUrl, name, category string) error {
 
 	addUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/quickadd", f.baseUrl,
 	)
 	formData := url.Values{
-		"quickadd": {sub},
+		"quickadd": {feedUrl},
 	}
 
 	log.Debugf("Adding feed to FreshRSS %s: %s", addUrl, formData.Encode())
@@ -88,7 +88,51 @@ func (f *FreshRSSFeedManager) AddFeed(sub, name, category string) error {
 		return err
 	}
 
-	log.Infof("Successfully added feed %s to FreshRSS", sub)
+	log.Infof("Successfully added feed %s to FreshRSS", feedUrl)
+	return nil
+}
+
+func (f *FreshRSSFeedManager) GetExistingFeeds() (map[string]struct{}, error) {
+
+	getUrl := fmt.Sprintf(
+		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.baseUrl,
+	)
+
+	// Perform the request
+	res, err := f.doApiRequest(getUrl, nil, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the response
+	var feeds RSSFeedList
+	err = json.Unmarshal(res, &feeds)
+	if err != nil {
+		return nil, err
+	}
+
+	var feedMap map[string]struct{} = make(map[string]struct{})
+	for _, feed := range feeds.Feeds {
+		feedMap[feed.Url] = struct{}{}
+	}
+	return feedMap, nil
+}
+
+func (f *FreshRSSFeedManager) RemoveFeed(feedUrl string) error {
+	rmUrl := fmt.Sprintf(
+		"%s/api/greader.php/reader/api/0/subscription/edit", f.baseUrl,
+	)
+
+	formData := url.Values{
+		"ac": {"unsubscribe"},
+		"s":  {fmt.Sprintf("feed/%s", feedUrl)},
+	}
+
+	_, err := f.doApiRequest(rmUrl, []byte(formData.Encode()), true)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -111,33 +155,6 @@ func (f *FreshRSSFeedManager) addFeedToCategory(streamId, name, category string)
 	}
 
 	return nil
-}
-
-func (f *FreshRSSFeedManager) GetExistingFeeds() (map[string]struct{}, error) {
-
-	getUrl := fmt.Sprintf(
-		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.baseUrl,
-	)
-	log.Debug("Querying feeds in FreshRSS %s", getUrl)
-
-	// Perform the request
-	res, err := f.doApiRequest(getUrl, nil, true)
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse the response
-	var feeds RSSFeedList
-	err = json.Unmarshal(res, &feeds)
-	if err != nil {
-		return nil, err
-	}
-
-	var feedMap map[string]struct{} = make(map[string]struct{})
-	for _, feed := range feeds.Feeds {
-		feedMap[feed.Url] = struct{}{}
-	}
-	return feedMap, nil
 }
 
 func (f *FreshRSSFeedManager) doApiRequest(
@@ -177,8 +194,8 @@ func (f *FreshRSSFeedManager) doApiRequest(
 		return nil, err
 	}
 
-	log.Debugf("FreshRSS response %s", data)
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
+		log.Errorf("FreshRSS response %s", data)
 		return nil, fmt.Errorf("FreshRSS returned an http error code %d", res.StatusCode)
 	}
 
