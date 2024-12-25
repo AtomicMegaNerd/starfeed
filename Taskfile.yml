@@ -68,11 +68,6 @@ tasks:
       - gotestsum --junitfile={{.test_xml}}
       - gocov convert {{.cover_out}} | gocov-xml > {{.cover_xml}}
 
-  generate-html-coverage:
-    deps: [install-tools, test]
-    cmds:
-      - go tool cover -html={{.cover_out}} -o coverage.html
-
   update-deps:
     cmds:
       - go get -u ./...
