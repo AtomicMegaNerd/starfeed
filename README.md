@@ -112,4 +112,6 @@ task test
 - [x] Write end-user documentation
 - [x] Add some performance profiling
 - [x] Draw a cute logo
-- [ ] Add some test coverage
+- [ ] Add unit tests
+- [ ] Add integration tests
+- [ ] Add test coverage to Taskfile and to Github Actions
