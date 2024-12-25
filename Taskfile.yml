@@ -2,17 +2,11 @@
 
 version: '3'
 
-# Please make sure DB_ADDR is set in your .envrc file.
 dotenv: [./.env]
 
 env:
   out: bin/starfeed
-  cov_file: cover.out
-  cov_xml_file: cover.xml
-  test_xml_file: "test-report.xml"
   src: ./cmd/
-  # GRC is a command line colorizer. If you don't have it installed, you can remove it from the
-  # command.
   grc: $(if command -v grc > /dev/null; then echo "grc"; else echo ""; fi)
 
 tasks:
@@ -30,7 +24,7 @@ tasks:
     deps: [check-deps]
     cmds:
       - cmd: go build -o {{.out}} {{.src}}
-      - cmd: codesign -f -s "RCD Local" {{.out}} --deep
+      - cmd: codesign -f -s "RCD Local Development" {{.out}} --deep
         platforms: [darwin] # Only sign the binary on macOS.
 
   run:

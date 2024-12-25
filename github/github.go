@@ -14,10 +14,11 @@ import (
 // This object handles buidling an Atom Feed of all starred repos for the authenticated
 // user.
 type GitHubStarredFeedBuilder struct {
-	token  string // WARNING: Do not log this value as it is a secret
-	ctx    context.Context
-	client *http.Client
-	re     *regexp.Regexp
+	token             string // WARNING: Do not log this value as it is a secret
+	ctx               context.Context
+	client            *http.Client
+	nextPageLinkRegex *regexp.Regexp
+	isRelRepoRegex    *regexp.Regexp
 }
 
 func NewGitHubStarredFeedBuilder(
@@ -25,8 +26,9 @@ func NewGitHubStarredFeedBuilder(
 	ctx context.Context,
 	client *http.Client,
 ) *GitHubStarredFeedBuilder {
-
-	return &GitHubStarredFeedBuilder{token: token, ctx: ctx, client: client}
+	nextPageLinkRegex, _ := regexp.Compile(`<([^>]+)>; rel="next"`)
+	isRelRepoRegex, _ := regexp.Compile(`^https://github.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`)
+	return &GitHubStarredFeedBuilder{token, ctx, client, nextPageLinkRegex, isRelRepoRegex}
 }
 
 // This will return all starred repos including the Atom feeds for their releases
@@ -35,13 +37,6 @@ func (gh *GitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, er
 	allFeeds := make(map[string]GitHubRepo)
 	getUrl := "http://api.github.com/user/starred?per_page=100"
 	slog.Debug("Querying Github for starred repos", "url", getUrl)
-
-	pattern := `<([^>]+)>; rel="next"`
-	var err error
-	gh.re, err = regexp.Compile(pattern)
-	if err != nil {
-		return nil, err
-	}
 
 	for {
 		ghResponse, err := gh.doApiRequest(getUrl)
@@ -122,11 +117,16 @@ func (gh *GitHubStarredFeedBuilder) processGithubResponse(r *http.Response) (*Gi
 	linkRaw := r.Header.Get("link")
 	links := strings.Split(linkRaw, ",")
 	for _, link := range links {
-		matches := gh.re.FindStringSubmatch(link)
+		matches := gh.nextPageLinkRegex.FindStringSubmatch(link)
 		if len(matches) == 2 {
 			return &GithubResponse{data: data, nextPage: matches[1]}, nil
 		}
 	}
 
 	return &GithubResponse{data: data}, nil
+}
+
+// This function returns true if a repoUrl is a Github release repo
+func (gh *GitHubStarredFeedBuilder) IsGithubReleasesFeed(feedUrl string) bool {
+	return gh.isRelRepoRegex.MatchString(feedUrl)
 }
