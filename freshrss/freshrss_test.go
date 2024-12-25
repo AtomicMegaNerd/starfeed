@@ -84,3 +84,105 @@ func TestAuthenticate(t *testing.T) {
 		})
 	}
 }
+
+type AddFeedTestCase struct {
+	name             string
+	responses        []http.Response
+	urlRegexPatterns []string
+	expectError      bool
+}
+
+func (tc *AddFeedTestCase) GetTestObject() *FreshRSSFeedManager {
+	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegexPatterns)
+	mockClient := &http.Client{Transport: &mockTransport}
+	return NewFreshRSSFeedManager(
+		mockBaseUrl, mockUser, mockApiToken, context.Background(), mockClient,
+	)
+}
+
+func TestAddFeed(t *testing.T) {
+	testCases := []AddFeedTestCase{
+		{
+			name: "Successful feed addition",
+			responses: []http.Response{
+				{
+					Body: io.NopCloser(strings.NewReader(`
+					{
+						"query": "http://localhost/feeds/123",
+						"numResults": 1,
+						"streamId": "feed/http://localhost/feeds/123",
+						"streamName": "name"
+					}
+					`)),
+					StatusCode: http.StatusOK,
+					Status:     "200 OK",
+				},
+				{
+					Status:     "200 OK",
+					StatusCode: http.StatusOK,
+				},
+			},
+			urlRegexPatterns: []string{
+				".*quickadd",
+				".*edit",
+			},
+			expectError: false,
+		},
+		{
+			name: "Failed feed addition on step 1",
+			responses: []http.Response{
+				{
+					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
+					StatusCode: http.StatusUnauthorized,
+					Status:     "401 Unauthorized",
+				},
+			},
+			urlRegexPatterns: []string{
+				".*quickadd",
+			},
+			expectError: true,
+		},
+		{
+			name: "Failed feed addition on step 2",
+			responses: []http.Response{
+				{
+					Body: io.NopCloser(strings.NewReader(`
+					{
+						"query": "http://localhost/feeds/123",
+						"numResults": 1,
+						"streamId": "feed/http://localhost/feeds/123",
+						"streamName": "name"
+					}`)),
+					StatusCode: http.StatusOK,
+					Status:     "200 OK",
+				},
+				{
+					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
+					StatusCode: http.StatusBadRequest,
+					Status:     "400 Bad Request",
+				},
+			},
+			urlRegexPatterns: []string{
+				".*quickadd",
+				".*edit",
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testObject := tc.GetTestObject()
+			err := testObject.AddFeed("http://localhost/feeds/123", "name", "category")
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got %v", err)
+				}
+			}
+		})
+	}
+}
