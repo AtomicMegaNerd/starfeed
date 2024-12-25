@@ -34,3 +34,20 @@ func (mrt *MockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 	defer mrt.Increment()
 	return &mrt.responses[mrt.calls], nil
 }
+
+// This is a mock ReadCloser that can be used to mock an error when reading
+// from the response body. It is used to test error handling when reading
+// from the response body.
+type ErrorReadCloser struct{}
+
+func NewErrorReadCloser() ErrorReadCloser {
+	return ErrorReadCloser{}
+}
+
+func (erc ErrorReadCloser) Read(p []byte) (n int, err error) {
+	return 0, errors.New("error reading from response body")
+}
+
+func (erc ErrorReadCloser) Close() error {
+	return nil
+}

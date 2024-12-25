@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   build:
@@ -44,13 +46,14 @@ jobs:
     - name: Run lints
       run: task lint
 
-    - name: Run tests
-      run: task test
+    - name: Run tests and generate test reports
+      run: task generate-test-reports
 
   publish_docker_image:
     runs-on: ubuntu-latest
     name: Build and Publish Docker image
     needs: build
+    if: github.ref == 'refs/heads/main'
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -86,6 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Tag and create release
     needs: publish_docker_image
+    if: github.ref == 'refs/heads/main'
     steps:
     - name: Checkout code
       uses: actions/checkout@v3

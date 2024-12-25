@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	mocks "github.com/atomicmeganerd/starfeed/utils"
+	"github.com/atomicmeganerd/starfeed/mocks"
 )
 
 const (
@@ -46,7 +46,6 @@ func (tc *GetStarredReposTestCase) GetTestObject() *GitHubStarredFeedBuilder {
 }
 
 func TestGetStarredRepos(t *testing.T) {
-
 	testCases := []GetStarredReposTestCase{
 		{
 			name: "Single repo with no pages",
@@ -142,32 +141,77 @@ func TestGetStarredRepos(t *testing.T) {
 			},
 			expectError: false,
 		},
+		{
+			name: "404 response should trigger an error",
+			responses: []http.Response{
+				{
+					Body:       io.NopCloser(strings.NewReader(``)),
+					Status:     "404 Not Found",
+					StatusCode: http.StatusNotFound,
+				},
+			},
+			expectedRepos: []GitHubRepo{},
+			expectError:   true,
+		},
+		{
+			name: "Reading response body should trigger an error",
+			responses: []http.Response{
+				{
+					Body:       mocks.NewErrorReadCloser(),
+					Status:     "200 OK",
+					StatusCode: http.StatusOK,
+				},
+			},
+			expectedRepos: []GitHubRepo{},
+			expectError:   true,
+		},
+		{
+			name: "Invalid json should trigger an error",
+			responses: []http.Response{
+				{
+					Body:       io.NopCloser(strings.NewReader(`The higher, the fewer`)),
+					Status:     "200 OK",
+					StatusCode: http.StatusOK,
+				},
+			},
+			expectedRepos: []GitHubRepo{},
+			expectError:   true,
+		},
 	}
 
 	for _, tc := range testCases {
+		t.Logf("Running test case: %s\n", tc.name)
+
 		gh := tc.GetTestObject()
 		repos, err := gh.GetStarredRepos()
-		if err != nil {
-			t.Fatalf("Expected no error, got %v", err)
-		}
 
-		if len(repos) != len(tc.expectedRepos) {
-			t.Fatalf("Expected %d repos, got %d", len(tc.expectedRepos), len(repos))
+		if tc.expectError {
+			if err == nil {
+				t.Fatalf("Expected an error, got none\n")
+			} else {
+				continue
+			}
+		} else {
+			if err != nil {
+				t.Fatalf("Expected no error, got %v\n", err)
+			}
+			if len(repos) != len(tc.expectedRepos) {
+				t.Fatalf("Expected %d repos, got %d\n", len(tc.expectedRepos), len(repos))
+			}
 		}
 	}
 }
 
+type TestIsGithubRepoTestCase struct {
+	name        string
+	feedUrl     string
+	expectMatch bool
+}
+
 func TestIsGithubReleaseRepo(t *testing.T) {
-
-	type TestCase struct {
-		name        string
-		feedUrl     string
-		expectMatch bool
-	}
-
 	mockClient := http.Client{}
 	gh := NewGitHubStarredFeedBuilder("", context.Background(), &mockClient)
-	testCases := []TestCase{
+	testCases := []TestIsGithubRepoTestCase{
 		{
 			name:        "Letters only",
 			feedUrl:     "https://github.com/atomicmeganerd/starfeed/releases.atom",
