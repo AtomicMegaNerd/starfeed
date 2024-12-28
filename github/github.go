@@ -11,8 +11,7 @@ import (
 	"strings"
 )
 
-// This object handles buidling an Atom Feed of all starred repos for the authenticated
-// user.
+// This object handles retrieving Atom feeds from GitHub for all starred repos.
 type GitHubStarredFeedBuilder struct {
 	token             string // WARNING: Do not log this value as it is a secret
 	ctx               context.Context
@@ -21,12 +20,19 @@ type GitHubStarredFeedBuilder struct {
 	isRelRepoRegex    *regexp.Regexp
 }
 
+// NewGitHubStarredFeedBuilder creates a new GitHubStarredFeedBuilder instance.
+// Arguments:
+// - token: The GitHub API token to authenticate with.
+// - ctx: The context to use for requests.
+// - client: The http client to use for requests (used for mocking).
 func NewGitHubStarredFeedBuilder(
 	token string,
 	ctx context.Context,
 	client *http.Client,
 ) *GitHubStarredFeedBuilder {
+	// This regex is used to find the next page link in the GitHub API response
 	nextPageLinkRegex, _ := regexp.Compile(`<([^>]+)>; rel="next"`)
+	// This regex is used to determine if an RSS feed is a GitHub release feed
 	isRelRepoRegex, _ := regexp.Compile(`^https://github.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`)
 	return &GitHubStarredFeedBuilder{token, ctx, client, nextPageLinkRegex, isRelRepoRegex}
 }
@@ -64,7 +70,13 @@ func (gh *GitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, er
 	}
 }
 
-// This method handles making API requests to GitHub using its REST API.
+// This function returns true if a repoUrl is a Github release repo
+// Arguments:
+// - feedUrl: The URL of the RSS feed to check.
+func (gh *GitHubStarredFeedBuilder) IsGithubReleasesFeed(feedUrl string) bool {
+	return gh.isRelRepoRegex.MatchString(feedUrl)
+}
+
 func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, error) {
 	headers := map[string]string{
 		"Authorization":        fmt.Sprintf("Bearer %s", gh.token),
@@ -105,9 +117,6 @@ func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 	return ghResponse, nil
 }
 
-// This function processes the response from GitHub. It will both read
-// the data from the response and check for a next page if there is
-// one
 func (gh *GitHubStarredFeedBuilder) processGithubResponse(r *http.Response) (*GithubResponse, error) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -124,9 +133,4 @@ func (gh *GitHubStarredFeedBuilder) processGithubResponse(r *http.Response) (*Gi
 	}
 
 	return &GithubResponse{data: data}, nil
-}
-
-// This function returns true if a repoUrl is a Github release repo
-func (gh *GitHubStarredFeedBuilder) IsGithubReleasesFeed(feedUrl string) bool {
-	return gh.isRelRepoRegex.MatchString(feedUrl)
 }

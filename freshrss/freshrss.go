@@ -13,6 +13,7 @@ import (
 	"log/slog"
 )
 
+// The FreshRSSFeedManager is a struct that manages the interaction with a FreshRSS instance.
 type FreshRSSFeedManager struct {
 	baseUrl   string
 	user      string
@@ -22,6 +23,13 @@ type FreshRSSFeedManager struct {
 	client    *http.Client
 }
 
+// NewFreshRSSFeedManager creates a new FreshRSSFeedManager instance.
+// Arguments:
+// - baseUrl: The base URL of the FreshRSS instance.
+// - user: The username to authenticate with.
+// - apiToken: The API token to authenticate with.
+// - ctx: The context to use for requests.
+// - client: The http client to use for requests (used for mocking).
 func NewFreshRSSFeedManager(
 	baseUrl string,
 	user string,
@@ -38,8 +46,8 @@ func NewFreshRSSFeedManager(
 	}
 }
 
+// Authenticate authenticates with the FreshRSS instance.
 func (f *FreshRSSFeedManager) Authenticate() error {
-
 	reqUrl := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", f.baseUrl)
 	slog.Debug("Authenticating with FreshRSS", "url", reqUrl)
 
@@ -61,8 +69,12 @@ func (f *FreshRSSFeedManager) Authenticate() error {
 	return nil
 }
 
+// AddFeed adds a feed to the FreshRSS instance.
+// Arguments:
+// - feedUrl: The URL of the feed to add.
+// - name: The name of the feed.
+// - category: The category to add the feed to.
 func (f *FreshRSSFeedManager) AddFeed(feedUrl, name, category string) error {
-
 	addUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/quickadd", f.baseUrl,
 	)
@@ -93,8 +105,8 @@ func (f *FreshRSSFeedManager) AddFeed(feedUrl, name, category string) error {
 	return nil
 }
 
+// GetExistingFeeds gets the existing feeds from the FreshRSS instance.
 func (f *FreshRSSFeedManager) GetExistingFeeds() (map[string]struct{}, error) {
-
 	getUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.baseUrl,
 	)
@@ -118,6 +130,9 @@ func (f *FreshRSSFeedManager) GetExistingFeeds() (map[string]struct{}, error) {
 	return feedMap, nil
 }
 
+// RemoveFeed removes a feed from the FreshRSS instance.
+// Arguments:
+// - feedUrl: The URL of the feed to remove.
 func (f *FreshRSSFeedManager) RemoveFeed(feedUrl string) error {
 	rmUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit", f.baseUrl,
@@ -137,7 +152,6 @@ func (f *FreshRSSFeedManager) RemoveFeed(feedUrl string) error {
 }
 
 func (f *FreshRSSFeedManager) addFeedToCategory(streamId, name, category string) error {
-
 	addUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit", f.baseUrl,
 	)
@@ -158,8 +172,8 @@ func (f *FreshRSSFeedManager) addFeedToCategory(streamId, name, category string)
 }
 
 func (f *FreshRSSFeedManager) doApiRequest(
-	url string, payload []byte, authHeader bool) ([]byte, error) {
-
+	url string, payload []byte, authHeader bool) ([]byte, error,
+) {
 	// Set headers
 	headers := map[string]string{
 		"Content-type": "application/x-www-form-urlencoded",
@@ -203,7 +217,6 @@ func (f *FreshRSSFeedManager) doApiRequest(
 }
 
 func (f *FreshRSSFeedManager) parsePlainTextAuthResponse(respData []byte) error {
-
 	lines := strings.Split(string(respData), "\n")
 	for _, line := range lines {
 		if strings.HasPrefix(line, "Auth=") {
