@@ -57,7 +57,7 @@ tasks:
 
   clean:
     cmds:
-      - rm -f {{.out}} {{.cov_file}} {{.cov_xml_file}} {{.test_xml_file}}
+      - rm -f {{.out}} {{.cov_file}}
 
   check-deps:
     cmds:
@@ -67,12 +67,6 @@ tasks:
   install-tools:
     cmds:
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-      - go install gotest.tools/gotestsum@latest
-
-  generate-test-reports:
-    deps: [install-tools, test]
-    cmds:
-      - gotestsum --junitfile={{.test_xml}}
 
   update-deps:
     cmds:
