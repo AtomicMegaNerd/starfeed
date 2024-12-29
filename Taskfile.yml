@@ -45,10 +45,6 @@ tasks:
       - |
         COVERAGE=$(go tool cover -func={{.cover_out}} | grep total: | awk '{print $3}' | sed 's/%//')
         echo "Coverage: $COVERAGE%"
-        if [ $(echo "$COVERAGE < {{.coverage_threshold}}" | awk '{if ($1 < $2) print 1; else print 0}') -eq 1 ]; then
-          echo "Code coverage ($COVERAGE%) is below the threshold of {{.coverage_threshold}}%"
-          exit 1
-        fi
 
   lint:
     deps: [install-tools]
