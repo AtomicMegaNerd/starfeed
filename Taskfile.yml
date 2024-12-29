@@ -7,10 +7,10 @@ dotenv: [./.env]
 env:
   out: bin/starfeed
   src: ./cmd/
-  cover_out: cover.out
-  cover_xml: cover.xml
-  test_xml: test-report.xml
   grc: $(if command -v grc > /dev/null; then echo "grc"; else echo ""; fi)
+  cover_out: cover.out
+  exclude_packages: "mocks"
+  coverage_threshold: 80
 
 tasks:
   default:
@@ -38,8 +38,17 @@ tasks:
   test:
     deps: [build]
     cmds:
-      # Colorize the output of the test command if GRC is installed.
-      - "{{.grc}} go test $(go list ./... | grep -v utils) -race -v -coverprofile={{.cover_out}}"
+      - |
+        {{.grc}} go test $(go list ./... | grep -Ev "{{.exclude_packages}}") \
+        -race -v -coverprofile={{.cover_out}}
+
+      - |
+        COVERAGE=$(go tool cover -func={{.cover_out}} | grep total: | awk '{print $3}' | sed 's/%//')
+        echo "Coverage: $COVERAGE%"
+        if [ $(echo "$COVERAGE < {{.coverage_threshold}}" | awk '{if ($1 < $2) print 1; else print 0}') -eq 1 ]; then
+          echo "Code coverage ($COVERAGE%) is below the threshold of {{.coverage_threshold}}%"
+          exit 1
+        fi
 
   lint:
     deps: [install-tools]
@@ -59,14 +68,11 @@ tasks:
     cmds:
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
       - go install gotest.tools/gotestsum@latest
-      - go install github.com/axw/gocov/gocov@latest
-      - go install github.com/AlekSi/gocov-xml@latest
 
   generate-test-reports:
     deps: [install-tools, test]
     cmds:
       - gotestsum --junitfile={{.test_xml}}
-      - gocov convert {{.cover_out}} | gocov-xml > {{.cover_xml}}
 
   update-deps:
     cmds:
