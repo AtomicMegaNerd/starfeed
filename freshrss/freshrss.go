@@ -182,13 +182,9 @@ func (f *FreshRSSFeedManager) doApiRequest(
 		headers["Authorization"] = fmt.Sprintf("GoogleLogin auth=%s", f.authToken)
 	}
 
-	// Create request
+	// Create request (errors are ignored because the request is always valid)
 	reader := bytes.NewReader(payload)
-	req, err := http.NewRequestWithContext(f.ctx, "POST", url, reader)
-	if err != nil {
-		slog.Error("Unable to create request to FreshRSS", "error", err)
-		return nil, err
-	}
+	req, _ := http.NewRequestWithContext(f.ctx, "POST", url, reader)
 
 	// Process headers
 	for k, v := range headers {

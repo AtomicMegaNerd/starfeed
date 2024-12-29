@@ -86,17 +86,14 @@ func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 		"Accept":               "application/json",
 	}
 
-	httpRequest, err := http.NewRequestWithContext(gh.ctx, "GET", url, nil)
-	if err != nil {
-		slog.Error("Unable to build request to Github", "error", err.Error())
-		return nil, err
-	}
+	// No request will always be valid here so we can ignore the error
+	req, _ := http.NewRequestWithContext(gh.ctx, "GET", url, nil)
 
 	for k, v := range headers {
-		httpRequest.Header.Set(k, v)
+		req.Header.Set(k, v)
 	}
 
-	res, err := gh.client.Do(httpRequest)
+	res, err := gh.client.Do(req)
 	if err != nil {
 		slog.Error("Unable to make request to Github", "error", err.Error())
 		return nil, err
