@@ -13,6 +13,7 @@ import (
 	"github.com/atomicmeganerd/starfeed/github"
 )
 
+// RepoRSSPublisher is a struct that manages the main workflow of the application.
 type RepoRSSPublisher struct {
 	ghToken       string // WARNING: Do not logger.this value as it is a secret
 	freshRssUrl   string
@@ -22,6 +23,14 @@ type RepoRSSPublisher struct {
 	client        *http.Client
 }
 
+// NewRepoRSSPublisher creates a new RepoRSSPublisher instance.
+// Arguments:
+// - ghToken: The GitHub API token to authenticate with.
+// - freshRssUrl: The base URL of the FreshRSS instance.
+// - freshRssUser: The username to authenticate to FreshRSS.
+// - freshRssToken: The API token to authenticate with FreshRSS.
+// - ctx: The context to use for requests.
+// - client: The http client to use for requests (used for mocking).
 func NewRepoRSSPublisher(ghToken, freshRssUrl, freshRssUser, freshRssToken string,
 	ctx context.Context,
 	client *http.Client) RepoRSSPublisher {
@@ -35,6 +44,9 @@ func NewRepoRSSPublisher(ghToken, freshRssUrl, freshRssUser, freshRssToken strin
 	}
 }
 
+// QueryAndPublishFeeds queries the starred repos from GitHub and publishes them to FreshRSS.
+// It also removes any stale feeds from FreshRSS as long as they are not starred in GitHub but
+// are actually Github release feeds.
 func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 	slog.Info("Starting main workflow....")
 	start := time.Now()

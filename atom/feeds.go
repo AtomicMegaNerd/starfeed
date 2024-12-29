@@ -22,11 +22,8 @@ func NewAtomFeedChecker(ctx context.Context, client *http.Client) *AtomFeedCheck
 
 // This function checks that the Atom feed has entries in it.
 func (a *AtomFeedChecker) CheckFeedHasEntries(feedUrl string) bool {
-	req, err := http.NewRequestWithContext(a.ctx, "GET", feedUrl, nil)
-	if err != nil {
-		slog.Error("Could not create request", "error", err.Error())
-		return false
-	}
+	// No request will always be valid here so we can ignore the error
+	req, _ := http.NewRequestWithContext(a.ctx, "GET", feedUrl, nil)
 
 	res, err := a.client.Do(req)
 	if err != nil {

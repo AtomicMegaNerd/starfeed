@@ -47,7 +47,8 @@ jobs:
       run: task lint
 
     - name: Run tests and generate test reports
-      run: task generate-test-reports
+      run: task test
+
 
   publish_docker_image:
     runs-on: ubuntu-latest
