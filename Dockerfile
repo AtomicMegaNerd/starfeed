@@ -1,5 +1,5 @@
 #########################################################################
-# Builder image                                                         # 
+# Builder image                                                         #
 #########################################################################
 
 FROM golang:1.23.4-alpine3.21 AS builder
@@ -9,7 +9,7 @@ ENV GOTASK_VERSION=3.40.0-r0
 WORKDIR /app
 
 # for caching	copy go mod and sum files first and download dependencies
-COPY ./go.mod ./go.sum /app
+COPY ./go.mod ./go.sum /app/
 RUN go mod download
 
 # copy the rest of the files
@@ -21,7 +21,7 @@ RUN apk add --no-cache go-task=${GOTASK_VERSION}
 RUN go-task build
 
 #########################################################################
-# Runner image                                                          # 
+# Runner image                                                          #
 #########################################################################
 
 FROM alpine:3.21 AS runner
@@ -40,4 +40,3 @@ RUN addgroup -g $GID $USER && adduser -D -u $UID -G $USER $USER && \
 USER $USER
 
 CMD ["starfeed"]
-

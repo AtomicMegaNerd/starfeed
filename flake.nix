@@ -13,10 +13,11 @@
         devShell = pkgs.mkShell {
           # The packages we need for this project
           buildInputs = with pkgs; [
-            go_1_23
+            go_1_24
             go-tools
             gopls
             golangci-lint
+            golangci-lint-langserver
             go-task
             grc
           ];
