@@ -59,7 +59,7 @@ func main() {
 	defer cancel()
 
 	slog.Info("***********************************************")
-	slog.Info(" Welcome to Github Releases to RSS Publisher!")
+	slog.Info(" Welcome to Starfeed")
 	slog.Info("***********************************************")
 
 	cfg, err := NewConfig()

@@ -6,11 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"log/slog"
 )
 
 // The FreshRSSFeedManager is a struct that manages the interaction with a FreshRSS instance.
