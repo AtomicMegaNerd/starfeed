@@ -2,9 +2,9 @@
 # Builder image                                                         # 
 #########################################################################
 
-FROM golang:1.23.4-alpine3.21 AS builder
+FROM golang:1.24.1-alpine3.21 AS builder
 
-ENV GOTASK_VERSION=3.40.0-r0
+ENV GOTASK_VERSION=3.40.0-r2
 
 WORKDIR /app
 
