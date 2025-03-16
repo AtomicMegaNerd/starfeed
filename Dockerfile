@@ -9,7 +9,7 @@ ENV GOTASK_VERSION=3.40.0-r0
 WORKDIR /app
 
 # for caching	copy go mod and sum files first and download dependencies
-COPY ./go.mod ./go.sum /app
+COPY ./go.mod ./go.sum /app/
 RUN go mod download
 
 # copy the rest of the files
