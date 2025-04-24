@@ -1,5 +1,5 @@
 #########################################################################
-# Builder image                                                         # 
+# Builder image                                                         #
 #########################################################################
 
 FROM golang:1.24.1-alpine3.21 AS builder
@@ -21,7 +21,7 @@ RUN apk add --no-cache go-task=${GOTASK_VERSION}
 RUN go-task build
 
 #########################################################################
-# Runner image                                                          # 
+# Runner image                                                          #
 #########################################################################
 
 FROM alpine:3.21 AS runner
@@ -40,4 +40,3 @@ RUN addgroup -g $GID $USER && adduser -D -u $UID -G $USER $USER && \
 USER $USER
 
 CMD ["starfeed"]
-
