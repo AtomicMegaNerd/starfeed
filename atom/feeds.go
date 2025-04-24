@@ -30,7 +30,7 @@ func (a *AtomFeedChecker) CheckFeedHasEntries(feedUrl string) bool {
 		slog.Error("Error making request to check ATOM feed", "feed", feedUrl, "error", err.Error())
 		return false
 	}
-	defer res.Body.Close()
+	defer res.Body.Close() // nolint:all
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -44,7 +44,7 @@ func (a *AtomFeedChecker) CheckFeedHasEntries(feedUrl string) bool {
 		return false
 	}
 
-	if feed.Entries == nil || len(feed.Entries) < 1 {
+	if len(feed.Entries) < 1 {
 		return false
 	}
 

@@ -99,7 +99,7 @@ func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 		return nil, err
 
 	}
-	defer res.Body.Close()
+	defer res.Body.Close() // nolint:all
 
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("github returned an http error code %d", res.StatusCode)
