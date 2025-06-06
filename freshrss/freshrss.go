@@ -122,7 +122,7 @@ func (f *FreshRSSFeedManager) GetExistingFeeds() (map[string]struct{}, error) {
 		return nil, err
 	}
 
-	var feedMap map[string]struct{} = make(map[string]struct{})
+	var feedMap = make(map[string]struct{})
 	for _, feed := range feeds.Feeds {
 		feedMap[feed.Url] = struct{}{}
 	}
@@ -196,7 +196,7 @@ func (f *FreshRSSFeedManager) doApiRequest(
 		slog.Error("Unable to make request to FreshRSS", "error", err)
 		return nil, err
 	}
-	defer res.Body.Close()
+	defer res.Body.Close() // nolint: all
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		slog.Error("Unable to get response data from FreshRSS", "error", err)
