@@ -17,10 +17,7 @@
             go-tools
             gopls
             golangci-lint
-            golangci-lint-langserver
             go-task
-            grc
-            dockerfile-language-server-nodejs
           ];
         };
       });

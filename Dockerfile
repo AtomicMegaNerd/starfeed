@@ -2,9 +2,9 @@
 # Builder image                                                         #
 #########################################################################
 
-FROM golang:1.24.0-alpine3.21 AS builder
+FROM golang:1.24.3-alpine3.22 AS builder
 
-ENV GOTASK_VERSION=3.40.0-r2
+ENV GOTASK_VERSION=3.43.3-r1
 
 WORKDIR /app
 
@@ -24,7 +24,7 @@ RUN go-task build
 # Runner image                                                          #
 #########################################################################
 
-FROM alpine:3.21 AS runner
+FROM alpine:3.22 AS runner
 
 ENV PATH=/app/bin:$PATH
 ENV USER=starfeed
