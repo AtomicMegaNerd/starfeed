@@ -212,10 +212,10 @@ func (f *FreshRSSFeedManager) doApiRequest(
 }
 
 func (f *FreshRSSFeedManager) parsePlainTextAuthResponse(respData []byte) error {
-	lines := strings.Split(string(respData), "\n")
-	for _, line := range lines {
-		if strings.HasPrefix(line, "Auth=") {
-			f.authToken = strings.TrimPrefix(line, "Auth=")
+	lines := strings.SplitSeq(string(respData), "\n")
+	for line := range lines {
+		if token, found := strings.CutPrefix(line, "Auth="); found {
+			f.authToken = token
 		}
 	}
 

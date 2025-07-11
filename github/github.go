@@ -121,8 +121,8 @@ func (gh *GitHubStarredFeedBuilder) processGithubResponse(r *http.Response) (*Gi
 	}
 
 	linkRaw := r.Header.Get("link")
-	links := strings.Split(linkRaw, ",")
-	for _, link := range links {
+	links := strings.SplitSeq(linkRaw, ",")
+	for link := range links {
 		matches := gh.nextPageLinkRegex.FindStringSubmatch(link)
 		if len(matches) == 2 {
 			return &GithubResponse{data: data, nextPage: matches[1]}, nil

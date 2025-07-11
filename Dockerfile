@@ -2,7 +2,7 @@
 # Builder image                                                         #
 #########################################################################
 
-FROM golang:1.24.3-alpine3.22 AS builder
+FROM golang:1.24.4-alpine3.22 AS builder
 
 ENV GOTASK_VERSION=3.43.3-r1
 

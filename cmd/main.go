@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,48 +12,7 @@ import (
 	"github.com/atomicmeganerd/starfeed/runner"
 )
 
-const (
-	ghTokenKey       = "STARFEED_GITHUB_API_TOKEN"
-	freshRssUrlKey   = "STARFEED_FRESHRSS_URL"
-	freshRssUserKey  = "STARFEED_FRESHRSS_USER"
-	freshRssTokenKey = "STARFEED_FRESHRSS_API_TOKEN"
-	debugModeKey     = "STARFEED_DEBUG_MODE"
-	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
-
-	httpTimeoutInSeconds = 10
-)
-
-type Config struct {
-	GithubToken   string
-	FreshRssUrl   string
-	FreshRssUser  string
-	FreshRssToken string
-	DebugMode     bool
-	SingleRunMode bool
-}
-
-func NewConfig() (*Config, error) {
-	// Check for required environment variables
-	if os.Getenv(ghTokenKey) == "" ||
-		os.Getenv(freshRssUrlKey) == "" ||
-		os.Getenv(freshRssUserKey) == "" ||
-		os.Getenv(freshRssTokenKey) == "" {
-		slog.Error("Missing required environment variables")
-		return nil, errors.New("missing required environment variables")
-	}
-
-	return &Config{
-		GithubToken:   os.Getenv(ghTokenKey),
-		FreshRssUrl:   os.Getenv(freshRssUrlKey),
-		FreshRssUser:  os.Getenv(freshRssUserKey),
-		FreshRssToken: os.Getenv(freshRssTokenKey),
-		DebugMode:     os.Getenv(debugModeKey) == "true",
-		SingleRunMode: os.Getenv(singleRunModeKey) == "true",
-	}, nil
-}
-
 func main() {
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -99,7 +57,7 @@ func main() {
 		cfg.FreshRssUser,
 		cfg.FreshRssToken,
 		ctx,
-		&http.Client{Timeout: httpTimeoutInSeconds * time.Second},
+		&http.Client{Timeout: cfg.HttpTimeout * time.Second},
 	)
 
 	// Initial publish

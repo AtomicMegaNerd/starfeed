@@ -21,8 +21,8 @@ Starfeed is written in Go and currently relies purely on the standard library wi
 ### Setting the Environment
 
 The following environment variables need to be set for Starfeed to function correctly. For local
-development the best way is to create an `.env` file. This should remain in the .gitigore and
-.dockerignore for obvious reasons.
+development the best way is to create an `.env` file. This should remain in the `.gitigore` and
+`.dockerignore`  for obvious reasons.
 
 ```bash
 export STARFEED_GITHUB_USER=github_username
