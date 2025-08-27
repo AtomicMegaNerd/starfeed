@@ -26,6 +26,12 @@ RUN go-task build
 
 FROM alpine:3.22 AS runner
 
+LABEL org.opencontainers.image.title="starfeed"
+LABEL org.opencontainers.image.description="Starfeed service"
+LABEL org.opencontainers.image.authors="Chris Dunphy"
+LABEL org.opencontainers.image.source="https://github.com/atomicmeganerd/starfeed"
+LABEL org.opencontainers.image.licenses="MIT"
+
 ENV PATH=/app/bin:$PATH
 ENV USER=starfeed
 ENV UID=10001
