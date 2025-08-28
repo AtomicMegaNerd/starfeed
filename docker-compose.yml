@@ -1,8 +1,10 @@
-version: '3.8'
+version: "3.8"
 
 services:
   starfeed:
-    image: atomicmeganerd/starfeed:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     env_file:
       - .env
     restart: unless-stopped

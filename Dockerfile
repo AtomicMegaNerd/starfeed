@@ -2,9 +2,9 @@
 # Builder image                                                         #
 #########################################################################
 
-FROM golang:1.24.3-alpine3.22 AS builder
+FROM golang:1.25.0-alpine3.22 AS builder
 
-ENV GOTASK_VERSION=3.43.3-r1
+ENV GOTASK_VERSION=3.43.3-r2
 
 WORKDIR /app
 
@@ -27,7 +27,7 @@ RUN go-task build
 FROM alpine:3.22 AS runner
 
 LABEL org.opencontainers.image.title="starfeed"
-LABEL org.opencontainers.image.description="Starfeed service"
+LABEL org.opencontainers.image.description="Starfeed subsribes to RSS feeds for starred GitHub repos"
 LABEL org.opencontainers.image.authors="Chris Dunphy"
 LABEL org.opencontainers.image.source="https://github.com/atomicmeganerd/starfeed"
 LABEL org.opencontainers.image.licenses="MIT"
