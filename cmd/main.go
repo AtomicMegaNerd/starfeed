@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/runner"
 )
 
@@ -21,7 +22,7 @@ func main() {
 	slog.Info(" Welcome to Starfeed")
 	slog.Info("***********************************************")
 
-	cfg, err := NewConfig()
+	cfg, err := config.NewConfig(config.OSEnvGetter{})
 	if err != nil {
 		slog.Error("Failed to load configuration", "error", err.Error())
 		os.Exit(1)

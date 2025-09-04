@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"errors"
@@ -7,6 +7,16 @@ import (
 	"strconv"
 	"time"
 )
+
+type EnvGetter interface {
+	Getenv(key string) string
+}
+
+type OSEnvGetter struct{}
+
+func (o OSEnvGetter) Getenv(key string) string {
+	return os.Getenv(key)
+}
 
 const (
 	ghTokenKey       = "STARFEED_GITHUB_API_TOKEN"
@@ -28,31 +38,31 @@ type Config struct {
 	HttpTimeout   time.Duration
 }
 
-func NewConfig() (*Config, error) {
+func NewConfig(envGetter EnvGetter) (*Config, error) {
 	// Check for required environment variables
-	if os.Getenv(ghTokenKey) == "" ||
-		os.Getenv(freshRssUrlKey) == "" ||
-		os.Getenv(freshRssUserKey) == "" ||
-		os.Getenv(freshRssTokenKey) == "" {
+	if envGetter.Getenv(ghTokenKey) == "" ||
+		envGetter.Getenv(freshRssUrlKey) == "" ||
+		envGetter.Getenv(freshRssUserKey) == "" ||
+		envGetter.Getenv(freshRssTokenKey) == "" {
 		slog.Error("Missing required environment variables")
 		return nil, errors.New("missing required environment variables")
 	}
 
 	// Parse optional HTTP timeout, default to 10 seconds
 	httpTimeout := 10 * time.Second
-	if timeoutStr := os.Getenv(httpTimeoutKey); timeoutStr != "" {
+	if timeoutStr := envGetter.Getenv(httpTimeoutKey); timeoutStr != "" {
 		if timeoutSeconds, err := strconv.Atoi(timeoutStr); err == nil && timeoutSeconds > 0 {
 			httpTimeout = time.Duration(timeoutSeconds) * time.Second
 		}
 	}
 
 	return &Config{
-		GithubToken:   os.Getenv(ghTokenKey),
-		FreshRssUrl:   os.Getenv(freshRssUrlKey),
-		FreshRssUser:  os.Getenv(freshRssUserKey),
-		FreshRssToken: os.Getenv(freshRssTokenKey),
-		DebugMode:     os.Getenv(debugModeKey) == "true",
-		SingleRunMode: os.Getenv(singleRunModeKey) == "true",
+		GithubToken:   envGetter.Getenv(ghTokenKey),
+		FreshRssUrl:   envGetter.Getenv(freshRssUrlKey),
+		FreshRssUser:  envGetter.Getenv(freshRssUserKey),
+		FreshRssToken: envGetter.Getenv(freshRssTokenKey),
+		DebugMode:     envGetter.Getenv(debugModeKey) == "true",
+		SingleRunMode: envGetter.Getenv(singleRunModeKey) == "true",
 		HttpTimeout:   httpTimeout,
 	}, nil
 }
