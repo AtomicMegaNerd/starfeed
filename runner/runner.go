@@ -15,10 +15,10 @@ import (
 
 // RepoRSSPublisher is a struct that manages the main workflow of the application.
 type RepoRSSPublisher struct {
-	ghToken       string // WARNING: Do not logger.this value as it is a secret
+	ghToken       string // WARNING: Do not log this value as it is a secret
 	freshRssUrl   string
 	freshRssUser  string
-	freshRssToken string // WARNING: Do not logger.this value as it is a secret
+	freshRssToken string // WARNING: Do not logger this value as it is a secret
 	ctx           context.Context
 	client        *http.Client
 }
@@ -143,15 +143,15 @@ func (p *RepoRSSPublisher) filterOutNonGithubFeeds(
 	gh *github.GitHubStarredFeedBuilder,
 	rssFeedMap map[string]struct{},
 ) map[string]struct{} {
-	filterdMap := make(map[string]struct{})
+	filteredMap := make(map[string]struct{})
 	for k, v := range rssFeedMap {
 		if gh.IsGithubReleasesFeed(k) {
-			filterdMap[k] = v
+			filteredMap[k] = v
 		} else {
 			slog.Debug("Removing non-Github feed from RSS map so we don't unsubscribe", "feed", k)
 		}
 	}
-	return filterdMap
+	return filteredMap
 }
 
 func (p *RepoRSSPublisher) removeStaleFeeds(

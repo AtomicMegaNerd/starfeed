@@ -13,6 +13,6 @@ repos:
     hooks:
       - id: golangci-lint
         stages: [pre-commit]
+        args: ["--fix"]
       - id: golangci-lint-format
         stages: [pre-commit]
-        args: ["--fix"]

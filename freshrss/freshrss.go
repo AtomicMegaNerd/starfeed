@@ -196,7 +196,7 @@ func (f *FreshRSSFeedManager) doApiRequest(
 		slog.Error("Unable to make request to FreshRSS", "error", err)
 		return nil, err
 	}
-	defer res.Body.Close() // nolint: all
+	defer res.Body.Close() // nolint: errcheck
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		slog.Error("Unable to get response data from FreshRSS", "error", err)
@@ -212,10 +212,10 @@ func (f *FreshRSSFeedManager) doApiRequest(
 }
 
 func (f *FreshRSSFeedManager) parsePlainTextAuthResponse(respData []byte) error {
-	lines := strings.Split(string(respData), "\n")
-	for _, line := range lines {
-		if strings.HasPrefix(line, "Auth=") {
-			f.authToken = strings.TrimPrefix(line, "Auth=")
+	lines := strings.SplitSeq(string(respData), "\n")
+	for line := range lines {
+		if after, ok := strings.CutPrefix(line, "Auth="); ok {
+			f.authToken = after
 		}
 	}
 
