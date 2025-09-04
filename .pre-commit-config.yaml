@@ -9,7 +9,10 @@ repos:
       - id: trailing-whitespace
         stages: [pre-commit]
   - repo: https://github.com/golangci/golangci-lint
-    rev: v2.0.16
+    rev: v2.4.0
     hooks:
       - id: golangci-lint
         stages: [pre-commit]
+      - id: golangci-lint-format
+        stages: [pre-commit]
+        args: ["--fix"]

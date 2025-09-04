@@ -114,7 +114,9 @@ func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 	return ghResponse, nil
 }
 
-func (gh *GitHubStarredFeedBuilder) processGithubResponse(r *http.Response) (*GithubResponse, error) {
+func (gh *GitHubStarredFeedBuilder) processGithubResponse(
+	r *http.Response,
+) (*GithubResponse, error) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
