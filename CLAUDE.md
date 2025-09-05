@@ -17,6 +17,7 @@
 
 ## Go Policies
 
+- Prefer interfaces over concrete types for dependency injection
 - Keep the code as simple as possible.
 - Use guards and short-circuiting to avoid deep nesting.
 - Use custom error types if it makes the code simpler to read.
@@ -24,3 +25,5 @@
 - Always use context in functions that make network calls or do I/O.
 - Always use dependency injection for anything that does I/O or network calls.
 - Warn me if a function or a file will get too big. We can split it up.
+- Avoid external dependencies - use Go standard library only
+- Maintain test coverage above 80% threshold
