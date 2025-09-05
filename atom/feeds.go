@@ -8,20 +8,26 @@ import (
 	"net/http"
 )
 
-type AtomFeedChecker struct {
+// AtomFeedChecker is an interface for checking Atom feeds.
+type AtomFeedChecker interface {
+	CheckFeedHasEntries(feedUrl string) bool
+}
+
+// atomFeedChecker is the private implementation of AtomFeedChecker.
+type atomFeedChecker struct {
 	client *http.Client
 	ctx    context.Context
 }
 
-func NewAtomFeedChecker(ctx context.Context, client *http.Client) *AtomFeedChecker {
-	return &AtomFeedChecker{
+func NewAtomFeedChecker(ctx context.Context, client *http.Client) AtomFeedChecker {
+	return &atomFeedChecker{
 		client: client,
 		ctx:    ctx,
 	}
 }
 
 // This function checks that the Atom feed has entries in it.
-func (a *AtomFeedChecker) CheckFeedHasEntries(feedUrl string) bool {
+func (a *atomFeedChecker) CheckFeedHasEntries(feedUrl string) bool {
 	// No request will always be valid here so we can ignore the error
 	req, _ := http.NewRequestWithContext(a.ctx, "GET", feedUrl, nil)
 

@@ -17,7 +17,7 @@ type CheckFeedHasEntriesTestCase struct {
 	expectHasEntries bool
 }
 
-func (tc *CheckFeedHasEntriesTestCase) GetTestObject() *AtomFeedChecker {
+func (tc *CheckFeedHasEntriesTestCase) GetTestObject() AtomFeedChecker {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
 	return NewAtomFeedChecker(context.Background(), mockClient)

@@ -113,8 +113,8 @@ func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 
 func publishToFreshRSS(
 	wg *sync.WaitGroup,
-	fr *freshrss.FreshRSSFeedManager,
-	at *atom.AtomFeedChecker,
+	fr freshrss.FreshRSSFeedManager,
+	at atom.AtomFeedChecker,
 	rssFeedMap map[string]struct{},
 	repo github.GitHubRepo,
 ) {
@@ -156,7 +156,7 @@ func filterOutNonGithubFeeds(
 
 func removeStaleFeeds(
 	wg *sync.WaitGroup,
-	fr *freshrss.FreshRSSFeedManager,
+	fr freshrss.FreshRSSFeedManager,
 	starredRepoMap map[string]github.GitHubRepo, // The key is the release ATOM feed
 	rssFeed string,
 ) {
