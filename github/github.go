@@ -11,8 +11,14 @@ import (
 	"strings"
 )
 
-// This object handles retrieving Atom feeds from GitHub for all starred repos.
-type GitHubStarredFeedBuilder struct {
+// GitHubStarredFeedBuilder is an interface for retrieving Atom feeds from GitHub for all starred repos.
+type GitHubStarredFeedBuilder interface {
+	GetStarredRepos() (map[string]GitHubRepo, error)
+	IsGithubReleasesFeed(feedUrl string) bool
+}
+
+// gitHubStarredFeedBuilder is the private implementation of GitHubStarredFeedBuilder.
+type gitHubStarredFeedBuilder struct {
 	token             string // WARNING: Do not log this value as it is a secret
 	ctx               context.Context
 	client            *http.Client
@@ -29,17 +35,17 @@ func NewGitHubStarredFeedBuilder(
 	token string,
 	ctx context.Context,
 	client *http.Client,
-) *GitHubStarredFeedBuilder {
+) GitHubStarredFeedBuilder {
 	// This regex is used to find the next page link in the GitHub API response
 	nextPageLinkRegex, _ := regexp.Compile(`<([^>]+)>; rel="next"`)
 	// This regex is used to determine if an RSS feed is a GitHub release feed
 	isRelRepoRegex, _ := regexp.Compile(`^https://github.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`)
-	return &GitHubStarredFeedBuilder{token, ctx, client, nextPageLinkRegex, isRelRepoRegex}
+	return &gitHubStarredFeedBuilder{token, ctx, client, nextPageLinkRegex, isRelRepoRegex}
 }
 
 // This will return all starred repos including the Atom feeds for their releases
 // It returns a map of relaseFeedUrl -> GitHubRepo
-func (gh *GitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, error) {
+func (gh *gitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, error) {
 	allFeeds := make(map[string]GitHubRepo)
 	getUrl := "http://api.github.com/user/starred?per_page=100"
 	slog.Debug("Querying Github for starred repos", "url", getUrl)
@@ -73,11 +79,11 @@ func (gh *GitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, er
 // This function returns true if a repoUrl is a Github release repo
 // Arguments:
 // - feedUrl: The URL of the RSS feed to check.
-func (gh *GitHubStarredFeedBuilder) IsGithubReleasesFeed(feedUrl string) bool {
+func (gh *gitHubStarredFeedBuilder) IsGithubReleasesFeed(feedUrl string) bool {
 	return gh.isRelRepoRegex.MatchString(feedUrl)
 }
 
-func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, error) {
+func (gh *gitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, error) {
 	headers := map[string]string{
 		"Authorization":        fmt.Sprintf("Bearer %s", gh.token),
 		"X-Github-Api-Version": "2022-11-28",
@@ -114,7 +120,7 @@ func (gh *GitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 	return ghResponse, nil
 }
 
-func (gh *GitHubStarredFeedBuilder) processGithubResponse(
+func (gh *gitHubStarredFeedBuilder) processGithubResponse(
 	r *http.Response,
 ) (*GithubResponse, error) {
 	data, err := io.ReadAll(r.Body)
@@ -123,8 +129,8 @@ func (gh *GitHubStarredFeedBuilder) processGithubResponse(
 	}
 
 	linkRaw := r.Header.Get("link")
-	links := strings.Split(linkRaw, ",")
-	for _, link := range links {
+	links := strings.SplitSeq(linkRaw, ",")
+	for link := range links {
 		matches := gh.nextPageLinkRegex.FindStringSubmatch(link)
 		if len(matches) == 2 {
 			return &GithubResponse{data: data, nextPage: matches[1]}, nil

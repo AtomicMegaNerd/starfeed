@@ -39,7 +39,7 @@ type GetStarredReposTestCase struct {
 	expectError   bool
 }
 
-func (tc *GetStarredReposTestCase) GetTestObject() *GitHubStarredFeedBuilder {
+func (tc *GetStarredReposTestCase) GetTestObject() GitHubStarredFeedBuilder {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
 	return NewGitHubStarredFeedBuilder("mockToken", context.Background(), mockClient)

@@ -140,7 +140,7 @@ func publishToFreshRSS(
 }
 
 func filterOutNonGithubFeeds(
-	gh *github.GitHubStarredFeedBuilder,
+	gh github.GitHubStarredFeedBuilder,
 	rssFeedMap map[string]struct{},
 ) map[string]struct{} {
 	filteredMap := make(map[string]struct{})
