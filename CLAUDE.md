@@ -2,6 +2,8 @@
 
 ## General Policies
 
+- This project uses a Nix flake with nix-direnv. You need to enable the flake environment for
+  the Go toolchain to work.
 - Always run `task build`, `task test`, and `task lint` after making any changes to the code.
 - Always ensure each line is less than 100 characters long regardless of the file type.
 - Only the human is allowed to make changes to the README.md file or the CLAUDE.md file.
