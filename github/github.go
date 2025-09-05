@@ -11,7 +11,8 @@ import (
 	"strings"
 )
 
-// GitHubStarredFeedBuilder is an interface for retrieving Atom feeds from GitHub for all starred repos.
+// GitHubStarredFeedBuilder is an interface for retrieving Atom feeds from GitHub
+// for all starred repos.
 type GitHubStarredFeedBuilder interface {
 	GetStarredRepos() (map[string]GitHubRepo, error)
 	IsGithubReleasesFeed(feedUrl string) bool
