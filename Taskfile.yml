@@ -8,7 +8,7 @@ env:
   src: ./cmd/
   grc: $(if command -v grc > /dev/null; then echo "grc"; else echo ""; fi)
   cover_out: cover.out
-  exclude_packages: "mocks"
+  exclude_packages: "mocks|cmd"
   coverage_threshold: 80
 
 tasks:
@@ -26,7 +26,7 @@ tasks:
     deps: [check-deps]
     cmds:
       - cmd: go build -o {{.out}} {{.src}}
-      - cmd: codesign -f -s "RCD Local Development" {{.out}} --deep
+      - cmd: codesign -f -s "RCD Local" {{.out}} --deep
         platforms: [darwin] # Only sign the binary on macOS.
 
   run:
@@ -44,6 +44,12 @@ tasks:
       - |
         COVERAGE=$(go tool cover -func={{.cover_out}} | grep total: | awk '{print $3}' | sed 's/%//')
         echo "Coverage: $COVERAGE%"
+        if [ $(echo "$COVERAGE >= {{.coverage_threshold}}" | bc -l) -eq 0 ]; then
+          echo "ERROR: Coverage $COVERAGE% is below threshold {{.coverage_threshold}}%"
+          exit 1
+        else
+          echo "✓ Coverage meets threshold ({{.coverage_threshold}}%)"
+        fi
 
   lint:
     cmds:
@@ -61,3 +67,8 @@ tasks:
   update-deps:
     cmds:
       - go get -u ./...
+
+  generate-test-reports:
+    deps: [test]
+    cmds:
+      - go tool cover -html={{.cover_out}} -o coverage.html

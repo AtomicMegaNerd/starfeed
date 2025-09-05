@@ -12,20 +12,21 @@ Starfeed is written in Go and currently relies purely on the standard library wi
 
 ### Required Software
 
-- You must have [FreshRSS](https://www.freshrss.org) deployed in your local network. It much be reachable from the Starfeed Docker container.
+- You must have [FreshRSS](https://www.freshrss.org) deployed in your local network. It must be reachable from the Starfeed Docker container.
 - You must have an API token generated in FreshRSS that has permissions to create/edit/delete feeds.
-- You must have an API token for Github with permission to read starred repos.
-- You must have [Docker](https://docker.com) or [Podman](https://podman.io) setup to run the container.
+- You must have an API token for GitHub with permission to read starred repos.
+- You must have [Docker](https://docker.com) or [Podman](https://podman.io) set up to run the container.
 - To build and run the app locally you need to install [Go](https://go.dev), [Taskfile](https://taskfile.dev), and [Direnv](https://direnv.net/).
 
 ### Setting the Environment
 
 The following environment variables need to be set for Starfeed to function correctly. For local
-development the best way is to create an `.env` file. This should remain in the .gitigore and
-.dockerignore for obvious reasons.
+development, the best way is to create an `.envrc` file. This should remain in the `.gitignore` and
+`.dockerignore` for obvious reasons.
 
 ```bash
-export STARFEED_GITHUB_USER=github_username
+use flake
+
 export STARFEED_GITHUB_API_TOKEN=github_token
 export STARFEED_FRESHRSS_URL=url_to_freshrss
 export STARFEED_FRESHRSS_USER=freshrss_user
@@ -34,46 +35,55 @@ export STARFEED_DEBUG_MODE=true
 export STARFEED_SINGLE_RUN_MODE=true
 ```
 
-To setup `direnv` you can create a file called `.envrc`
-
-```bash
-source .env
-```
-
 Then activate your environment with:
 
 ```bash
 direnv allow
 ```
 
-This will load all of the environment variables in `.env` into your environment while you are in the project directory. See the direnv docs for more information.
+This will load all of the environment variables in `.envrc` into your environment while you are in the project directory. See the direnv docs for more information.
 
-## Pulling and Running Docker Image
+## Running with Docker or Podman
 
-The docker image is now on [Docker Hub](https://hub.docker.com/repository/docker/atomicmeganerd/starfeed/general). You can pull this image:
+You can use either **Docker** or **Podman** to run Starfeed. The instructions below show both options.
+
+### Using Docker
+
+#### Pull and Run the Image
 
 ```bash
 docker pull atomicmeganerd/starfeed:latest
-```
-
-You can run this easily:
-
-```bash
 docker run --env-file $PATH_TO_ENV_FILE -t atomicmeganerd/starfeed:latest
 ```
 
+#### Using Docker Compose
 
-## Local Development
-
-### Build and run the Docker image
-
-For local development you can use the `docker-compose` file to build and run the app.
+If you want to build and run the app locally:
 
 ```bash
-docker-compose up
+docker-compose up --build
 ```
 
-### Build and run Go Binary
+### Using Podman
+
+#### Pull and Run the Image
+
+```bash
+podman pull atomicmeganerd/starfeed:latest
+podman run --env-file $PATH_TO_ENV_FILE -t atomicmeganerd/starfeed:latest
+```
+
+#### Using Podman Compose
+
+If you want to build and run the app locally:
+
+```bash
+podman-compose up --build
+```
+
+---
+
+### Build and Run Go Binary (Local Development)
 
 This app uses [Taskfile](https://taskfile.dev) to build and run the app. You can use the following command to build the app:
 

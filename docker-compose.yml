@@ -6,5 +6,5 @@ services:
       context: .
       dockerfile: Dockerfile
     env_file:
-      - .env
+      - .envrc
     restart: unless-stopped

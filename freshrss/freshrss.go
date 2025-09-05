@@ -12,8 +12,16 @@ import (
 	"strings"
 )
 
-// The FreshRSSFeedManager is a struct that manages the interaction with a FreshRSS instance.
-type FreshRSSFeedManager struct {
+// FreshRSSFeedManager is an interface that manages the interaction with a FreshRSS instance.
+type FreshRSSFeedManager interface {
+	Authenticate() error
+	AddFeed(feedUrl, name, category string) error
+	GetExistingFeeds() (map[string]struct{}, error)
+	RemoveFeed(feedUrl string) error
+}
+
+// The freshRSSFeedManager is a private struct that implements FreshRSSFeedManager.
+type freshRSSFeedManager struct {
 	baseUrl   string
 	user      string
 	apiToken  string // WARNING: Do not log this value as it is a secret
@@ -35,8 +43,8 @@ func NewFreshRSSFeedManager(
 	apiToken string,
 	ctx context.Context,
 	client *http.Client,
-) *FreshRSSFeedManager {
-	return &FreshRSSFeedManager{
+) FreshRSSFeedManager {
+	return &freshRSSFeedManager{
 		baseUrl:  baseUrl,
 		user:     user,
 		apiToken: apiToken,
@@ -46,7 +54,7 @@ func NewFreshRSSFeedManager(
 }
 
 // Authenticate authenticates with the FreshRSS instance.
-func (f *FreshRSSFeedManager) Authenticate() error {
+func (f *freshRSSFeedManager) Authenticate() error {
 	reqUrl := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", f.baseUrl)
 	slog.Debug("Authenticating with FreshRSS", "url", reqUrl)
 
@@ -60,9 +68,11 @@ func (f *FreshRSSFeedManager) Authenticate() error {
 		return err
 	}
 
-	if err = f.parsePlainTextAuthResponse(data); err != nil {
+	authToken, err := parsePlainTextAuthResponse(data)
+	if err != nil {
 		return err
 	}
+	f.authToken = authToken
 
 	slog.Info("Authenticated with FreshRSS")
 	return nil
@@ -73,7 +83,7 @@ func (f *FreshRSSFeedManager) Authenticate() error {
 // - feedUrl: The URL of the feed to add.
 // - name: The name of the feed.
 // - category: The category to add the feed to.
-func (f *FreshRSSFeedManager) AddFeed(feedUrl, name, category string) error {
+func (f *freshRSSFeedManager) AddFeed(feedUrl, name, category string) error {
 	addUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/quickadd", f.baseUrl,
 	)
@@ -105,7 +115,7 @@ func (f *FreshRSSFeedManager) AddFeed(feedUrl, name, category string) error {
 }
 
 // GetExistingFeeds gets the existing feeds from the FreshRSS instance.
-func (f *FreshRSSFeedManager) GetExistingFeeds() (map[string]struct{}, error) {
+func (f *freshRSSFeedManager) GetExistingFeeds() (map[string]struct{}, error) {
 	getUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.baseUrl,
 	)
@@ -132,7 +142,7 @@ func (f *FreshRSSFeedManager) GetExistingFeeds() (map[string]struct{}, error) {
 // RemoveFeed removes a feed from the FreshRSS instance.
 // Arguments:
 // - feedUrl: The URL of the feed to remove.
-func (f *FreshRSSFeedManager) RemoveFeed(feedUrl string) error {
+func (f *freshRSSFeedManager) RemoveFeed(feedUrl string) error {
 	rmUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit", f.baseUrl,
 	)
@@ -150,7 +160,7 @@ func (f *FreshRSSFeedManager) RemoveFeed(feedUrl string) error {
 	return nil
 }
 
-func (f *FreshRSSFeedManager) addFeedToCategory(streamId, name, category string) error {
+func (f *freshRSSFeedManager) addFeedToCategory(streamId, name, category string) error {
 	addUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit", f.baseUrl,
 	)
@@ -170,7 +180,7 @@ func (f *FreshRSSFeedManager) addFeedToCategory(streamId, name, category string)
 	return nil
 }
 
-func (f *FreshRSSFeedManager) doApiRequest(
+func (f *freshRSSFeedManager) doApiRequest(
 	url string, payload []byte, authHeader bool) ([]byte, error,
 ) {
 	// Set headers
@@ -196,7 +206,7 @@ func (f *FreshRSSFeedManager) doApiRequest(
 		slog.Error("Unable to make request to FreshRSS", "error", err)
 		return nil, err
 	}
-	defer res.Body.Close() // nolint: all
+	defer res.Body.Close() // nolint: errcheck
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		slog.Error("Unable to get response data from FreshRSS", "error", err)
@@ -211,18 +221,19 @@ func (f *FreshRSSFeedManager) doApiRequest(
 	return data, nil
 }
 
-func (f *FreshRSSFeedManager) parsePlainTextAuthResponse(respData []byte) error {
-	lines := strings.Split(string(respData), "\n")
-	for _, line := range lines {
-		if strings.HasPrefix(line, "Auth=") {
-			f.authToken = strings.TrimPrefix(line, "Auth=")
+func parsePlainTextAuthResponse(respData []byte) (string, error) {
+	var authToken string
+	lines := strings.SplitSeq(string(respData), "\n")
+	for line := range lines {
+		if after, ok := strings.CutPrefix(line, "Auth="); ok {
+			authToken = after
 		}
 	}
 
-	if f.authToken == "" {
+	if authToken == "" {
 		slog.Error("Unable to parse FreshRSS auth response")
-		return fmt.Errorf("unable to parse FreshRSS auth response")
+		return "", fmt.Errorf("unable to parse FreshRSS auth response")
 	}
 
-	return nil
+	return authToken, nil
 }
