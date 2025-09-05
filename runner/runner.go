@@ -72,7 +72,7 @@ func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 	}
 	// Filter out any subscriptions that are not Github release feeds so we
 	// do not unsubscribe from them
-	rssFeedMap = p.filterOutNonGithubFeeds(gh, rssFeedMap)
+	rssFeedMap = filterOutNonGithubFeeds(gh, rssFeedMap)
 	duration := time.Since(start)
 	slog.Info(
 		"Queried Github release feeds in FreshRSS",
@@ -98,11 +98,11 @@ func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 	var wg sync.WaitGroup
 	for _, repo := range starredRepoMap {
 		wg.Add(1)
-		go p.publishToFreshRSS(&wg, fr, at, rssFeedMap, repo)
+		go publishToFreshRSS(&wg, fr, at, rssFeedMap, repo)
 	}
 	for feed := range rssFeedMap {
 		wg.Add(1)
-		go p.removeStaleFeeds(&wg, fr, starredRepoMap, feed)
+		go removeStaleFeeds(&wg, fr, starredRepoMap, feed)
 	}
 	wg.Wait()
 
@@ -111,7 +111,7 @@ func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 	slog.Info("FreshRSS feeds synced with Github successfully", "duration", duration)
 }
 
-func (p *RepoRSSPublisher) publishToFreshRSS(
+func publishToFreshRSS(
 	wg *sync.WaitGroup,
 	fr *freshrss.FreshRSSFeedManager,
 	at *atom.AtomFeedChecker,
@@ -139,7 +139,7 @@ func (p *RepoRSSPublisher) publishToFreshRSS(
 	}
 }
 
-func (p *RepoRSSPublisher) filterOutNonGithubFeeds(
+func filterOutNonGithubFeeds(
 	gh *github.GitHubStarredFeedBuilder,
 	rssFeedMap map[string]struct{},
 ) map[string]struct{} {
@@ -154,7 +154,7 @@ func (p *RepoRSSPublisher) filterOutNonGithubFeeds(
 	return filteredMap
 }
 
-func (p *RepoRSSPublisher) removeStaleFeeds(
+func removeStaleFeeds(
 	wg *sync.WaitGroup,
 	fr *freshrss.FreshRSSFeedManager,
 	starredRepoMap map[string]github.GitHubRepo, // The key is the release ATOM feed

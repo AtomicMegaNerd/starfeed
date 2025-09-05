@@ -11,44 +11,43 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Read version
-      id: get_version
-      run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+      - name: Read version
+        id: get_version
+        run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
-    - name: Check if tag exists
-      id: check_tag
-      run: |
-        if git rev-parse "refs/tags/${{ env.VERSION }}" >/dev/null 2>&1; then
-          echo "Tag ${{ env.VERSION }} already exists"
-          exit 1
-        fi
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "refs/tags/${{ env.VERSION }}" >/dev/null 2>&1; then
+            echo "Tag ${{ env.VERSION }} already exists"
+            exit 1
+          fi
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.24.0'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.25.1"
 
-    - name: Install Task
-      uses: arduino/setup-task@v2
-      with:
-        version: 3.x
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Install dependencies
-      run: go mod tidy
+      - name: Install dependencies
+        run: go mod tidy
 
-    - name: Build binary
-      run: task build
+      - name: Build binary
+        run: task build
 
-    - name: Run lints
-      run: task lint
+      - name: Run lints
+        run: task lint
 
-    - name: Run tests and generate test reports
-      run: task test
-
+      - name: Run tests and generate test reports
+        run: task test
 
   publish_docker_image:
     runs-on: ubuntu-latest
@@ -56,35 +55,35 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main'
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Read version
-      id: get_version
-      run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+      - name: Read version
+        id: get_version
+        run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        registry: docker.io
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Extract metadata (tags, labels) for Docker
-      id: meta
-      uses: docker/metadata-action@v3
-      with:
-        images: atomicmeganerd/starfeed
-        tags: |
-          latest
-          ${{ env.VERSION }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: atomicmeganerd/starfeed
+          tags: |
+            latest
+            ${{ env.VERSION }}
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
 
   tag_and_release:
     runs-on: ubuntu-latest
@@ -92,23 +91,22 @@ jobs:
     needs: publish_docker_image
     if: github.ref == 'refs/heads/main'
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Read version
-      id: get_version
-      run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+      - name: Read version
+        id: get_version
+        run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
-    - name: Create Git tag
-      run: git tag ${{ env.VERSION }} && git push origin ${{ env.VERSION }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Git tag
+        run: git tag ${{ env.VERSION }} && git push origin ${{ env.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ env.VERSION }}
-        files: bin/starfeed
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.VERSION }}
+          files: bin/starfeed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

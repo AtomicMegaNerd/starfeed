@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/atomicmeganerd/starfeed/github"
 	"github.com/atomicmeganerd/starfeed/mocks"
 )
 
@@ -127,5 +128,104 @@ func TestNewRepoRSSPublisher(t *testing.T) {
 
 	if publisher.client != mockClient {
 		t.Error("Expected client to match")
+	}
+}
+
+type FilterOutNonGithubFeedsTestCase struct {
+	name           string
+	inputFeeds     map[string]struct{}
+	expectedFeeds  map[string]struct{}
+	expectedLength int
+}
+
+func TestFilterOutNonGithubFeeds(t *testing.T) {
+	testCases := []FilterOutNonGithubFeedsTestCase{
+		{
+			name: "All feeds are GitHub releases",
+			inputFeeds: map[string]struct{}{
+				"https://github.com/user/repo1/releases.atom": {},
+				"https://github.com/user/repo2/releases.atom": {},
+				"https://github.com/user/repo3/releases.atom": {},
+			},
+			expectedFeeds: map[string]struct{}{
+				"https://github.com/user/repo1/releases.atom": {},
+				"https://github.com/user/repo2/releases.atom": {},
+				"https://github.com/user/repo3/releases.atom": {},
+			},
+			expectedLength: 3,
+		},
+		{
+			name: "Mixed GitHub and non-GitHub feeds",
+			inputFeeds: map[string]struct{}{
+				"https://github.com/user/repo1/releases.atom": {},
+				"https://example.com/feed.xml":                {},
+				"https://github.com/user/repo2/releases.atom": {},
+				"https://blog.example.com/rss":                {},
+			},
+			expectedFeeds: map[string]struct{}{
+				"https://github.com/user/repo1/releases.atom": {},
+				"https://github.com/user/repo2/releases.atom": {},
+			},
+			expectedLength: 2,
+		},
+		{
+			name: "No GitHub feeds",
+			inputFeeds: map[string]struct{}{
+				"https://example.com/feed.xml":  {},
+				"https://blog.example.com/rss":  {},
+				"https://news.example.com/atom": {},
+			},
+			expectedFeeds:  map[string]struct{}{},
+			expectedLength: 0,
+		},
+		{
+			name:           "Empty input map",
+			inputFeeds:     map[string]struct{}{},
+			expectedFeeds:  map[string]struct{}{},
+			expectedLength: 0,
+		},
+		{
+			name: "GitHub feeds with dots and dashes in names",
+			inputFeeds: map[string]struct{}{
+				"https://github.com/nix-community/NixOS-WSL/releases.atom": {},
+				"https://github.com/EdenEast/nightfox.nvim/releases.atom":  {},
+				"https://example.com/feed.xml":                             {},
+			},
+			expectedFeeds: map[string]struct{}{
+				"https://github.com/nix-community/NixOS-WSL/releases.atom": {},
+				"https://github.com/EdenEast/nightfox.nvim/releases.atom":  {},
+			},
+			expectedLength: 2,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create GitHub builder for the test
+			mockClient := &http.Client{}
+			gh := github.NewGitHubStarredFeedBuilder("token", context.Background(), mockClient)
+
+			// Call the function under test
+			result := filterOutNonGithubFeeds(gh, tc.inputFeeds)
+
+			// Check the length
+			if len(result) != tc.expectedLength {
+				t.Errorf("Expected %d feeds, got %d", tc.expectedLength, len(result))
+			}
+
+			// Check each expected feed exists in result
+			for expectedFeed := range tc.expectedFeeds {
+				if _, exists := result[expectedFeed]; !exists {
+					t.Errorf("Expected feed %s to be in result, but it wasn't", expectedFeed)
+				}
+			}
+
+			// Check no unexpected feeds exist in result
+			for resultFeed := range result {
+				if _, exists := tc.expectedFeeds[resultFeed]; !exists {
+					t.Errorf("Unexpected feed %s found in result", resultFeed)
+				}
+			}
+		})
 	}
 }
