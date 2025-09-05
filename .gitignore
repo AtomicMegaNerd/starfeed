@@ -37,3 +37,4 @@ lerna-debug.log*
 # Test Coverage
 cover*
 test-report*
+*.out
