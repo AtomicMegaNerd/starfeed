@@ -37,6 +37,13 @@ jobs:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@v2.4.1
+        with:
+          version: latest
+          only-new-issues: false
+          install-mode: "goinstall"
+
       - name: Install dependencies
         run: go mod tidy
 
