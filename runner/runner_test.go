@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -240,13 +241,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 
 			// Check if atom checker was called when expected
 			if !tc.expectedLogSkip || tc.atomHasEntries {
-				found := false
-				for _, checkedFeed := range mockAtom.checkedFeeds {
-					if checkedFeed == tc.repo.FeedUrl {
-						found = true
-						break
-					}
-				}
+				found := slices.Contains(mockAtom.checkedFeeds, tc.repo.FeedUrl)
 				expectedAtomCheck := !tc.expectedLogSkip
 				if expectedAtomCheck && !found {
 					t.Errorf("Expected AtomFeedChecker to be called for %s", tc.repo.FeedUrl)

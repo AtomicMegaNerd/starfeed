@@ -23,7 +23,7 @@
             pkgs.go_1_25
             pkgs.go-tools
             pkgs.gopls
-            (pkgs.golangci-lint.override { buildGoModule = pkgs.buildGo125Module; })
+            pkgs.golangci-lint
             pkgs.go-task
           ];
         };
