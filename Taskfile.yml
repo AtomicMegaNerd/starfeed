@@ -8,6 +8,7 @@ env:
   src: ./cmd/
   grc: $(if command -v grc > /dev/null; then echo "grc"; else echo ""; fi)
   cover_out: cover.out
+  cover_html: coverage.html
   exclude_packages: "mocks|cmd"
   coverage_threshold: 80
 
@@ -57,7 +58,7 @@ tasks:
 
   clean:
     cmds:
-      - rm -f {{.out}} {{.cover_out}}
+      - rm -f {{.out}} {{.cover_out}} {{.cover_html}}
 
   check-deps:
     cmds:
