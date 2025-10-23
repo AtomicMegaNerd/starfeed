@@ -10,8 +10,13 @@ repos:
       - id: mixed-line-ending
   - repo: local
     hooks:
-      - id: golangci-lintj
+      - id: golangci-lint
         name: golangci-lint (local)
         entry: golangci-lint run --fix
+        language: system
+        types: [go]
+      - id: golangci-lint-format
+        name: golangci-lint format (local)
+        entry: golangci-lint format
         language: system
         types: [go]
