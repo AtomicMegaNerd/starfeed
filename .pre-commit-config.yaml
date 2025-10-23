@@ -1,18 +1,17 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-yaml
-        stages: [pre-commit]
+      - id: check-json
       - id: end-of-file-fixer
-        stages: [pre-commit]
       - id: trailing-whitespace
-        stages: [pre-commit]
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v2.4.0
+      - id: detect-private-key
+      - id: mixed-line-ending
+  - repo: local
     hooks:
-      - id: golangci-lint
-        stages: [pre-commit]
-        args: ["--fix"]
-      - id: golangci-lint-format
-        stages: [pre-commit]
+      - id: golangci-lintj
+        name: golangci-lint (local)
+        entry: golangci-lint run --fix
+        language: system
+        types: [go]
