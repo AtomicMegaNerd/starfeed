@@ -25,6 +25,8 @@
             pkgs.gopls
             pkgs.golangci-lint
             pkgs.go-task
+            pkgs.bash-language-server
+            pkgs.docker-language-server
           ];
         };
       }
