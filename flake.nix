@@ -27,6 +27,7 @@
             pkgs.go-task
             pkgs.bash-language-server
             pkgs.docker-language-server
+            pkgs.yaml-language-server
           ];
         };
       }
