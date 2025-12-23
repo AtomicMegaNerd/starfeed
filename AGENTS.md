@@ -1,29 +1,98 @@
-# LLM Policies
+# Agent Guide for Starfeed
 
-## General Policies
+## Overview
 
-- This project uses a Nix flake with nix-direnv. You need to enable the flake environment for
-  the Go toolchain to work.
-- Always run `task build`, `task test`, and `task lint` after making any changes to the code.
-- Always ensure each line is less than 100 characters long regardless of the file type.
-- Only the human is allowed to make changes to the README.md file or the CLAUDE.md file.
+Starfeed is a Go application that syncs GitHub release RSS feeds for repos you have starred into a FreshRSS instance. It uses only the Go standard library and is containerized via a multi-stage Dockerfile. CI builds, tests, lints, and publishes images via GitHub Actions.
 
-## Git Policies
+## Environment and Tooling
 
-- When the human asks you to make a commit, always create a new branch named
-  `feature/short-description-of-change` and make the commit there.
-- When the human asks you to commit, they are giving you explicit permission to make
-  the commit.
+- Nix flake with nix-direnv is used for local development.
+  - Enable the flake environment to get the Go toolchain: run `direnv allow` with `.envrc` containing `use flake`.
+- Taskfile is used for build/test/lint commands.
+- Podman or Docker can build and run the container. Podman is preferred locally.
+- golangci-lint configuration enforces 100-char line length via `lll`.
 
-## Go Policies
+## Essential Commands
 
-- Prefer interfaces over concrete types for dependency injection
-- Keep the code as simple as possible.
-- Use guards and short-circuiting to avoid deep nesting.
-- Use custom error types if it makes the code simpler to read.
-- Always handle errors explicitly.
-- Always use context in functions that make network calls or do I/O.
-- Always use dependency injection for anything that does I/O or network calls.
-- Warn me if a function or a file will get too big. We can split it up.
-- Avoid external dependencies - use Go standard library only
-- Maintain test coverage above 80% threshold
+- Build binary: `task build`
+- Run locally: `task run`
+- Test with coverage gate (>=80%): `task test`
+- Lint: `task lint`
+- Clean artifacts: `task clean`
+- Update deps: `task update-deps`
+- Generate coverage HTML: `task generate-test-reports`
+
+## Environment Variables
+
+Required (config.NewConfig enforces):
+- `STARFEED_GITHUB_API_TOKEN`
+- `STARFEED_FRESHRSS_URL`
+- `STARFEED_FRESHRSS_USER`
+- `STARFEED_FRESHRSS_API_TOKEN`
+
+Optional:
+- `STARFEED_DEBUG_MODE` ("true" for debug logs)
+- `STARFEED_SINGLE_RUN_MODE` ("true" to exit after first run)
+- `STARFEED_HTTP_TIMEOUT` (seconds; default 10)
+
+Local dev: keep secrets in `.envrc` (direnv) and symlink `.env` -> `.envrc` for compose.
+
+## Running in Containers
+
+- Build image with explicit tag to avoid auto-names: `podman build -t localhost/starfeed:latest .`
+- Compose service uses: `docker-compose.yml`
+  - Image set to `localhost/starfeed:latest`
+  - `env_file: .envrc` (dotenv-style)
+  - `restart: unless-stopped`
+
+## Code Organization
+
+- `cmd/main.go`: Application entrypoint; sets up logging, reads config, handles signals, schedules 24h ticker, and invokes the publisher.
+- `config/`: Configuration loading and validation from environment.
+- `runner/`: Orchestrates querying GitHub, checking feeds, publishing to FreshRSS, and pruning stale feeds; uses goroutines and a WaitGroup.
+- `github/`: GitHub API client (stars), pagination parsing, and release feed URL construction.
+- `freshrss/`: FreshRSS client for authentication and feed management.
+- `atom/`: Atom feed checker to ensure feeds have entries before adding.
+- `mocks/`: Test doubles.
+
+## Patterns and Conventions
+
+- Interfaces for external I/O (HTTP clients) to enable mocking.
+- Context passed to all network-bound components.
+- Secret values (tokens) must never be logged.
+- Use slog for structured logging; level toggled by `STARFEED_DEBUG_MODE`.
+- Guard/short-circuit style to keep nesting shallow.
+- Coverage threshold enforced in Taskfile (>=80%).
+- Line length limit 100 chars (`.golangci.yml`).
+
+## Testing
+
+- Unit tests present across packages: `*_test.go` files in `atom/`, `github/`, `freshrss/`, `config/`, `runner/`.
+- `task test` builds first, runs `go test` with `-race` and coverage, then checks threshold. Generates `cover.out` and `coverage.html` via `task generate-test-reports`.
+
+## Dockerfile Notes
+
+- Multi-stage build; builder uses `golang:1.25.5-alpine3.23` and installs `go-task`.
+- Binary built to `/app/bin/starfeed`; CGO disabled and binary stripped (`-s -w`).
+- Runner uses `alpine:3.23`, non-root user created; `COPY --chown` and `PATH=/app/bin`.
+
+## CI/CD
+
+- `.github/workflows/release.yml` builds, lints, tests on push/PR.
+- Publishes Docker images `atomicmeganerd/starfeed` with tags `latest` and version from `VERSION`.
+- Tags repo and creates GitHub Release attaching `bin/starfeed`.
+
+## Gotchas
+
+- Compose expects `.envrc` to be dotenv-style (KEY=VALUE); if using direnv functions, symlink a plain `.env`.
+- Podman may auto-tag built images if `-t` not provided (e.g., `localhost/starfeed_starfeed`). Always tag explicitly.
+- The app defaults to 24-hour intervals unless `STARFEED_SINGLE_RUN_MODE=true`.
+- Ensure FreshRSS and GitHub tokens are valid; failures short-circuit publishing.
+
+## Contribution Policies
+
+- Keep code simple; prefer interfaces for DI.
+- Always run `task build`, `task test`, `task lint` after changes.
+- Maintain coverage >=80%.
+- Do not modify `README.md` or `CLAUDE.md` via agents.
+- Follow short-line (<100 chars) rule.
