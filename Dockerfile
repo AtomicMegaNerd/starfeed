@@ -5,6 +5,8 @@
 FROM golang:1.25.5-alpine3.23 AS builder
 
 ENV GOTASK_VERSION=3.45.5-r1
+ENV CGO_ENABLED=0
+ENV GOFLAGS=-ldflags=-s\ -w
 
 WORKDIR /app
 
@@ -32,16 +34,17 @@ LABEL org.opencontainers.image.authors="Chris Dunphy"
 LABEL org.opencontainers.image.source="https://github.com/atomicmeganerd/starfeed"
 LABEL org.opencontainers.image.licenses="MIT"
 
-ENV PATH=/app/bin:$PATH
+ARG UID=10001
+ARG GID=10001
 ENV USER=starfeed
-ENV UID=10001
-ENV GID=10001
+ENV UID=${UID}
+ENV GID=${GID}
 
-WORKDIR /app/bin
-COPY --from=builder /app/bin/starfeed /app/bin/starfeed
+WORKDIR /app
+ENV PATH=/app/bin:$PATH
+COPY --from=builder --chown=${UID}:${GID} /app/bin/starfeed /app/bin/starfeed
 
-RUN addgroup -g $GID $USER && adduser -D -u $UID -G $USER $USER && \
-    chown -R $USER:$USER /app
+RUN addgroup -g $GID $USER && adduser -D -u $UID -G $USER $USER
 
 USER $USER
 
