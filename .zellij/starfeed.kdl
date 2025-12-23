@@ -14,22 +14,4 @@ layout {
     tab name="crush" split_direction="vertical" {
         pane command="crush"
     }
-    tab name="air" split_direction="vertical" {
-        pane command="air"
-    }
-    tab name="posting" split_direction="vertical" {
-        pane {
-			command "posting"
-			args "--collection" "./posting"
-		}
-    }
-    tab name="rainfrog" split_direction="vertical" {
-        pane command="rainfrog"
-    }
-    tab name="podman-compose" split_direction="vertical" {
-        pane {
-            command "podman-compose"
-            args "up"
-        }
-    }
 }
