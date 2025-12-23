@@ -48,7 +48,7 @@ func NewGitHubStarredFeedBuilder(
 // It returns a map of relaseFeedUrl -> GitHubRepo
 func (gh *gitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, error) {
 	allFeeds := make(map[string]GitHubRepo)
-	getUrl := "http://api.github.com/user/starred?per_page=100"
+	getUrl := "https://api.github.com/user/starred?per_page=100"
 	slog.Debug("Querying Github for starred repos", "url", getUrl)
 
 	for {
@@ -106,7 +106,7 @@ func (gh *gitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 		return nil, err
 
 	}
-	defer res.Body.Close() // nolint:all
+	defer res.Body.Close() // nolint: errcheck
 
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("github returned an http error code %d", res.StatusCode)
@@ -129,7 +129,7 @@ func (gh *gitHubStarredFeedBuilder) processGithubResponse(
 		return nil, err
 	}
 
-	linkRaw := r.Header.Get("link")
+	linkRaw := r.Header.Get("Link")
 	links := strings.SplitSeq(linkRaw, ",")
 	for link := range links {
 		matches := gh.nextPageLinkRegex.FindStringSubmatch(link)

@@ -44,8 +44,8 @@ func NewRepoRSSPublisher(ghToken, freshRssUrl, freshRssUser, freshRssToken strin
 	}
 }
 
-// QueryAndPublishFeeds queries the starred repos from GitHub and publishes them to FreshRSS.
-// It also removes any stale feeds from FreshRSS as long as they are not starred in GitHub but
+// QueryAndPublishFeeds queries the starred repos from Github and publishes them to FreshRSS.
+// It also removes any stale feeds from FreshRSS as long as they are not starred in Github but
 // are actually Github release feeds.
 func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 	slog.Info("Starting main workflow....")
