@@ -88,6 +88,7 @@ Local dev: keep secrets in `.envrc` (direnv) and symlink `.env` -> `.envrc` for 
 - Podman may auto-tag built images if `-t` not provided (e.g., `localhost/starfeed_starfeed`). Always tag explicitly.
 - The app defaults to 24-hour intervals unless `STARFEED_SINGLE_RUN_MODE=true`.
 - Ensure FreshRSS and GitHub tokens are valid; failures short-circuit publishing.
+- Go 1.25 features used: `strings.SplitSeq` returns `iter.Seq[string]` and range permits only one iteration variable; use `for x := range strings.SplitSeq(...){}` (not `for _, x := range ...`). Do not replace with `strings.Split` unless necessary.
 
 ## Contribution Policies
 
