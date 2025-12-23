@@ -2,6 +2,7 @@ version: "3.8"
 
 services:
   starfeed:
+    container_name: starfeed
     build:
       context: .
       dockerfile: Dockerfile
