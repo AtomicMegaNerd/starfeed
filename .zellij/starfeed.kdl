@@ -11,7 +11,7 @@ layout {
     tab name="shell" split_direction="vertical" {
         pane command="fish"
     }
-    tab name="crush" split_direction="vertical" {
-        pane command="crush"
+    tab name="llm" split_direction="vertical" {
+        pane command="fish"
     }
 }
