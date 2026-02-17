@@ -31,7 +31,7 @@
           default = pkgs.mkShell {
             # The packages we need for this project
             buildInputs = [
-              pkgs.go_1_25
+              pkgs.go_1_26
               pkgs.go-tools
               pkgs.gopls
               pkgs.golangci-lint
