@@ -3,14 +3,14 @@ package atom
 import (
 	"context"
 	"encoding/xml"
+	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 )
 
 // AtomFeedChecker is an interface for checking Atom feeds.
 type AtomFeedChecker interface {
-	CheckFeedHasEntries(feedUrl string) bool
+	CheckFeedHasEntries(feedUrl string) (bool, error)
 }
 
 // atomFeedChecker is the private implementation of AtomFeedChecker.
@@ -27,32 +27,36 @@ func NewAtomFeedChecker(ctx context.Context, client *http.Client) AtomFeedChecke
 }
 
 // This function checks that the Atom feed has entries in it.
-func (a *atomFeedChecker) CheckFeedHasEntries(feedUrl string) bool {
+func (a *atomFeedChecker) CheckFeedHasEntries(feedUrl string) (bool, error) {
 	// No request will always be valid here so we can ignore the error
-	req, _ := http.NewRequestWithContext(a.ctx, "GET", feedUrl, nil)
+	req, err := http.NewRequestWithContext(a.ctx, "GET", feedUrl, nil)
+	if err != nil {
+		return false, err
+	}
 
 	res, err := a.client.Do(req)
 	if err != nil {
-		slog.Error("Error making request to check ATOM feed", "feed", feedUrl, "error", err.Error())
-		return false
+		return false, err
 	}
 	defer res.Body.Close() // nolint:errcheck
 
+	if res.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("error response from ATOM feed %d", res.StatusCode)
+	}
+
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		slog.Error("Error reading response from ATOM feed", "feed", feedUrl, "error", err.Error())
-		return false
+		return false, err
 	}
 
 	var feed AtomFeed
 	if err = xml.Unmarshal(data, &feed); err != nil {
-		slog.Error("Error parsing XML data from response", "error", err.Error())
-		return false
+		return false, err
 	}
 
 	if len(feed.Entries) < 1 {
-		return false
+		return false, nil
 	}
 
-	return true
+	return true, nil
 }

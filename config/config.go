@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"log/slog"
 	"os"
 	"strconv"
 	"time"
@@ -10,12 +9,20 @@ import (
 
 type EnvGetter interface {
 	Getenv(key string) string
+	Getbool(key string) (bool, error)
 }
 
 type OSEnvGetter struct{}
 
 func (o OSEnvGetter) Getenv(key string) string {
 	return os.Getenv(key)
+}
+
+func (o OSEnvGetter) Getbool(key string) (bool, error) {
+	if key == "" {
+		return false, nil
+	}
+	return strconv.ParseBool(key)
 }
 
 const (
@@ -44,7 +51,6 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 		envGetter.Getenv(freshRssUrlKey) == "" ||
 		envGetter.Getenv(freshRssUserKey) == "" ||
 		envGetter.Getenv(freshRssTokenKey) == "" {
-		slog.Error("Missing required environment variables")
 		return nil, errors.New("missing required environment variables")
 	}
 
@@ -56,13 +62,22 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 		}
 	}
 
+	debugMode, err := envGetter.Getbool(debugModeKey)
+	if err != nil {
+		return nil, err
+	}
+	singleRunMode, err := envGetter.Getbool(singleRunModeKey)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		GithubToken:   envGetter.Getenv(ghTokenKey),
 		FreshRssUrl:   envGetter.Getenv(freshRssUrlKey),
 		FreshRssUser:  envGetter.Getenv(freshRssUserKey),
 		FreshRssToken: envGetter.Getenv(freshRssTokenKey),
-		DebugMode:     envGetter.Getenv(debugModeKey) == "true",
-		SingleRunMode: envGetter.Getenv(singleRunModeKey) == "true",
+		DebugMode:     debugMode,
+		SingleRunMode: singleRunMode,
 		HttpTimeout:   httpTimeout,
 	}, nil
 }

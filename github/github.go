@@ -38,9 +38,9 @@ func NewGitHubStarredFeedBuilder(
 	client *http.Client,
 ) GitHubStarredFeedBuilder {
 	// This regex is used to find the next page link in the GitHub API response
-	nextPageLinkRegex, _ := regexp.Compile(`<([^>]+)>; rel="next"`)
+	nextPageLinkRegex := regexp.MustCompile(`<([^>]+)>; rel="next"`)
 	// This regex is used to determine if an RSS feed is a GitHub release feed
-	isRelRepoRegex, _ := regexp.Compile(`^https://github.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`)
+	isRelRepoRegex := regexp.MustCompile(`^https://github.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`)
 	return &gitHubStarredFeedBuilder{token, ctx, client, nextPageLinkRegex, isRelRepoRegex}
 }
 
@@ -94,7 +94,10 @@ func (gh *gitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 	}
 
 	// No request will always be valid here so we can ignore the error
-	req, _ := http.NewRequestWithContext(gh.ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(gh.ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	for k, v := range headers {
 		req.Header.Set(k, v)
@@ -102,9 +105,7 @@ func (gh *gitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 
 	res, err := gh.client.Do(req)
 	if err != nil {
-		slog.Error("Unable to make request to Github", "error", err.Error())
 		return nil, err
-
 	}
 	defer res.Body.Close() // nolint: errcheck
 
@@ -114,7 +115,6 @@ func (gh *gitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 
 	ghResponse, err := gh.processGithubResponse(res)
 	if err != nil {
-		slog.Error("Unable to parse response from Github", "error", err)
 		return nil, err
 	}
 

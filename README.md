@@ -123,5 +123,9 @@ task test
 - [x] Add some performance profiling
 - [x] Draw a cute logo
 - [x] Add unit tests
-- [ ] Add integration tests
 - [ ] Add test coverage to Taskfile and to Github Actions
+- [ ] Fix unbounded goroutine spawning in runner — use a worker pool or semaphore
+- [ ] Use errgroup for error propagation from goroutines instead of fire-and-forget
+- [ ] Fix struct field naming to match Go acronym conventions (`FreshRssUrl` → `FreshRSSUrl`,
+  `GithubToken` → `GitHubToken`)
+- [ ] Fix inconsistent log key casing in runner.go ("Error" → "error")

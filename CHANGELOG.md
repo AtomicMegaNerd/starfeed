@@ -9,7 +9,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Updated
 
-- Go 1.25
+- Go 1.26
+- Alpine 3.23
 - Refactored backend components to use interface pattern for better testability
 - Improved test coverage from ~55% to 84.4%
 

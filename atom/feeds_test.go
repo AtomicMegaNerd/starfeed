@@ -15,6 +15,7 @@ type CheckFeedHasEntriesTestCase struct {
 	feedUrl          string
 	responses        []http.Response
 	expectHasEntries bool
+	expectError      bool
 }
 
 func (tc *CheckFeedHasEntriesTestCase) GetTestObject() AtomFeedChecker {
@@ -30,6 +31,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 			feedUrl: "http://example.com/feed",
 			responses: []http.Response{
 				{
+					StatusCode: http.StatusOK,
 					Body: io.NopCloser(strings.NewReader(`
 						<feed xmlns="http://www.w3.org/2005/Atom">
 							<entry>
@@ -41,12 +43,14 @@ func TestCheckFeedHasEntries(t *testing.T) {
 				},
 			},
 			expectHasEntries: true,
+			expectError:      false,
 		},
 		{
 			name:    "Feed has no entries",
 			feedUrl: "http://example.com/feed",
 			responses: []http.Response{
 				{
+					StatusCode: http.StatusOK,
 					Body: io.NopCloser(strings.NewReader(`
 						<feed xmlns="http://www.w3.org/2005/Atom">
 						</feed>
@@ -54,6 +58,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 				},
 			},
 			expectHasEntries: false,
+			expectError:      false,
 		},
 		{
 			name:    "Error making request",
@@ -65,6 +70,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 				},
 			},
 			expectHasEntries: false,
+			expectError:      true,
 		},
 		{
 			name:    "Error reading response",
@@ -74,8 +80,8 @@ func TestCheckFeedHasEntries(t *testing.T) {
 					Body: mocks.NewErrorReadCloser(),
 				},
 			},
-
 			expectHasEntries: false,
+			expectError:      true,
 		},
 		{
 			name:    "Error parsing XML",
@@ -92,14 +98,21 @@ func TestCheckFeedHasEntries(t *testing.T) {
 				},
 			},
 			expectHasEntries: false,
+			expectError:      true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			fc := tc.GetTestObject()
-			hasEntries := fc.CheckFeedHasEntries(tc.feedUrl)
+			hasEntries, err := fc.CheckFeedHasEntries(tc.feedUrl)
+
+			if err != nil && !tc.expectError {
+				t.Fatalf("Expected no error, got %v", err)
+			}
+			if err == nil && tc.expectError {
+				t.Fatalf("Expected an error, got none")
+			}
 
 			if hasEntries != tc.expectHasEntries {
 				t.Errorf("Expected %t, got %t", tc.expectHasEntries, hasEntries)

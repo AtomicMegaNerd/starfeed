@@ -2,23 +2,26 @@ package runner
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
-
-	"log/slog"
 
 	"github.com/atomicmeganerd/starfeed/atom"
 	"github.com/atomicmeganerd/starfeed/freshrss"
 	"github.com/atomicmeganerd/starfeed/github"
 )
 
+type RepoRSSPublisher interface {
+	QueryAndPublishFeeds()
+}
+
 // RepoRSSPublisher is a struct that manages the main workflow of the application.
-type RepoRSSPublisher struct {
+type repoRSSPublisher struct {
 	ghToken       string // WARNING: Do not log this value as it is a secret
 	freshRssUrl   string
 	freshRssUser  string
-	freshRssToken string // WARNING: Do not logger this value as it is a secret
+	freshRssToken string // WARNING: Do not log this value as it is a secret
 	ctx           context.Context
 	client        *http.Client
 }
@@ -33,8 +36,9 @@ type RepoRSSPublisher struct {
 // - client: The http client to use for requests (used for mocking).
 func NewRepoRSSPublisher(ghToken, freshRssUrl, freshRssUser, freshRssToken string,
 	ctx context.Context,
-	client *http.Client) RepoRSSPublisher {
-	return RepoRSSPublisher{
+	client *http.Client,
+) RepoRSSPublisher {
+	return &repoRSSPublisher{
 		ghToken,
 		freshRssUrl,
 		freshRssUser,
@@ -47,7 +51,7 @@ func NewRepoRSSPublisher(ghToken, freshRssUrl, freshRssUser, freshRssToken strin
 // QueryAndPublishFeeds queries the starred repos from Github and publishes them to FreshRSS.
 // It also removes any stale feeds from FreshRSS as long as they are not starred in Github but
 // are actually Github release feeds.
-func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
+func (p *repoRSSPublisher) QueryAndPublishFeeds() {
 	slog.Info("Starting main workflow....")
 	start := time.Now()
 
@@ -85,7 +89,7 @@ func (p *RepoRSSPublisher) QueryAndPublishFeeds() {
 	// Get starred repos from Github
 	starredRepoMap, err := gh.GetStarredRepos()
 	if err != nil {
-		slog.Error("Could not get repos from Github", "error", err.Error())
+		slog.Error("Error getting repos from Github", "error", err.Error())
 		return
 	}
 	duration = time.Since(start)
@@ -128,7 +132,13 @@ func publishToFreshRSS(
 		return
 	}
 
-	if !at.CheckFeedHasEntries(repoFeed) {
+	hasEntries, err := at.CheckFeedHasEntries(repoFeed)
+	if err != nil {
+		slog.Error("Error checking if feed has entries", "feed", repoFeed, "error", err.Error())
+		return
+	}
+
+	if !hasEntries {
 		slog.Info("Not adding feed as it has zero entries", "feed", repoFeed)
 		return
 	}
@@ -168,7 +178,7 @@ func removeStaleFeeds(
 			"Removing feed from FreshRSS as it is no longer starred in Github", "feed", rssFeed,
 		)
 		if err := fr.RemoveFeed(rssFeed); err != nil {
-			slog.Error("Error removing feed from FreshRSS", "feed", rssFeed, "Error", err.Error())
+			slog.Error("Error removing feed from FreshRSS", "feed", rssFeed, "error", err.Error())
 		}
 	}
 }

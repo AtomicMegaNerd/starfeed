@@ -130,12 +130,13 @@ func (m *mockFreshRSSFeedManager) RemoveFeed(feedUrl string) error {
 
 type mockAtomFeedChecker struct {
 	hasEntries   bool
+	err          error
 	checkedFeeds []string
 }
 
-func (m *mockAtomFeedChecker) CheckFeedHasEntries(feedUrl string) bool {
+func (m *mockAtomFeedChecker) CheckFeedHasEntries(feedUrl string) (bool, error) {
 	m.checkedFeeds = append(m.checkedFeeds, feedUrl)
-	return m.hasEntries
+	return m.hasEntries, m.err
 }
 
 func TestPublishToFreshRSS(t *testing.T) {
@@ -324,14 +325,14 @@ func TestNewRepoRSSPublisher(t *testing.T) {
 	mockClient := &http.Client{}
 	ctx := context.Background()
 
-	publisher := NewRepoRSSPublisher(
+	publisher := repoRSSPublisher{
 		mockGhToken,
 		mockFreshRssUrl,
 		mockFreshRssUser,
 		mockFreshRssToken,
 		ctx,
 		mockClient,
-	)
+	}
 
 	if publisher.ghToken != mockGhToken {
 		t.Errorf("Expected ghToken %s, got %s", mockGhToken, publisher.ghToken)

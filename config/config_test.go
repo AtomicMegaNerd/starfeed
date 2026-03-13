@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strconv"
 	"testing"
 	"time"
 )
@@ -16,6 +17,13 @@ func NewMockEnvGetter(envVars map[string]string) *MockEnvGetter {
 
 func (m *MockEnvGetter) Getenv(key string) string {
 	return m.envVars[key]
+}
+
+func (m *MockEnvGetter) Getbool(key string) (bool, error) {
+	if m.envVars[key] == "" {
+		return false, nil
+	}
+	return strconv.ParseBool(m.envVars[key])
 }
 
 type NewConfigTestCase struct {
