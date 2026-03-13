@@ -2,9 +2,9 @@
 
 ![Starfeed](./img/starfeed.png)
 
-Starfeed scans the current list of your Github stars, grabs the Releases RSS feed for each repo it finds, and publishes them to your own self-hosted [FreshRSS](https://www.freshrss.org/) RSS aggregator. Then by hooking up an RSS client to your FreshRSS server you can easily follow the releases for any of the repos that you have starred.
+Starfeed scans the current list of your GitHub stars, grabs the Releases RSS feed for each repo it finds, and publishes them to your own self-hosted [FreshRSS](https://www.freshrss.org/) RSS aggregator. Then by hooking up an RSS client to your FreshRSS server you can easily follow the releases for any of the repos that you have starred.
 
-Starfeed will omit any RSS feeds from Github that are empty. It will also remove any feeds for repos that you are no longer starring.
+Starfeed will omit any RSS feeds from GitHub that are empty. It will also remove any feeds for repos that you are no longer starring.
 
 Starfeed is written in Go and currently relies purely on the standard library with no external dependencies. The Docker image for this app is a little bigger than 25MB!
 
@@ -109,7 +109,7 @@ task test
 
 ## Tasks
 
-- [x] Query Github for starred repos
+- [x] Query GitHub for starred repos
 - [x] Implement FreshRSS publishing
 - [x] Add a semaphore to throttle the requests to FreshRSS
 - [x] Only add feeds that are not already in FreshRSS
@@ -123,9 +123,6 @@ task test
 - [x] Add some performance profiling
 - [x] Draw a cute logo
 - [x] Add unit tests
-- [ ] Add test coverage to Taskfile and to Github Actions
+- [ ] Add test coverage to Taskfile and to GitHub Actions
 - [ ] Fix unbounded goroutine spawning in runner — use a worker pool or semaphore
 - [ ] Use errgroup for error propagation from goroutines instead of fire-and-forget
-- [ ] Fix struct field naming to match Go acronym conventions (`FreshRssUrl` → `FreshRSSUrl`,
-  `GithubToken` → `GitHubToken`)
-- [ ] Fix inconsistent log key casing in runner.go ("Error" → "error")

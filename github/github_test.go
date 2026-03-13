@@ -202,16 +202,16 @@ func TestGetStarredRepos(t *testing.T) {
 	}
 }
 
-type TestIsGithubRepoTestCase struct {
+type TestIsGitHubRepoTestCase struct {
 	name        string
 	feedUrl     string
 	expectMatch bool
 }
 
-func TestIsGithubReleaseRepo(t *testing.T) {
+func TestIsGitHubReleaseRepo(t *testing.T) {
 	mockClient := http.Client{}
 	gh := NewGitHubStarredFeedBuilder("", context.Background(), &mockClient)
-	testCases := []TestIsGithubRepoTestCase{
+	testCases := []TestIsGitHubRepoTestCase{
 		{
 			name:        "Letters only",
 			feedUrl:     "https://github.com/atomicmeganerd/starfeed/releases.atom",
@@ -233,7 +233,7 @@ func TestIsGithubReleaseRepo(t *testing.T) {
 			expectMatch: true,
 		},
 		{
-			name:        "Not Github",
+			name:        "Not GitHub",
 			feedUrl:     "https://rofl.com/user/repo/releases.atom",
 			expectMatch: false,
 		},
@@ -246,14 +246,13 @@ func TestIsGithubReleaseRepo(t *testing.T) {
 
 	for _, tc := range testCases {
 		if tc.expectMatch {
-			if !gh.IsGithubReleasesFeed(tc.feedUrl) {
+			if !gh.IsGitHubReleasesFeed(tc.feedUrl) {
 				t.Errorf("Expected feed %s to match but it did not", tc.feedUrl)
 			}
 		} else {
-			if gh.IsGithubReleasesFeed(tc.feedUrl) {
+			if gh.IsGitHubReleasesFeed(tc.feedUrl) {
 				t.Errorf("Expected feed %s to not match but it did", tc.feedUrl)
 			}
 		}
 	}
-
 }

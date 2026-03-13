@@ -45,10 +45,10 @@ func TestNewConfig(t *testing.T) {
 			},
 			expectError: false,
 			expected: &Config{
-				GithubToken:   "gh_token123",
-				FreshRssUrl:   "http://freshrss.example.com",
-				FreshRssUser:  "testuser",
-				FreshRssToken: "freshrss_token456",
+				GitHubToken:   "gh_token123",
+				FreshRSSURL:   "http://freshrss.example.com",
+				FreshRSSUser:  "testuser",
+				FreshRSSToken: "freshrss_token456",
 				DebugMode:     false,
 				SingleRunMode: false,
 				HttpTimeout:   10 * time.Second,
@@ -67,10 +67,10 @@ func TestNewConfig(t *testing.T) {
 			},
 			expectError: false,
 			expected: &Config{
-				GithubToken:   "gh_token123",
-				FreshRssUrl:   "http://freshrss.example.com",
-				FreshRssUser:  "testuser",
-				FreshRssToken: "freshrss_token456",
+				GitHubToken:   "gh_token123",
+				FreshRSSURL:   "http://freshrss.example.com",
+				FreshRSSUser:  "testuser",
+				FreshRSSToken: "freshrss_token456",
 				DebugMode:     true,
 				SingleRunMode: true,
 				HttpTimeout:   30 * time.Second,
@@ -127,10 +127,10 @@ func TestNewConfig(t *testing.T) {
 			},
 			expectError: false,
 			expected: &Config{
-				GithubToken:   "gh_token123",
-				FreshRssUrl:   "http://freshrss.example.com",
-				FreshRssUser:  "testuser",
-				FreshRssToken: "freshrss_token456",
+				GitHubToken:   "gh_token123",
+				FreshRSSURL:   "http://freshrss.example.com",
+				FreshRSSUser:  "testuser",
+				FreshRSSToken: "freshrss_token456",
 				DebugMode:     false,
 				SingleRunMode: false,
 				HttpTimeout:   10 * time.Second,
@@ -147,10 +147,10 @@ func TestNewConfig(t *testing.T) {
 			},
 			expectError: false,
 			expected: &Config{
-				GithubToken:   "gh_token123",
-				FreshRssUrl:   "http://freshrss.example.com",
-				FreshRssUser:  "testuser",
-				FreshRssToken: "freshrss_token456",
+				GitHubToken:   "gh_token123",
+				FreshRSSURL:   "http://freshrss.example.com",
+				FreshRSSUser:  "testuser",
+				FreshRSSToken: "freshrss_token456",
 				DebugMode:     false,
 				SingleRunMode: false,
 				HttpTimeout:   10 * time.Second,
@@ -175,20 +175,20 @@ func TestNewConfig(t *testing.T) {
 				return
 			}
 
-			if config.GithubToken != tc.expected.GithubToken {
-				t.Errorf("Expected GithubToken %s, got %s", tc.expected.GithubToken, config.GithubToken)
+			if config.GitHubToken != tc.expected.GitHubToken {
+				t.Errorf("Expected GitHubToken %s, got %s", tc.expected.GitHubToken, config.GitHubToken)
 			}
 
-			if config.FreshRssUrl != tc.expected.FreshRssUrl {
-				t.Errorf("Expected FreshRssUrl %s, got %s", tc.expected.FreshRssUrl, config.FreshRssUrl)
+			if config.FreshRSSURL != tc.expected.FreshRSSURL {
+				t.Errorf("Expected FreshRSSUrl %s, got %s", tc.expected.FreshRSSURL, config.FreshRSSURL)
 			}
 
-			if config.FreshRssUser != tc.expected.FreshRssUser {
-				t.Errorf("Expected FreshRssUser %s, got %s", tc.expected.FreshRssUser, config.FreshRssUser)
+			if config.FreshRSSUser != tc.expected.FreshRSSUser {
+				t.Errorf("Expected FreshRSSUser %s, got %s", tc.expected.FreshRSSUser, config.FreshRSSUser)
 			}
 
-			if config.FreshRssToken != tc.expected.FreshRssToken {
-				t.Errorf("Expected FreshRssToken %s, got %s", tc.expected.FreshRssToken, config.FreshRssToken)
+			if config.FreshRSSToken != tc.expected.FreshRSSToken {
+				t.Errorf("Expected FreshRSSToken %s, got %s", tc.expected.FreshRSSToken, config.FreshRSSToken)
 			}
 
 			if config.DebugMode != tc.expected.DebugMode {

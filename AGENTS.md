@@ -66,11 +66,11 @@ Local dev: keep secrets in `.envrc` (direnv) and symlink `.env` -> `.envrc` for 
 
 3 layers:
 
-1. `cmd` package is for wiring and setting up the runner. Logging may occur here.
-2. `runner` package orchestrates. Logging my occur here. Methods on the business logic can only be
-   called here.
-3. `github`, `freshrss`, and `atom` are the business logic. This layer cannot know anything about
-   `runner` or `cmd`. Only debug logs allowed here.
+1. `cmd` — wiring and startup only. May log at any level.
+2. `runner` — orchestration. May log at any level. The only layer that calls business logic.
+3. `github`, `freshrss`, `atom` — business logic. No knowledge of upper layers. Debug logs only.
+
+`config` is a utility package used by `cmd` for startup validation.
 
 ## Patterns and Conventions
 

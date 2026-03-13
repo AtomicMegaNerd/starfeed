@@ -16,9 +16,9 @@ import (
 
 const (
 	mockGhToken       = "gh_token"
-	mockFreshRssUrl   = "http://freshrss.example.com"
-	mockFreshRssUser  = "testuser"
-	mockFreshRssToken = "freshrss_token"
+	mockFreshRSSURL   = "http://freshrss.example.com"
+	mockFreshRSSUser  = "testuser"
+	mockFreshRSSToken = "freshrss_token"
 )
 
 type QueryAndPublishFeedsTestCase struct {
@@ -32,9 +32,9 @@ func (tc *QueryAndPublishFeedsTestCase) GetTestObject() RepoRSSPublisher {
 	mockClient := &http.Client{Transport: &mockTransport}
 	return NewRepoRSSPublisher(
 		mockGhToken,
-		mockFreshRssUrl,
-		mockFreshRssUser,
-		mockFreshRssToken,
+		mockFreshRSSURL,
+		mockFreshRSSUser,
+		mockFreshRSSToken,
 		context.Background(),
 		mockClient,
 	)
@@ -327,9 +327,9 @@ func TestNewRepoRSSPublisher(t *testing.T) {
 
 	publisher := repoRSSPublisher{
 		mockGhToken,
-		mockFreshRssUrl,
-		mockFreshRssUser,
-		mockFreshRssToken,
+		mockFreshRSSURL,
+		mockFreshRSSUser,
+		mockFreshRSSToken,
 		ctx,
 		mockClient,
 	}
@@ -338,16 +338,16 @@ func TestNewRepoRSSPublisher(t *testing.T) {
 		t.Errorf("Expected ghToken %s, got %s", mockGhToken, publisher.ghToken)
 	}
 
-	if publisher.freshRssUrl != mockFreshRssUrl {
-		t.Errorf("Expected freshRssUrl %s, got %s", mockFreshRssUrl, publisher.freshRssUrl)
+	if publisher.freshRSSURL != mockFreshRSSURL {
+		t.Errorf("Expected freshRSSUrl %s, got %s", mockFreshRSSURL, publisher.freshRSSURL)
 	}
 
-	if publisher.freshRssUser != mockFreshRssUser {
-		t.Errorf("Expected freshRssUser %s, got %s", mockFreshRssUser, publisher.freshRssUser)
+	if publisher.freshRSSUser != mockFreshRSSUser {
+		t.Errorf("Expected freshRSSUser %s, got %s", mockFreshRSSUser, publisher.freshRSSUser)
 	}
 
-	if publisher.freshRssToken != mockFreshRssToken {
-		t.Errorf("Expected freshRssToken %s, got %s", mockFreshRssToken, publisher.freshRssToken)
+	if publisher.freshRSSToken != mockFreshRSSToken {
+		t.Errorf("Expected freshRSSToken %s, got %s", mockFreshRSSToken, publisher.freshRSSToken)
 	}
 
 	if publisher.ctx != ctx {
@@ -359,15 +359,15 @@ func TestNewRepoRSSPublisher(t *testing.T) {
 	}
 }
 
-type FilterOutNonGithubFeedsTestCase struct {
+type FilterOutNonGitHubFeedsTestCase struct {
 	name           string
 	inputFeeds     map[string]struct{}
 	expectedFeeds  map[string]struct{}
 	expectedLength int
 }
 
-func TestFilterOutNonGithubFeeds(t *testing.T) {
-	testCases := []FilterOutNonGithubFeedsTestCase{
+func TestFilterOutNonGitHubFeeds(t *testing.T) {
+	testCases := []FilterOutNonGitHubFeedsTestCase{
 		{
 			name: "All feeds are GitHub releases",
 			inputFeeds: map[string]struct{}{
@@ -434,7 +434,7 @@ func TestFilterOutNonGithubFeeds(t *testing.T) {
 			gh := github.NewGitHubStarredFeedBuilder("token", context.Background(), mockClient)
 
 			// Call the function under test
-			result := filterOutNonGithubFeeds(gh, tc.inputFeeds)
+			result := filterOutNonGitHubFeeds(gh, tc.inputFeeds)
 
 			// Check the length
 			if len(result) != tc.expectedLength {
