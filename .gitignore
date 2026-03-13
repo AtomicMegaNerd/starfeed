@@ -40,3 +40,4 @@ test-report*
 *.out
 .claude
 .crush
+.pre-commit-config.yaml

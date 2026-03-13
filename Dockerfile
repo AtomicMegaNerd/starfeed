@@ -2,9 +2,9 @@
 # Builder image                                                         #
 #########################################################################
 
-FROM golang:1.26.0-alpine3.23 AS builder
+FROM golang:1.26.1-alpine3.23 AS builder
 
-ENV GOTASK_VERSION=3.45.5-r3
+ENV GOTASK_VERSION=3.45.5-r4
 ENV CGO_ENABLED=0
 ENV GOFLAGS=-ldflags=-s\ -w
 
