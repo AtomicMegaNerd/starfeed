@@ -9,7 +9,6 @@ import (
 
 type EnvGetter interface {
 	Getenv(key string) string
-	Getbool(key string) (bool, error)
 }
 
 type OSEnvGetter struct{}
@@ -18,11 +17,12 @@ func (o OSEnvGetter) Getenv(key string) string {
 	return os.Getenv(key)
 }
 
-func (o OSEnvGetter) Getbool(key string) (bool, error) {
-	if key == "" {
+func parseBoolEnv(envGetter EnvGetter, key string) (bool, error) {
+	v := envGetter.Getenv(key)
+	if v == "" {
 		return false, nil
 	}
-	return strconv.ParseBool(key)
+	return strconv.ParseBool(v)
 }
 
 const (
@@ -42,7 +42,7 @@ type Config struct {
 	FreshRSSToken string
 	DebugMode     bool
 	SingleRunMode bool
-	HttpTimeout   time.Duration
+	HTTPTimeout   time.Duration
 }
 
 func NewConfig(envGetter EnvGetter) (*Config, error) {
@@ -62,11 +62,11 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 		}
 	}
 
-	debugMode, err := envGetter.Getbool(debugModeKey)
+	debugMode, err := parseBoolEnv(envGetter, debugModeKey)
 	if err != nil {
 		return nil, err
 	}
-	singleRunMode, err := envGetter.Getbool(singleRunModeKey)
+	singleRunMode, err := parseBoolEnv(envGetter, singleRunModeKey)
 	if err != nil {
 		return nil, err
 	}
@@ -78,6 +78,6 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 		FreshRSSToken: envGetter.Getenv(freshRSSTokenKey),
 		DebugMode:     debugMode,
 		SingleRunMode: singleRunMode,
-		HttpTimeout:   httpTimeout,
+		HTTPTimeout:   httpTimeout,
 	}, nil
 }

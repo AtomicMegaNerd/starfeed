@@ -1,7 +1,6 @@
 package config
 
 import (
-	"strconv"
 	"testing"
 	"time"
 )
@@ -17,13 +16,6 @@ func NewMockEnvGetter(envVars map[string]string) *MockEnvGetter {
 
 func (m *MockEnvGetter) Getenv(key string) string {
 	return m.envVars[key]
-}
-
-func (m *MockEnvGetter) Getbool(key string) (bool, error) {
-	if m.envVars[key] == "" {
-		return false, nil
-	}
-	return strconv.ParseBool(m.envVars[key])
 }
 
 type NewConfigTestCase struct {
@@ -51,7 +43,7 @@ func TestNewConfig(t *testing.T) {
 				FreshRSSToken: "freshrss_token456",
 				DebugMode:     false,
 				SingleRunMode: false,
-				HttpTimeout:   10 * time.Second,
+				HTTPTimeout:   10 * time.Second,
 			},
 		},
 		{
@@ -73,7 +65,7 @@ func TestNewConfig(t *testing.T) {
 				FreshRSSToken: "freshrss_token456",
 				DebugMode:     true,
 				SingleRunMode: true,
-				HttpTimeout:   30 * time.Second,
+				HTTPTimeout:   30 * time.Second,
 			},
 		},
 		{
@@ -133,7 +125,7 @@ func TestNewConfig(t *testing.T) {
 				FreshRSSToken: "freshrss_token456",
 				DebugMode:     false,
 				SingleRunMode: false,
-				HttpTimeout:   10 * time.Second,
+				HTTPTimeout:   10 * time.Second,
 			},
 		},
 		{
@@ -153,7 +145,7 @@ func TestNewConfig(t *testing.T) {
 				FreshRSSToken: "freshrss_token456",
 				DebugMode:     false,
 				SingleRunMode: false,
-				HttpTimeout:   10 * time.Second,
+				HTTPTimeout:   10 * time.Second,
 			},
 		},
 	}
@@ -199,8 +191,8 @@ func TestNewConfig(t *testing.T) {
 				t.Errorf("Expected SingleRunMode %t, got %t", tc.expected.SingleRunMode, config.SingleRunMode)
 			}
 
-			if config.HttpTimeout != tc.expected.HttpTimeout {
-				t.Errorf("Expected HttpTimeout %v, got %v", tc.expected.HttpTimeout, config.HttpTimeout)
+			if config.HTTPTimeout != tc.expected.HTTPTimeout {
+				t.Errorf("Expected HTTPTimeout %v, got %v", tc.expected.HTTPTimeout, config.HTTPTimeout)
 			}
 		})
 	}

@@ -58,7 +58,7 @@ func main() {
 		cfg.FreshRSSUser,
 		cfg.FreshRSSToken,
 		ctx,
-		&http.Client{Timeout: cfg.HttpTimeout},
+		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
 	// Initial publish
