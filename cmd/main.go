@@ -14,7 +14,6 @@ import (
 )
 
 func main() {
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -54,12 +53,12 @@ func main() {
 	defer ticker.Stop()
 
 	publisher := runner.NewRepoRSSPublisher(
-		cfg.GithubToken,
-		cfg.FreshRssUrl,
-		cfg.FreshRssUser,
-		cfg.FreshRssToken,
+		cfg.GitHubToken,
+		cfg.FreshRSSURL,
+		cfg.FreshRSSUser,
+		cfg.FreshRSSToken,
 		ctx,
-		&http.Client{Timeout: cfg.HttpTimeout},
+		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
 	// Initial publish

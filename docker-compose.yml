@@ -1,7 +1,6 @@
-version: "3.8"
-
 services:
   starfeed:
+    image: localhost/starfeed:latest
     build:
       context: .
       dockerfile: Dockerfile

@@ -13,7 +13,6 @@ import (
 
 const (
 	mockBaseUrl    = "http://localhost"
-	invalidBaseURL = "protocol+not_a_url"
 	mockUser       = "user"
 	mockApiToken   = "token"
 	mockAuthToken  = "1234567890"

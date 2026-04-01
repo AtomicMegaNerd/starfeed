@@ -15,7 +15,7 @@ import (
 // for all starred repos.
 type GitHubStarredFeedBuilder interface {
 	GetStarredRepos() (map[string]GitHubRepo, error)
-	IsGithubReleasesFeed(feedUrl string) bool
+	IsGitHubReleasesFeed(feedUrl string) bool
 }
 
 // gitHubStarredFeedBuilder is the private implementation of GitHubStarredFeedBuilder.
@@ -38,9 +38,9 @@ func NewGitHubStarredFeedBuilder(
 	client *http.Client,
 ) GitHubStarredFeedBuilder {
 	// This regex is used to find the next page link in the GitHub API response
-	nextPageLinkRegex, _ := regexp.Compile(`<([^>]+)>; rel="next"`)
+	nextPageLinkRegex := regexp.MustCompile(`<([^>]+)>; rel="next"`)
 	// This regex is used to determine if an RSS feed is a GitHub release feed
-	isRelRepoRegex, _ := regexp.Compile(`^https://github.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`)
+	isRelRepoRegex := regexp.MustCompile(`^https://github.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`)
 	return &gitHubStarredFeedBuilder{token, ctx, client, nextPageLinkRegex, isRelRepoRegex}
 }
 
@@ -48,8 +48,8 @@ func NewGitHubStarredFeedBuilder(
 // It returns a map of relaseFeedUrl -> GitHubRepo
 func (gh *gitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, error) {
 	allFeeds := make(map[string]GitHubRepo)
-	getUrl := "http://api.github.com/user/starred?per_page=100"
-	slog.Debug("Querying Github for starred repos", "url", getUrl)
+	getUrl := "https://api.github.com/user/starred?per_page=100"
+	slog.Debug("Querying GitHub for starred repos", "url", getUrl)
 
 	for {
 		ghResponse, err := gh.doApiRequest(getUrl)
@@ -77,24 +77,27 @@ func (gh *gitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, er
 	}
 }
 
-// This function returns true if a repoUrl is a Github release repo
+// This function returns true if a repoUrl is a GitHub release repo
 // Arguments:
 // - feedUrl: The URL of the RSS feed to check.
-func (gh *gitHubStarredFeedBuilder) IsGithubReleasesFeed(feedUrl string) bool {
+func (gh *gitHubStarredFeedBuilder) IsGitHubReleasesFeed(feedUrl string) bool {
 	return gh.isRelRepoRegex.MatchString(feedUrl)
 }
 
-func (gh *gitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, error) {
+func (gh *gitHubStarredFeedBuilder) doApiRequest(url string) (*GitHubResponse, error) {
 	headers := map[string]string{
 		"Authorization":        fmt.Sprintf("Bearer %s", gh.token),
-		"X-Github-Api-Version": "2022-11-28",
+		"X-GitHub-Api-Version": "2022-11-28",
 		"User-Agent":           "github.com/atomicmeganerd/starfeed",
 		"Content-Type":         "application/json",
 		"Accept":               "application/json",
 	}
 
 	// No request will always be valid here so we can ignore the error
-	req, _ := http.NewRequestWithContext(gh.ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(gh.ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	for k, v := range headers {
 		req.Header.Set(k, v)
@@ -102,41 +105,38 @@ func (gh *gitHubStarredFeedBuilder) doApiRequest(url string) (*GithubResponse, e
 
 	res, err := gh.client.Do(req)
 	if err != nil {
-		slog.Error("Unable to make request to Github", "error", err.Error())
 		return nil, err
-
 	}
-	defer res.Body.Close() // nolint:all
+	defer res.Body.Close() // nolint: errcheck
 
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("github returned an http error code %d", res.StatusCode)
 	}
 
-	ghResponse, err := gh.processGithubResponse(res)
+	ghResponse, err := gh.processGitHubResponse(res)
 	if err != nil {
-		slog.Error("Unable to parse response from Github", "error", err)
 		return nil, err
 	}
 
 	return ghResponse, nil
 }
 
-func (gh *gitHubStarredFeedBuilder) processGithubResponse(
+func (gh *gitHubStarredFeedBuilder) processGitHubResponse(
 	r *http.Response,
-) (*GithubResponse, error) {
+) (*GitHubResponse, error) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	linkRaw := r.Header.Get("link")
+	linkRaw := r.Header.Get("Link")
 	links := strings.SplitSeq(linkRaw, ",")
 	for link := range links {
 		matches := gh.nextPageLinkRegex.FindStringSubmatch(link)
 		if len(matches) == 2 {
-			return &GithubResponse{data: data, nextPage: matches[1]}, nil
+			return &GitHubResponse{data: data, nextPage: matches[1]}, nil
 		}
 	}
 
-	return &GithubResponse{data: data}, nil
+	return &GitHubResponse{data: data}, nil
 }

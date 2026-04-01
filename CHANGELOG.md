@@ -9,7 +9,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Updated
 
-- Go 1.25
+- Go 1.26
+- Alpine 3.23
 - Refactored backend components to use interface pattern for better testability
 - Improved test coverage from ~55% to 84.4%
 
@@ -37,7 +38,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Fixed a bug that causes Starfeed to unsubscribe from all non-Github release feeds.
+- Fixed a bug that causes Starfeed to unsubscribe from all non-GitHub release feeds.
 - Added some initial test coverage.
 
 ## [0.1.1] - 2024-12-24
@@ -90,7 +91,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Publishing the Atom feeds from Github to FreshRSS works!
+- Publishing the Atom feeds from GitHub to FreshRSS works!
 
 ## [0.0.1] - 2024-12-12
 

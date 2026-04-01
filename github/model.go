@@ -20,8 +20,8 @@ func (gr *GitHubRepo) BuildReleasesFeedURL() {
 	gr.FeedUrl = fmt.Sprintf("%s/releases.atom", gr.HtmlUrl)
 }
 
-// This is the response we get from Github
-type GithubResponse struct {
+// This is the response we get from GitHub
+type GitHubResponse struct {
 	data     []byte
 	nextPage string
 }
