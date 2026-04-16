@@ -11,6 +11,7 @@ env:
   cover_html: coverage.html
   exclude_packages: "mocks|cmd"
   coverage_threshold: 80
+  CGO_ENABLED: "0"
 
 tasks:
   default:
@@ -25,6 +26,13 @@ tasks:
 
   build:
     deps: [check-deps]
+    sources:
+      - "**/*.go"
+      - exclude: "**/*_test.go"
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.out}}"
     cmds:
       - cmd: go build -o {{.out}} {{.src}}
       - cmd: codesign -f -s "RCD Local" {{.out}} --deep
@@ -36,11 +44,10 @@ tasks:
       - cmd: ./{{.out}}
 
   test:
-    deps: [build]
     cmds:
       - |
-        {{.grc}} go test $(go list ./... | grep -Ev "{{.exclude_packages}}") \
-        -race -v -coverprofile={{.cover_out}}
+        {{.grc}} go test $(go list ./... | grep -Ev "{{.exclude_packages}}") -race \
+        -v -coverprofile={{.cover_out}}
 
       - |
         COVERAGE=$(go tool cover -func={{.cover_out}} | grep total: | awk '{print $3}' | sed 's/%//')
@@ -51,10 +58,12 @@ tasks:
         else
           echo "✓ Coverage meets threshold ({{.coverage_threshold}}%)"
         fi
+    env:
+      CGO_ENABLED: "1"
 
   lint:
     cmds:
-      - golangci-lint run
+      - golangci-lint run --fix ./...
 
   clean:
     cmds:
