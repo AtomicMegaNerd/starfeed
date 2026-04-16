@@ -66,8 +66,8 @@ func TestGetStarredRepos(t *testing.T) {
 			expectedRepos: []GitHubRepo{
 				{
 					Name:           repoName1,
-					HtmlUrl:        repoHtmlUrl1,
-					ReleaseFeedUrl: repoReleasesUrl1,
+					HTMLURL:        repoHtmlUrl1,
+					ReleaseFeedURL: repoReleasesUrl1,
 				},
 			},
 			expectError: false,
@@ -118,25 +118,25 @@ func TestGetStarredRepos(t *testing.T) {
 			expectedRepos: []GitHubRepo{
 				{
 					Name:           repoName1,
-					HtmlUrl:        repoHtmlUrl1,
-					ReleaseFeedUrl: repoReleasesUrl1,
+					HTMLURL:        repoHtmlUrl1,
+					ReleaseFeedURL: repoReleasesUrl1,
 				},
 				{
 					Name:           repoName2,
-					HtmlUrl:        repoHtmlUrl2,
-					ReleaseFeedUrl: repoReleasesUrl2,
+					HTMLURL:        repoHtmlUrl2,
+					ReleaseFeedURL: repoReleasesUrl2,
 				},
 				{
 					Name:    repoName3,
-					HtmlUrl: repoHtmlUrl3,
+					HTMLURL: repoHtmlUrl3,
 
-					ReleaseFeedUrl: repoReleasesUrl3,
+					ReleaseFeedURL: repoReleasesUrl3,
 				},
 				{
 					Name:    repoName4,
-					HtmlUrl: repoHtmlUrl4,
+					HTMLURL: repoHtmlUrl4,
 
-					ReleaseFeedUrl: repoReleasesUrl4,
+					ReleaseFeedURL: repoReleasesUrl4,
 				},
 			},
 			expectError: false,

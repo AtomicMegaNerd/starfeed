@@ -127,7 +127,7 @@ func publishToFreshRSS(
 	rssFeedMap map[string]struct{},
 	repo github.GitHubRepo,
 ) error {
-	repoFeed := repo.ReleaseFeedUrl
+	repoFeed := repo.ReleaseFeedURL
 
 	// If we find that a matching repo in FreshRSS we don't want to add it again...
 	if _, exists := rssFeedMap[repoFeed]; exists {

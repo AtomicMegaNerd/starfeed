@@ -10,12 +10,11 @@ import (
 )
 
 type GitHubSubscribedIssuesFeedBuilder interface {
-	GetSubscribedIssues() (map[string][]GitHubIssue, error)
+	GetSubscribedIssues(ctx context.Context) (map[string][]GitHubIssue, error)
 }
 
 type gitHubSubscribedIssuesFeedBuilder struct {
 	token             string // WARNING: Do not log this value at it is a secret
-	ctx               context.Context
 	client            *http.Client
 	nextPageLinkRegex *regexp.Regexp
 	ownerRepoRegex    *regexp.Regexp
@@ -23,7 +22,6 @@ type gitHubSubscribedIssuesFeedBuilder struct {
 
 func NewGitHubSubscribedIssuesFeedBuilder(
 	token string,
-	ctx context.Context,
 	client *http.Client,
 ) GitHubSubscribedIssuesFeedBuilder {
 	nextPageLinkRegex := regexp.MustCompile(`<([^>]+)>; rel="next"`)
@@ -32,7 +30,6 @@ func NewGitHubSubscribedIssuesFeedBuilder(
 	)
 	return &gitHubSubscribedIssuesFeedBuilder{
 		token,
-		ctx,
 		client,
 		nextPageLinkRegex,
 		ownerRepoRegex,
@@ -41,7 +38,7 @@ func NewGitHubSubscribedIssuesFeedBuilder(
 
 // This method should get a list of issues that the current logged in API user
 // is subscribed to.
-func (gh *gitHubSubscribedIssuesFeedBuilder) GetSubscribedIssues() (
+func (gh *gitHubSubscribedIssuesFeedBuilder) GetSubscribedIssues(ctx context.Context) (
 	map[string][]GitHubIssue, error,
 ) {
 	allIssuesFeeds := make(map[string][]GitHubIssue)
@@ -49,7 +46,7 @@ func (gh *gitHubSubscribedIssuesFeedBuilder) GetSubscribedIssues() (
 	slog.Debug("Querying GitHub for subscribed issues", "url", getUrl)
 
 	for {
-		ghResponse, err := doApiRequest(gh.ctx, gh.client, getUrl, gh.token, gh.nextPageLinkRegex)
+		ghResponse, err := doApiRequest(ctx, gh.client, getUrl, gh.token, gh.nextPageLinkRegex)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +70,6 @@ func (gh *gitHubSubscribedIssuesFeedBuilder) GetSubscribedIssues() (
 			issue.Owner = matches[1]
 			issue.Repo = matches[2]
 			issuesKey := fmt.Sprintf("%s/%s", issue.Owner, issue.Repo)
-			issue.FeedURL = fmt.Sprintf("%s/issues.xml", issuesKey)
 
 			// Append the issue to the correct map entry
 			allIssuesFeeds[issuesKey] = append(allIssuesFeeds[issuesKey], issue)

@@ -36,8 +36,8 @@ func (i *publishIssuesRunner) Run(ctx context.Context) error {
 	slog.Info("Starting main issues publish workflow")
 	start := time.Now()
 
-	gh := github.NewGitHubSubscribedIssuesFeedBuilder(i.ghToken, ctx, i.client)
-	allSubscribedIssues, err := gh.GetSubscribedIssues()
+	gh := github.NewGitHubSubscribedIssuesFeedBuilder(i.ghToken, i.client)
+	allSubscribedIssues, err := gh.GetSubscribedIssues(ctx)
 	if err != nil {
 		return err
 	}

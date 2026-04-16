@@ -9,16 +9,16 @@ import (
 // get the Atom feed for.
 type GitHubRepo struct {
 	Name           string `json:"name"`
-	HtmlUrl        string `json:"html_url"`
-	ReleaseFeedUrl string
+	HTMLURL        string `json:"html_url"`
+	ReleaseFeedURL string
 }
 
 func (gr *GitHubRepo) String() string {
-	return fmt.Sprintf("Name: %s, Releases Feed: %s", gr.Name, gr.ReleaseFeedUrl)
+	return fmt.Sprintf("Name: %s, Releases Feed: %s", gr.Name, gr.ReleaseFeedURL)
 }
 
 func (gr *GitHubRepo) BuildReleasesFeedURL() {
-	gr.ReleaseFeedUrl = fmt.Sprintf("%s/releases.atom", gr.HtmlUrl)
+	gr.ReleaseFeedURL = fmt.Sprintf("%s/releases.atom", gr.HTMLURL)
 }
 
 // This is the response we get from GitHub
@@ -70,7 +70,7 @@ type GitHubPullRequest struct {
 }
 
 type GitHubUser struct {
-	Name string `json:"name"`
+	Name string `json:"login"`
 }
 
 type GitHubPullRequestField struct {

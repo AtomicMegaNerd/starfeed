@@ -60,7 +60,7 @@ func (gh *gitHubStarredFeedBuilder) GetStarredRepos(
 
 		for _, repo := range repos {
 			repo.BuildReleasesFeedURL()
-			allFeeds[repo.ReleaseFeedUrl] = repo
+			allFeeds[repo.ReleaseFeedURL] = repo
 		}
 
 		// If there is no next page we are done...
