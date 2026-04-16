@@ -37,16 +37,11 @@ LABEL org.opencontainers.image.licenses="MIT"
 
 ARG UID=10001
 ARG GID=10001
-ENV USER=starfeed
-ENV UID=${UID}
-ENV GID=${GID}
+ENV PATH=/app/bin:$PATH
 
 WORKDIR /app
-ENV PATH=/app/bin:$PATH
+RUN addgroup -g ${GID} starfeed && adduser -D -u ${UID} -G starfeed starfeed
 COPY --from=builder --chown=${UID}:${GID} /app/bin/starfeed /app/bin/starfeed
 
-RUN addgroup -g $GID $USER && adduser -D -u $UID -G $USER $USER
-
-USER $USER
-
+USER starfeed
 CMD ["starfeed"]
