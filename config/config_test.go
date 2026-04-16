@@ -3,20 +3,9 @@ package config
 import (
 	"testing"
 	"time"
+
+	"github.com/atomicmeganerd/starfeed/mocks"
 )
-
-// MockEnvGetter implements EnvGetter for testing
-type MockEnvGetter struct {
-	envVars map[string]string
-}
-
-func NewMockEnvGetter(envVars map[string]string) *MockEnvGetter {
-	return &MockEnvGetter{envVars: envVars}
-}
-
-func (m *MockEnvGetter) Getenv(key string) string {
-	return m.envVars[key]
-}
 
 type NewConfigTestCase struct {
 	name        string
@@ -235,7 +224,7 @@ func TestNewConfig(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockEnvGetter := NewMockEnvGetter(tc.envVars)
+			mockEnvGetter := mocks.NewMockEnvGetter(tc.envVars)
 			config, err := NewConfig(mockEnvGetter)
 
 			if tc.expectError {
