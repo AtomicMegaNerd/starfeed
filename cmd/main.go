@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -52,20 +53,25 @@ func main() {
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 
-	repoRunner := runner.NewRepoRSSPublisher(
-		cfg.GitHubToken,
-		cfg.FreshRSSURL,
-		cfg.FreshRSSUser,
-		cfg.FreshRSSToken,
+	releasesRunner := runner.NewRepoRSSPublisher(
+		cfg,
 		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
 	issuesRunner := runner.NewIssuesRSSPublisher(
-		cfg.GitHubToken,
+		cfg,
 		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
-	if executeRunners(ctx, cfg, repoRunner, issuesRunner) {
+	runners := []runner.Runner{
+		releasesRunner, issuesRunner,
+	}
+
+	var exitErr *ExitError
+	if err := executeRunners(ctx, cfg, runners); err != nil {
+		if !errors.As(err, exitErr) {
+			slog.Error("Error executing runners", "error", err)
+		}
 		return
 	}
 
@@ -75,7 +81,10 @@ func main() {
 			slog.Info("Exiting...")
 			return
 		case <-ticker.C:
-			if executeRunners(ctx, cfg, repoRunner, issuesRunner) {
+			if err := executeRunners(ctx, cfg, runners); err != nil {
+				if !errors.As(err, exitErr) {
+					slog.Error("Error executing runners", "error", err)
+				}
 				return
 			}
 			slog.Info("Sleeping for 24 hours...")
@@ -83,28 +92,27 @@ func main() {
 	}
 }
 
+type ExitError struct{}
+
+func (e ExitError) Error() string {
+	return "exit"
+}
+
 func executeRunners(
 	ctx context.Context,
 	cfg *config.Config,
-	repoRunner runner.RepoRSSPublisher,
-	issuesRunner runner.IssuesRSSPublisher,
-) bool {
-	if !cfg.DisableRepoFeedMode {
-		if err := repoRunner.QueryAndPublishFeeds(ctx); err != nil {
-			slog.Error("Error with repo feeds workflow", "error", err)
-		}
-	}
-
-	if !cfg.DisableIssueFeedMode {
-		if err := issuesRunner.QueryAndPublishFeeds(ctx); err != nil {
-			slog.Error("Error with issues feed workflow", "error", err)
+	runners []runner.Runner,
+) error {
+	for _, runner := range runners {
+		if err := runner.Run(ctx); err != nil {
+			return err
 		}
 	}
 
 	if cfg.SingleRunMode {
 		slog.Info("Running in single run mode, exiting...")
-		return true
+		return &ExitError{}
 	}
 
-	return false
+	return nil
 }

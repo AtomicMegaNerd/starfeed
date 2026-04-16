@@ -7,21 +7,19 @@ import (
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/atom"
+	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/freshrss"
 	"github.com/atomicmeganerd/starfeed/github"
 	"golang.org/x/sync/errgroup"
 )
 
-type RepoRSSPublisher interface {
-	QueryAndPublishFeeds(ctx context.Context) error
-}
-
 // RepoRSSPublisher is a struct that manages the main workflow of the application.
-type repoRSSPublisher struct {
+type publishReleasesRunner struct {
 	ghToken       string // WARNING: Do not log this value as it is a secret
 	freshRSSURL   string
 	freshRSSUser  string
 	freshRSSToken string // WARNING: Do not log this value as it is a secret
+	cfg           *config.Config
 	client        *http.Client
 }
 
@@ -33,22 +31,29 @@ type repoRSSPublisher struct {
 // - freshRSSToken: The API token to authenticate with FreshRSS.
 // - ctx: The context to use for requests.
 // - client: The http client to use for requests (used for mocking).
-func NewRepoRSSPublisher(ghToken, freshRSSURL, freshRSSUser, freshRSSToken string,
+func NewRepoRSSPublisher(
+	cfg *config.Config,
 	client *http.Client,
-) RepoRSSPublisher {
-	return &repoRSSPublisher{
-		ghToken,
-		freshRSSURL,
-		freshRSSUser,
-		freshRSSToken,
+) Runner {
+	return &publishReleasesRunner{
+		cfg.GitHubToken,
+		cfg.FreshRSSURL,
+		cfg.FreshRSSUser,
+		cfg.FreshRSSToken,
+		cfg,
 		client,
 	}
 }
 
-// QueryAndPublishFeeds queries the starred repos from GitHub and publishes them to FreshRSS.
+// Run queries the starred repos from GitHub and publishes them to FreshRSS.
 // It also removes any stale feeds from FreshRSS as long as they are not starred in GitHub but
 // are actually GitHub release feeds.
-func (p *repoRSSPublisher) QueryAndPublishFeeds(ctx context.Context) error {
+func (p *publishReleasesRunner) Run(ctx context.Context) error {
+	if p.cfg.DisableRepoFeedMode {
+		slog.Warn("Releases workflow disabled")
+		return nil
+	}
+
 	slog.Info("Starting main workflow....")
 	start := time.Now()
 

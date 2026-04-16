@@ -6,29 +6,33 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/github"
 )
 
-type IssuesRSSPublisher interface {
-	QueryAndPublishFeeds(ctx context.Context) error
-}
-
-type issuesRSSPublisher struct {
+type publishIssuesRunner struct {
 	ghToken string // WARNING Do not log this value as it is a secret
+	cfg     *config.Config
 	client  *http.Client
 }
 
 func NewIssuesRSSPublisher(
-	ghToken string,
+	cfg *config.Config,
 	client *http.Client,
-) IssuesRSSPublisher {
-	return &issuesRSSPublisher{
-		ghToken,
+) Runner {
+	return &publishIssuesRunner{
+		cfg.GitHubToken,
+		cfg,
 		client,
 	}
 }
 
-func (i *issuesRSSPublisher) QueryAndPublishFeeds(ctx context.Context) error {
+func (i *publishIssuesRunner) Run(ctx context.Context) error {
+	if i.cfg.DisableIssueFeedMode {
+		slog.Warn("Issues workflow disabled")
+		return nil
+	}
+
 	slog.Info("Starting main issues publish workflow")
 	start := time.Now()
 

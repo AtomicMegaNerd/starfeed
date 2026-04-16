@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/github"
 	"github.com/atomicmeganerd/starfeed/mocks"
 	"golang.org/x/sync/errgroup"
@@ -28,14 +29,16 @@ type QueryAndPublishFeedsTestCase struct {
 	expectError bool
 }
 
-func (tc *QueryAndPublishFeedsTestCase) GetTestObject() RepoRSSPublisher {
+func (tc *QueryAndPublishFeedsTestCase) GetTestObject() Runner {
 	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegex)
 	mockClient := &http.Client{Transport: &mockTransport}
 	return NewRepoRSSPublisher(
-		mockGhToken,
-		mockFreshRSSURL,
-		mockFreshRSSUser,
-		mockFreshRSSToken,
+		&config.Config{
+			GitHubToken:   mockGhToken,
+			FreshRSSURL:   mockFreshRSSURL,
+			FreshRSSUser:  mockFreshRSSUser,
+			FreshRSSToken: mockFreshRSSToken,
+		},
 		mockClient,
 	)
 }
@@ -92,7 +95,7 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			publisher := tc.GetTestObject()
 			ctx := context.Background()
-			err := publisher.QueryAndPublishFeeds(ctx)
+			err := publisher.Run(ctx)
 
 			if tc.expectError == true && err == nil {
 				t.Fatalf("Expected error but got none")
@@ -348,11 +351,12 @@ func TestRemoveStaleFeeds(t *testing.T) {
 func TestNewRepoRSSPublisher(t *testing.T) {
 	mockClient := &http.Client{}
 
-	publisher := repoRSSPublisher{
+	publisher := publishReleasesRunner{
 		mockGhToken,
 		mockFreshRSSURL,
 		mockFreshRSSUser,
 		mockFreshRSSToken,
+		&config.Config{},
 		mockClient,
 	}
 
