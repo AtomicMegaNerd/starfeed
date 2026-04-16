@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -67,11 +66,10 @@ func main() {
 		releasesRunner, issuesRunner,
 	}
 
-	var exitErr *ExitError
-	if err := executeRunners(ctx, cfg, runners); err != nil {
-		if !errors.As(err, exitErr) {
-			slog.Error("Error executing runners", "error", err)
-		}
+	if done, err := executeRunners(ctx, cfg, runners); err != nil {
+		slog.Error("Error executing runners", "error", err)
+		return
+	} else if done {
 		return
 	}
 
@@ -81,10 +79,10 @@ func main() {
 			slog.Info("Exiting...")
 			return
 		case <-ticker.C:
-			if err := executeRunners(ctx, cfg, runners); err != nil {
-				if !errors.As(err, exitErr) {
-					slog.Error("Error executing runners", "error", err)
-				}
+			if done, err := executeRunners(ctx, cfg, runners); err != nil {
+				slog.Error("Error executing runners", "error", err)
+				return
+			} else if done {
 				return
 			}
 			slog.Info("Sleeping for 24 hours...")
@@ -92,27 +90,21 @@ func main() {
 	}
 }
 
-type ExitError struct{}
-
-func (e ExitError) Error() string {
-	return "exit"
-}
-
 func executeRunners(
 	ctx context.Context,
 	cfg *config.Config,
 	runners []runner.Runner,
-) error {
-	for _, runner := range runners {
-		if err := runner.Run(ctx); err != nil {
-			return err
+) (bool, error) {
+	for _, r := range runners {
+		if err := r.Run(ctx); err != nil {
+			return false, err
 		}
 	}
 
 	if cfg.SingleRunMode {
 		slog.Info("Running in single run mode, exiting...")
-		return &ExitError{}
+		return true, nil
 	}
 
-	return nil
+	return false, nil
 }
