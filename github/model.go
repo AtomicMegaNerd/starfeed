@@ -11,7 +11,6 @@ type GitHubRepo struct {
 	Name           string `json:"name"`
 	HtmlUrl        string `json:"html_url"`
 	ReleaseFeedUrl string
-	IssuesFeedUrl  string
 }
 
 func (gr *GitHubRepo) String() string {
@@ -38,11 +37,27 @@ type GitHubIssueBase struct {
 	CreatedAt     time.Time  `json:"created_at"`
 	User          GitHubUser `json:"user"`
 	RepositoryURL string     `json:"repository_url"`
+	// These fields will be parsed as we load them
+	Owner string
+	Repo  string
 }
 
 type GitHubIssue struct {
 	GitHubIssueBase
-	Labels GitHubIssueLabel `json:"labels"`
+	Labels  []GitHubIssueLabel `json:"labels"`
+	FeedURL string
+}
+
+func (i GitHubIssue) String() string {
+	return fmt.Sprintf(
+		"ID: %d, Number: %d, Title: %s, Repo URL: %s, Owner: %s, Repo: %s",
+		i.ID,
+		i.Number,
+		i.Title,
+		i.RepositoryURL,
+		i.Owner,
+		i.Repo,
+	)
 }
 
 type GitHubIssueLabel struct {

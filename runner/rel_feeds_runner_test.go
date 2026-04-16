@@ -22,9 +22,10 @@ const (
 )
 
 type QueryAndPublishFeedsTestCase struct {
-	name      string
-	responses []http.Response
-	urlRegex  []string
+	name        string
+	responses   []http.Response
+	urlRegex    []string
+	expectError bool
 }
 
 func (tc *QueryAndPublishFeedsTestCase) GetTestObject() RepoRSSPublisher {
@@ -47,7 +48,7 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 			responses: []http.Response{
 				// FreshRSS auth request
 				{
-					Body:       io.NopCloser(strings.NewReader(`{"auth_token": "test_token"}`)),
+					Body:       io.NopCloser(strings.NewReader(`Auth=test_token\n`)),
 					Status:     "200 OK",
 					StatusCode: http.StatusOK,
 				},
@@ -65,10 +66,11 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 				},
 			},
 			urlRegex: []string{
-				`.*freshrss.*api.*auth.*`,  // FreshRSS auth
-				`.*freshrss.*api.*feeds.*`, // FreshRSS feeds
-				`.*api\.github\.com.*`,     // GitHub API
+				`.*freshrss.*api.*accounts.*`, // FreshRSS auth
+				`.*freshrss.*api.*reader.*`,   // FreshRSS feeds
+				`.*api\.github\.com.*`,        // GitHub API
 			},
+			expectError: false,
 		},
 		{
 			name: "Authentication failure should exit early",
@@ -81,17 +83,23 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 				},
 			},
 			urlRegex: []string{
-				`.*freshrss.*api.*auth.*`, // FreshRSS auth
+				`.*freshrss.*api.*accounts.*`, // FreshRSS auth
 			},
+			expectError: true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			publisher := tc.GetTestObject()
+			err := publisher.QueryAndPublishFeeds()
 
-			// This should not panic or hang
-			publisher.QueryAndPublishFeeds()
+			if tc.expectError == true && err == nil {
+				t.Fatalf("Expected error but got none")
+			}
+			if tc.expectError == false && err != nil {
+				t.Fatalf("Unexpected error %q", err)
+			}
 		})
 	}
 }

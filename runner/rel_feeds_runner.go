@@ -13,7 +13,7 @@ import (
 )
 
 type RepoRSSPublisher interface {
-	QueryAndPublishFeeds()
+	QueryAndPublishFeeds() error
 }
 
 // RepoRSSPublisher is a struct that manages the main workflow of the application.
@@ -51,7 +51,7 @@ func NewRepoRSSPublisher(ghToken, freshRSSURL, freshRSSUser, freshRSSToken strin
 // QueryAndPublishFeeds queries the starred repos from GitHub and publishes them to FreshRSS.
 // It also removes any stale feeds from FreshRSS as long as they are not starred in GitHub but
 // are actually GitHub release feeds.
-func (p *repoRSSPublisher) QueryAndPublishFeeds() {
+func (p *repoRSSPublisher) QueryAndPublishFeeds() error {
 	slog.Info("Starting main workflow....")
 	start := time.Now()
 
@@ -63,16 +63,14 @@ func (p *repoRSSPublisher) QueryAndPublishFeeds() {
 
 	// Authenticate to FreshRSS
 	if err := fr.Authenticate(); err != nil {
-		slog.Error("Could not authenticate with FreshRSS", "error", err.Error())
-		return
+		return err
 	}
 
 	// Get existing subscriptions
 	slog.Info("Querying existing RSS feeds in FreshRSS... ")
 	rssFeedMap, err := fr.GetExistingFeeds()
 	if err != nil {
-		slog.Error("Error getting list of existing feeds from FreshRSS", "error", err.Error())
-		return
+		return err
 	}
 	// Filter out any subscriptions that are not GitHub release feeds so we
 	// do not unsubscribe from them
@@ -89,8 +87,7 @@ func (p *repoRSSPublisher) QueryAndPublishFeeds() {
 	// Get starred repos from GitHub
 	starredRepoMap, err := gh.GetStarredRepos()
 	if err != nil {
-		slog.Error("Error getting repos from GitHub", "error", err.Error())
-		return
+		return err
 	}
 	duration = time.Since(start)
 	slog.Info(
@@ -113,6 +110,7 @@ func (p *repoRSSPublisher) QueryAndPublishFeeds() {
 	// Report success
 	duration = time.Since(start)
 	slog.Info("FreshRSS feeds synced with GitHub successfully", "duration", duration)
+	return nil
 }
 
 func publishToFreshRSS(

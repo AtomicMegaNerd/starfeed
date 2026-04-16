@@ -3,13 +3,14 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
 )
 
 type GitHubSubscribedIssuesFeedBuilder interface {
-	GetSubscribedIssues() (map[string]GitHubIssue, error)
+	GetSubscribedIssues() (map[string][]GitHubIssue, error)
 }
 
 type gitHubSubscribedIssuesFeedBuilder struct {
@@ -17,6 +18,7 @@ type gitHubSubscribedIssuesFeedBuilder struct {
 	ctx               context.Context
 	client            *http.Client
 	nextPageLinkRegex *regexp.Regexp
+	ownerRepoRegex    *regexp.Regexp
 }
 
 func NewGitHubSubscribedIssuesFeedBuilder(
@@ -25,12 +27,25 @@ func NewGitHubSubscribedIssuesFeedBuilder(
 	client *http.Client,
 ) GitHubSubscribedIssuesFeedBuilder {
 	nextPageLinkRegex := regexp.MustCompile(`<([^>]+)>; rel="next"`)
-	return &gitHubSubscribedIssuesFeedBuilder{token, ctx, client, nextPageLinkRegex}
+	ownerRepoRegex := regexp.MustCompile(
+		`https://api\.github\.com/repos/([a-zA-Z0-9][a-zA-Z0-9-]*)/([a-zA-Z0-9._-]+)`,
+	)
+	return &gitHubSubscribedIssuesFeedBuilder{
+		token,
+		ctx,
+		client,
+		nextPageLinkRegex,
+		ownerRepoRegex,
+	}
 }
 
-func (gh *gitHubSubscribedIssuesFeedBuilder) GetSubscribedIssues() (map[string]GitHubIssue, error) {
-	allFeeds := make(map[string]GitHubIssue)
-	getUrl := "https://api.github.com/issues?subscribed&state=all&per_page=50"
+// This method should get a list of issues that the current logged in API user
+// is subscribed to.
+func (gh *gitHubSubscribedIssuesFeedBuilder) GetSubscribedIssues() (
+	map[string][]GitHubIssue, error,
+) {
+	allIssuesFeeds := make(map[string][]GitHubIssue)
+	getUrl := "https://api.github.com/issues?filter=subscribed&state=all&per_page=100"
 	slog.Debug("Querying GitHub for subscribed issues", "url", getUrl)
 
 	for {
@@ -45,11 +60,27 @@ func (gh *gitHubSubscribedIssuesFeedBuilder) GetSubscribedIssues() (map[string]G
 		}
 
 		for _, issue := range issues {
-			allFeeds[issue.Title] = issue
+			slog.Debug("Processing GitHub issue", "issue", issue)
+			matches := gh.ownerRepoRegex.FindStringSubmatch(issue.RepositoryURL)
+			if len(matches) != 3 {
+				slog.Warn(
+					"Skipping issue due to invalid repository URL",
+					"id", issue.ID,
+					"title", issue.Title,
+				)
+				continue
+			}
+			issue.Owner = matches[1]
+			issue.Repo = matches[2]
+			issuesKey := fmt.Sprintf("%s/%s", issue.Owner, issue.Repo)
+			issue.FeedURL = fmt.Sprintf("%s/issues.xml", issuesKey)
+
+			// Append the issue to the correct map entry
+			allIssuesFeeds[issuesKey] = append(allIssuesFeeds[issuesKey], issue)
 		}
 
 		if ghResponse.nextPage == "" {
-			return allFeeds, nil
+			return allIssuesFeeds, nil
 		}
 
 		slog.Debug("Found next page", "url", ghResponse.nextPage)

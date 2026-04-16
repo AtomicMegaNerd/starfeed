@@ -13,6 +13,10 @@ import (
 	"github.com/atomicmeganerd/starfeed/runner"
 )
 
+const (
+	DISABLE_REPO = true
+)
+
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -61,9 +65,21 @@ func main() {
 		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
-	// Initial publish
-	publisher.QueryAndPublishFeeds()
-	slog.Info("Sleeping for 24 hours...")
+	issuesPublisher := runner.NewIssuesRSSPublisher(
+		cfg.GitHubToken,
+		ctx,
+		&http.Client{Timeout: cfg.HTTPTimeout},
+	)
+
+	if !DISABLE_REPO {
+		if err := publisher.QueryAndPublishFeeds(); err != nil {
+			slog.Error("Error with repo feeds workflow", "error", err)
+		}
+	}
+
+	if err := issuesPublisher.QueryAndPublishFeeds(); err != nil {
+		slog.Error("Error with issues feed workflow", "error", err)
+	}
 
 	if cfg.SingleRunMode {
 		slog.Info("Running in single run mode, exiting...")
@@ -76,7 +92,9 @@ func main() {
 			slog.Info("Exiting...")
 			return
 		case <-ticker.C:
-			publisher.QueryAndPublishFeeds()
+			if err := publisher.QueryAndPublishFeeds(); err != nil {
+				slog.Error("Error with repo feeds workflow", "error", err)
+			}
 			slog.Info("Sleeping for 24 hours...")
 		}
 	}
