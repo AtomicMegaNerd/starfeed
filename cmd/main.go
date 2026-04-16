@@ -65,7 +65,9 @@ func main() {
 		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
-	executeRunners(ctx, cfg, repoRunner, issuesRunner)
+	if executeRunners(ctx, cfg, repoRunner, issuesRunner) {
+		return
+	}
 
 	for {
 		select {
@@ -73,7 +75,9 @@ func main() {
 			slog.Info("Exiting...")
 			return
 		case <-ticker.C:
-			executeRunners(ctx, cfg, repoRunner, issuesRunner)
+			if executeRunners(ctx, cfg, repoRunner, issuesRunner) {
+				return
+			}
 			slog.Info("Sleeping for 24 hours...")
 		}
 	}
@@ -84,7 +88,7 @@ func executeRunners(
 	cfg *config.Config,
 	repoRunner runner.RepoRSSPublisher,
 	issuesRunner runner.IssuesRSSPublisher,
-) {
+) bool {
 	if !cfg.DisableRepoFeedMode {
 		if err := repoRunner.QueryAndPublishFeeds(ctx); err != nil {
 			slog.Error("Error with repo feeds workflow", "error", err)
@@ -99,6 +103,8 @@ func executeRunners(
 
 	if cfg.SingleRunMode {
 		slog.Info("Running in single run mode, exiting...")
-		os.Exit(0)
+		return true
 	}
+
+	return false
 }

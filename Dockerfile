@@ -2,25 +2,26 @@
 # Builder image                                                         #
 #########################################################################
 
-FROM golang:1.26.1-alpine3.23 AS builder
+FROM golang:1.26.2-alpine3.23 AS builder
 
-ENV GOTASK_VERSION=3.45.5-r4
-ENV CGO_ENABLED=0
-ENV GOFLAGS=-ldflags=-s\ -w
+ARG GOTASK_VERSION="v3.50.0"
 
 WORKDIR /app
 
 # for caching	copy go mod and sum files first and download dependencies
 COPY ./go.mod ./go.sum /app/
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod download \
+    && go install github.com/go-task/task/v3/cmd/task@${GOTASK_VERSION}
 
 # copy the rest of the files
 COPY . .
 
-RUN apk add --no-cache go-task=${GOTASK_VERSION}
-
 # Run the build
-RUN go-task build
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    task build
 
 #########################################################################
 # Runner image                                                          #
