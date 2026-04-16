@@ -148,6 +148,89 @@ func TestNewConfig(t *testing.T) {
 				HTTPTimeout:   10 * time.Second,
 			},
 		},
+		{
+			name: "All disable flags enabled",
+			envVars: map[string]string{
+				"STARFEED_GITHUB_API_TOKEN":        "gh_token123",
+				"STARFEED_FRESHRSS_URL":            "http://freshrss.example.com",
+				"STARFEED_FRESHRSS_USER":           "testuser",
+				"STARFEED_FRESHRSS_API_TOKEN":      "freshrss_token456",
+				"STARFEED_DISABLE_REPO_FEED_MODE":  "true",
+				"STARFEED_DISABLE_ISSUE_FEED_MODE": "true",
+				"STARFEED_DISABLE_PR_FEED_MODE":    "true",
+			},
+			expectError: false,
+			expected: &Config{
+				GitHubToken:          "gh_token123",
+				FreshRSSURL:          "http://freshrss.example.com",
+				FreshRSSUser:         "testuser",
+				FreshRSSToken:        "freshrss_token456",
+				DisableRepoFeedMode:  true,
+				DisableIssueFeedMode: true,
+				DisablePRFeedMode:    true,
+				HTTPTimeout:          10 * time.Second,
+			},
+		},
+		{
+			name: "Invalid bool for debug mode should error",
+			envVars: map[string]string{
+				"STARFEED_GITHUB_API_TOKEN":   "gh_token123",
+				"STARFEED_FRESHRSS_URL":       "http://freshrss.example.com",
+				"STARFEED_FRESHRSS_USER":      "testuser",
+				"STARFEED_FRESHRSS_API_TOKEN": "freshrss_token456",
+				"STARFEED_DEBUG_MODE":         "notabool",
+			},
+			expectError: true,
+			expected:    nil,
+		},
+		{
+			name: "Invalid bool for single run mode should error",
+			envVars: map[string]string{
+				"STARFEED_GITHUB_API_TOKEN":   "gh_token123",
+				"STARFEED_FRESHRSS_URL":       "http://freshrss.example.com",
+				"STARFEED_FRESHRSS_USER":      "testuser",
+				"STARFEED_FRESHRSS_API_TOKEN": "freshrss_token456",
+				"STARFEED_SINGLE_RUN_MODE":    "notabool",
+			},
+			expectError: true,
+			expected:    nil,
+		},
+		{
+			name: "Invalid bool for disable repo feed mode should error",
+			envVars: map[string]string{
+				"STARFEED_GITHUB_API_TOKEN":       "gh_token123",
+				"STARFEED_FRESHRSS_URL":           "http://freshrss.example.com",
+				"STARFEED_FRESHRSS_USER":          "testuser",
+				"STARFEED_FRESHRSS_API_TOKEN":     "freshrss_token456",
+				"STARFEED_DISABLE_REPO_FEED_MODE": "notabool",
+			},
+			expectError: true,
+			expected:    nil,
+		},
+		{
+			name: "Invalid bool for disable issue feed mode should error",
+			envVars: map[string]string{
+				"STARFEED_GITHUB_API_TOKEN":        "gh_token123",
+				"STARFEED_FRESHRSS_URL":            "http://freshrss.example.com",
+				"STARFEED_FRESHRSS_USER":           "testuser",
+				"STARFEED_FRESHRSS_API_TOKEN":      "freshrss_token456",
+				"STARFEED_DISABLE_ISSUE_FEED_MODE": "notabool",
+			},
+			expectError: true,
+			expected:    nil,
+		},
+		{
+			name: "Invalid bool for disable PR feed mode should error",
+			envVars: map[string]string{
+				"STARFEED_GITHUB_API_TOKEN":     "gh_token123",
+				"STARFEED_FRESHRSS_URL":         "http://freshrss.example.com",
+				"STARFEED_FRESHRSS_USER":        "testuser",
+				"STARFEED_FRESHRSS_API_TOKEN":   "freshrss_token456",
+				"STARFEED_DISABLE_PR_FEED_MODE": "notabool",
+			},
+			expectError: true,
+			expected:    nil,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -193,6 +276,30 @@ func TestNewConfig(t *testing.T) {
 
 			if config.HTTPTimeout != tc.expected.HTTPTimeout {
 				t.Errorf("Expected HTTPTimeout %v, got %v", tc.expected.HTTPTimeout, config.HTTPTimeout)
+			}
+
+			if config.DisableRepoFeedMode != tc.expected.DisableRepoFeedMode {
+				t.Errorf(
+					"Expected DisableRepoFeedMode %t, got %t",
+					tc.expected.DisableRepoFeedMode,
+					config.DisableRepoFeedMode,
+				)
+			}
+
+			if config.DisableIssueFeedMode != tc.expected.DisableIssueFeedMode {
+				t.Errorf(
+					"Expected DisableIssueFeedMode %t, got %t",
+					tc.expected.DisableIssueFeedMode,
+					config.DisableIssueFeedMode,
+				)
+			}
+
+			if config.DisablePRFeedMode != tc.expected.DisablePRFeedMode {
+				t.Errorf(
+					"Expected DisablePRFeedMode %t, got %t",
+					tc.expected.DisablePRFeedMode,
+					config.DisablePRFeedMode,
+				)
 			}
 		})
 	}

@@ -13,10 +13,6 @@ import (
 	"github.com/atomicmeganerd/starfeed/runner"
 )
 
-const (
-	DISABLE_REPO = true
-)
-
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -56,7 +52,7 @@ func main() {
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 
-	publisher := runner.NewRepoRSSPublisher(
+	repoRunner := runner.NewRepoRSSPublisher(
 		cfg.GitHubToken,
 		cfg.FreshRSSURL,
 		cfg.FreshRSSUser,
@@ -64,25 +60,12 @@ func main() {
 		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
-	issuesPublisher := runner.NewIssuesRSSPublisher(
+	issuesRunner := runner.NewIssuesRSSPublisher(
 		cfg.GitHubToken,
 		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
-	if !DISABLE_REPO {
-		if err := publisher.QueryAndPublishFeeds(ctx); err != nil {
-			slog.Error("Error with repo feeds workflow", "error", err)
-		}
-	}
-
-	if err := issuesPublisher.QueryAndPublishFeeds(ctx); err != nil {
-		slog.Error("Error with issues feed workflow", "error", err)
-	}
-
-	if cfg.SingleRunMode {
-		slog.Info("Running in single run mode, exiting...")
-		return
-	}
+	executeRunners(ctx, cfg, repoRunner, issuesRunner)
 
 	for {
 		select {
@@ -90,10 +73,32 @@ func main() {
 			slog.Info("Exiting...")
 			return
 		case <-ticker.C:
-			if err := publisher.QueryAndPublishFeeds(ctx); err != nil {
-				slog.Error("Error with repo feeds workflow", "error", err)
-			}
+			executeRunners(ctx, cfg, repoRunner, issuesRunner)
 			slog.Info("Sleeping for 24 hours...")
 		}
+	}
+}
+
+func executeRunners(
+	ctx context.Context,
+	cfg *config.Config,
+	repoRunner runner.RepoRSSPublisher,
+	issuesRunner runner.IssuesRSSPublisher,
+) {
+	if !cfg.DisableRepoFeedMode {
+		if err := repoRunner.QueryAndPublishFeeds(ctx); err != nil {
+			slog.Error("Error with repo feeds workflow", "error", err)
+		}
+	}
+
+	if !cfg.DisableIssueFeedMode {
+		if err := issuesRunner.QueryAndPublishFeeds(ctx); err != nil {
+			slog.Error("Error with issues feed workflow", "error", err)
+		}
+	}
+
+	if cfg.SingleRunMode {
+		slog.Info("Running in single run mode, exiting...")
+		os.Exit(0)
 	}
 }
