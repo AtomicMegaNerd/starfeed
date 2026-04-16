@@ -16,7 +16,7 @@ type publishIssuesRunner struct {
 	client  *http.Client
 }
 
-func NewIssuesRSSPublisher(
+func PublishIssuesRunner(
 	cfg *config.Config,
 	client *http.Client,
 ) Runner {

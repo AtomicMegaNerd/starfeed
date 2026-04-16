@@ -52,12 +52,12 @@ func main() {
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 
-	releasesRunner := runner.NewRepoRSSPublisher(
+	releasesRunner := runner.NewPublishReleasesRunner(
 		cfg,
 		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
-	issuesRunner := runner.NewIssuesRSSPublisher(
+	issuesRunner := runner.PublishIssuesRunner(
 		cfg,
 		&http.Client{Timeout: cfg.HTTPTimeout},
 	)

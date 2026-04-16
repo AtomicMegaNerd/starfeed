@@ -23,7 +23,7 @@ type publishReleasesRunner struct {
 	client        *http.Client
 }
 
-// NewRepoRSSPublisher creates a new RepoRSSPublisher instance.
+// NewPublishReleasesRunner creates a new RepoRSSPublisher instance.
 // Arguments:
 // - ghToken: The GitHub API token to authenticate with.
 // - freshRSSUrl: The base URL of the FreshRSS instance.
@@ -31,7 +31,7 @@ type publishReleasesRunner struct {
 // - freshRSSToken: The API token to authenticate with FreshRSS.
 // - ctx: The context to use for requests.
 // - client: The http client to use for requests (used for mocking).
-func NewRepoRSSPublisher(
+func NewPublishReleasesRunner(
 	cfg *config.Config,
 	client *http.Client,
 ) Runner {

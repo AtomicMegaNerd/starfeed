@@ -29,10 +29,10 @@ type QueryAndPublishFeedsTestCase struct {
 	expectError bool
 }
 
-func (tc *QueryAndPublishFeedsTestCase) GetTestObject() Runner {
+func (tc *QueryAndPublishFeedsTestCase) GetTestRunner() Runner {
 	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegex)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewRepoRSSPublisher(
+	return NewPublishReleasesRunner(
 		&config.Config{
 			GitHubToken:   mockGhToken,
 			FreshRSSURL:   mockFreshRSSURL,
@@ -93,7 +93,7 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			publisher := tc.GetTestObject()
+			publisher := tc.GetTestRunner()
 			ctx := context.Background()
 			err := publisher.Run(ctx)
 
