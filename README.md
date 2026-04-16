@@ -123,6 +123,9 @@ task test
 - [x] Add some performance profiling
 - [x] Draw a cute logo
 - [x] Add unit tests
-- [ ] Add test coverage to Taskfile and to GitHub Actions
+- [x] Add test coverage to Taskfile and to GitHub Actions
 - [ ] Fix unbounded goroutine spawning in runner — use a worker pool or semaphore
-- [ ] Use errgroup for error propagation from goroutines instead of fire-and-forget
+- [x] Use errgroup for error propagation from goroutines instead of fire-and-forget
+- [ ] Create per repo feeds for issues I am subscribed to.
+- [ ] Create pre repo feeds for pull requests I am subscribed to.
+- [ ] Add colored logging.
