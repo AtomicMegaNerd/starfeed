@@ -15,10 +15,7 @@
       git-hooks,
     }:
     let
-      systems = [
-        "x86_64-linux"
-        "aarch64-darwin"
-      ];
+      systems = nixpkgs.lib.systems.flakeExposed;
       buildPkgsConf =
         system:
         import nixpkgs {

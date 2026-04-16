@@ -124,7 +124,7 @@ func publishToFreshRSS(
 ) {
 	defer wg.Done()
 
-	repoFeed := repo.FeedUrl
+	repoFeed := repo.ReleaseFeedUrl
 
 	// If we find that a matching repo in FreshRSS we don't want to add it again...
 	if _, exists := rssFeedMap[repoFeed]; exists {
