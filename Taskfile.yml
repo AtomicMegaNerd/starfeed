@@ -8,21 +8,20 @@ env:
   src: ./cmd/
   grc: $(if command -v grc > /dev/null; then echo "grc"; else echo ""; fi)
   cover_out: cover.out
-  cover_html: coverage.html
   exclude_packages: "mocks|cmd"
   coverage_threshold: 80
   CGO_ENABLED: "0"
 
 tasks:
-  default:
-    cmds:
-      - task: test
-      - task: lint
-      - task: generate-test-reports
 
-  format:
+  clean:
     cmds:
-      - go fmt ./...
+      - rm -f {{.out}} {{.cover_out}}
+
+  check-deps:
+    cmds:
+      - go mod tidy
+      - go mod verify
 
   build:
     deps: [check-deps]
@@ -65,20 +64,6 @@ tasks:
     cmds:
       - golangci-lint run --fix ./...
 
-  clean:
-    cmds:
-      - rm -f {{.out}} {{.cover_out}} {{.cover_html}}
-
-  check-deps:
-    cmds:
-      - go mod tidy
-      - go mod verify
-
   update-deps:
     cmds:
       - go get -u ./...
-
-  generate-test-reports:
-    deps: [test]
-    cmds:
-      - go tool cover -html={{.cover_out}} -o coverage.html
