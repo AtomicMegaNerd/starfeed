@@ -21,7 +21,7 @@ type CheckFeedHasEntriesTestCase struct {
 func (tc *CheckFeedHasEntriesTestCase) GetTestObject() AtomFeedChecker {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewAtomFeedChecker(context.Background(), mockClient)
+	return NewAtomFeedChecker(mockClient)
 }
 
 func TestCheckFeedHasEntries(t *testing.T) {
@@ -105,7 +105,8 @@ func TestCheckFeedHasEntries(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			fc := tc.GetTestObject()
-			hasEntries, err := fc.CheckFeedHasEntries(tc.feedUrl)
+			ctx := context.Background()
+			hasEntries, err := fc.CheckFeedHasEntries(ctx, tc.feedUrl)
 
 			if err != nil && !tc.expectError {
 				t.Fatalf("Expected no error, got %v", err)

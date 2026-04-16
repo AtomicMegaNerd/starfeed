@@ -42,7 +42,7 @@ type GetStarredReposTestCase struct {
 func (tc *GetStarredReposTestCase) GetTestObject() GitHubStarredFeedBuilder {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewGitHubStarredFeedBuilder("mockToken", context.Background(), mockClient)
+	return NewGitHubStarredFeedBuilder("mockToken", mockClient)
 }
 
 func TestGetStarredRepos(t *testing.T) {
@@ -183,7 +183,8 @@ func TestGetStarredRepos(t *testing.T) {
 		t.Logf("Running test case: %s\n", tc.name)
 
 		gh := tc.GetTestObject()
-		repos, err := gh.GetStarredRepos()
+		ctx := context.Background()
+		repos, err := gh.GetStarredRepos(ctx)
 
 		if tc.expectError {
 			if err == nil {
@@ -210,7 +211,7 @@ type TestIsGitHubRepoTestCase struct {
 
 func TestIsGitHubReleaseRepo(t *testing.T) {
 	mockClient := http.Client{}
-	gh := NewGitHubStarredFeedBuilder("", context.Background(), &mockClient)
+	gh := NewGitHubStarredFeedBuilder("", &mockClient)
 	testCases := []TestIsGitHubRepoTestCase{
 		{
 			name:        "Letters only",

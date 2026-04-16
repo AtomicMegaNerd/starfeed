@@ -61,23 +61,21 @@ func main() {
 		cfg.FreshRSSURL,
 		cfg.FreshRSSUser,
 		cfg.FreshRSSToken,
-		ctx,
 		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
 	issuesPublisher := runner.NewIssuesRSSPublisher(
 		cfg.GitHubToken,
-		ctx,
 		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
 	if !DISABLE_REPO {
-		if err := publisher.QueryAndPublishFeeds(); err != nil {
+		if err := publisher.QueryAndPublishFeeds(ctx); err != nil {
 			slog.Error("Error with repo feeds workflow", "error", err)
 		}
 	}
 
-	if err := issuesPublisher.QueryAndPublishFeeds(); err != nil {
+	if err := issuesPublisher.QueryAndPublishFeeds(ctx); err != nil {
 		slog.Error("Error with issues feed workflow", "error", err)
 	}
 
@@ -92,7 +90,7 @@ func main() {
 			slog.Info("Exiting...")
 			return
 		case <-ticker.C:
-			if err := publisher.QueryAndPublishFeeds(); err != nil {
+			if err := publisher.QueryAndPublishFeeds(ctx); err != nil {
 				slog.Error("Error with repo feeds workflow", "error", err)
 			}
 			slog.Info("Sleeping for 24 hours...")

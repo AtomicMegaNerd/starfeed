@@ -10,32 +10,29 @@ import (
 )
 
 type IssuesRSSPublisher interface {
-	QueryAndPublishFeeds() error
+	QueryAndPublishFeeds(ctx context.Context) error
 }
 
 type issuesRSSPublisher struct {
 	ghToken string // WARNING Do not log this value as it is a secret
-	ctx     context.Context
 	client  *http.Client
 }
 
 func NewIssuesRSSPublisher(
 	ghToken string,
-	ctx context.Context,
 	client *http.Client,
 ) IssuesRSSPublisher {
 	return &issuesRSSPublisher{
 		ghToken,
-		ctx,
 		client,
 	}
 }
 
-func (i *issuesRSSPublisher) QueryAndPublishFeeds() error {
+func (i *issuesRSSPublisher) QueryAndPublishFeeds(ctx context.Context) error {
 	slog.Info("Starting main issues publish workflow")
 	start := time.Now()
 
-	gh := github.NewGitHubSubscribedIssuesFeedBuilder(i.ghToken, i.ctx, i.client)
+	gh := github.NewGitHubSubscribedIssuesFeedBuilder(i.ghToken, ctx, i.client)
 	allSubscribedIssues, err := gh.GetSubscribedIssues()
 	if err != nil {
 		return err

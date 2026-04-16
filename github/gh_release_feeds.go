@@ -11,14 +11,13 @@ import (
 // GitHubStarredFeedBuilder is an interface for retrieving Atom feeds from GitHub
 // for all starred repos.
 type GitHubStarredFeedBuilder interface {
-	GetStarredRepos() (map[string]GitHubRepo, error)
+	GetStarredRepos(ctx context.Context) (map[string]GitHubRepo, error)
 	IsGitHubReleasesFeed(feedUrl string) bool
 }
 
 // gitHubStarredFeedBuilder is the private implementation of GitHubStarredFeedBuilder.
 type gitHubStarredFeedBuilder struct {
 	token             string // WARNING: Do not log this value as it is a secret
-	ctx               context.Context
 	client            *http.Client
 	nextPageLinkRegex *regexp.Regexp
 	isRelRepoRegex    *regexp.Regexp
@@ -27,29 +26,29 @@ type gitHubStarredFeedBuilder struct {
 // NewGitHubStarredFeedBuilder creates a new GitHubStarredFeedBuilder instance.
 // Arguments:
 // - token: The GitHub API token to authenticate with.
-// - ctx: The context to use for requests.
 // - client: The http client to use for requests (used for mocking).
 func NewGitHubStarredFeedBuilder(
 	token string,
-	ctx context.Context,
 	client *http.Client,
 ) GitHubStarredFeedBuilder {
 	// This regex is used to find the next page link in the GitHub API response
 	nextPageLinkRegex := regexp.MustCompile(`<([^>]+)>; rel="next"`)
 	// This regex is used to determine if an RSS feed is a GitHub release feed
 	isRelRepoRegex := regexp.MustCompile(`^https://github.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`)
-	return &gitHubStarredFeedBuilder{token, ctx, client, nextPageLinkRegex, isRelRepoRegex}
+	return &gitHubStarredFeedBuilder{token, client, nextPageLinkRegex, isRelRepoRegex}
 }
 
 // This will return all starred repos including the Atom feeds for their releases
 // It returns a map of relaseFeedUrl -> GitHubRepo
-func (gh *gitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, error) {
+func (gh *gitHubStarredFeedBuilder) GetStarredRepos(
+	ctx context.Context,
+) (map[string]GitHubRepo, error) {
 	allFeeds := make(map[string]GitHubRepo)
 	getUrl := "https://api.github.com/user/starred?per_page=100"
 	slog.Debug("Querying GitHub for starred repos", "url", getUrl)
 
 	for {
-		ghResponse, err := doApiRequest(gh.ctx, gh.client, getUrl, gh.token, gh.nextPageLinkRegex)
+		ghResponse, err := doApiRequest(ctx, gh.client, getUrl, gh.token, gh.nextPageLinkRegex)
 		if err != nil {
 			return nil, err
 		}

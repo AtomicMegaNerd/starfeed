@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/atomicmeganerd/starfeed/github"
 	"github.com/atomicmeganerd/starfeed/mocks"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -36,7 +36,6 @@ func (tc *QueryAndPublishFeedsTestCase) GetTestObject() RepoRSSPublisher {
 		mockFreshRSSURL,
 		mockFreshRSSUser,
 		mockFreshRSSToken,
-		context.Background(),
 		mockClient,
 	)
 }
@@ -92,7 +91,8 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			publisher := tc.GetTestObject()
-			err := publisher.QueryAndPublishFeeds()
+			ctx := context.Background()
+			err := publisher.QueryAndPublishFeeds(ctx)
 
 			if tc.expectError == true && err == nil {
 				t.Fatalf("Expected error but got none")
@@ -115,22 +115,27 @@ type mockFreshRSSFeedManager struct {
 	removeFeedUrl    string
 }
 
-func (m *mockFreshRSSFeedManager) Authenticate() error {
+func (m *mockFreshRSSFeedManager) Authenticate(ctx context.Context) error {
 	return nil
 }
 
-func (m *mockFreshRSSFeedManager) AddFeed(feedUrl, name, category string) error {
+func (m *mockFreshRSSFeedManager) AddFeed(
+	ctx context.Context,
+	feedUrl, name, category string,
+) error {
 	m.addFeedCalled = true
 	m.addFeedUrl = feedUrl
 	m.addFeedName = name
 	return m.addFeedError
 }
 
-func (m *mockFreshRSSFeedManager) GetExistingFeeds() (map[string]struct{}, error) {
+func (m *mockFreshRSSFeedManager) GetExistingFeeds(
+	ctx context.Context,
+) (map[string]struct{}, error) {
 	return nil, nil
 }
 
-func (m *mockFreshRSSFeedManager) RemoveFeed(feedUrl string) error {
+func (m *mockFreshRSSFeedManager) RemoveFeed(ctx context.Context, feedUrl string) error {
 	m.removeFeedCalled = true
 	m.removeFeedUrl = feedUrl
 	return m.removeFeedError
@@ -142,7 +147,9 @@ type mockAtomFeedChecker struct {
 	checkedFeeds []string
 }
 
-func (m *mockAtomFeedChecker) CheckFeedHasEntries(feedUrl string) (bool, error) {
+func (m *mockAtomFeedChecker) CheckFeedHasEntries(
+	ctx context.Context, feedUrl string,
+) (bool, error) {
 	m.checkedFeeds = append(m.checkedFeeds, feedUrl)
 	return m.hasEntries, m.err
 }
@@ -220,15 +227,20 @@ func TestPublishToFreshRSS(t *testing.T) {
 				hasEntries: tc.atomHasEntries,
 			}
 
-			// Create WaitGroup
-			var wg sync.WaitGroup
-			wg.Add(1)
+			g := &errgroup.Group{}
+			ctx := context.Background()
 
 			// Call function
-			go publishToFreshRSS(&wg, mockFreshRSS, mockAtom, tc.existingFeeds, tc.repo)
+			g.Go(func() error {
+				return publishToFreshRSS(ctx, mockFreshRSS, mockAtom, tc.existingFeeds, tc.repo)
+			})
 
-			// Wait for completion
-			wg.Wait()
+			// Wait for completion and check for errors
+			if err := g.Wait(); err != nil {
+				if err != tc.freshRSSAddError {
+					t.Fatalf("Expected error %v but got %v", tc.freshRSSAddError, err)
+				}
+			}
 
 			// Assert AddFeed was called as expected
 			if tc.expectedFreshRSSAdd != mockFreshRSS.addFeedCalled {
@@ -302,15 +314,19 @@ func TestRemoveStaleFeeds(t *testing.T) {
 				removeFeedError: tc.freshRSSRemoveError,
 			}
 
-			// Create WaitGroup
-			var wg sync.WaitGroup
-			wg.Add(1)
+			g := &errgroup.Group{}
+			ctx := context.Background()
 
-			// Call function
-			go removeStaleFeeds(&wg, mockFreshRSS, tc.starredRepoMap, tc.rssFeed)
+			g.Go(func() error {
+				return removeStaleFeeds(ctx, mockFreshRSS, tc.starredRepoMap, tc.rssFeed)
+			})
 
 			// Wait for completion
-			wg.Wait()
+			if err := g.Wait(); err != nil {
+				if err != tc.freshRSSRemoveError {
+					t.Fatalf("Exppected %v but got %v", tc.freshRSSRemoveError, err)
+				}
+			}
 
 			// Assert RemoveFeed was called as expected
 			if tc.expectedFreshRSSRemove != mockFreshRSS.removeFeedCalled {
@@ -331,14 +347,12 @@ func TestRemoveStaleFeeds(t *testing.T) {
 
 func TestNewRepoRSSPublisher(t *testing.T) {
 	mockClient := &http.Client{}
-	ctx := context.Background()
 
 	publisher := repoRSSPublisher{
 		mockGhToken,
 		mockFreshRSSURL,
 		mockFreshRSSUser,
 		mockFreshRSSToken,
-		ctx,
 		mockClient,
 	}
 
@@ -356,10 +370,6 @@ func TestNewRepoRSSPublisher(t *testing.T) {
 
 	if publisher.freshRSSToken != mockFreshRSSToken {
 		t.Errorf("Expected freshRSSToken %s, got %s", mockFreshRSSToken, publisher.freshRSSToken)
-	}
-
-	if publisher.ctx != ctx {
-		t.Error("Expected context to match")
 	}
 
 	if publisher.client != mockClient {
@@ -439,7 +449,7 @@ func TestFilterOutNonGitHubFeeds(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create GitHub builder for the test
 			mockClient := &http.Client{}
-			gh := github.NewGitHubStarredFeedBuilder("token", context.Background(), mockClient)
+			gh := github.NewGitHubStarredFeedBuilder("token", mockClient)
 
 			// Call the function under test
 			result := filterOutNonGitHubFeeds(gh, tc.inputFeeds)

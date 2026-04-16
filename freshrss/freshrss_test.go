@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	mockBaseUrl    = "http://localhost"
-	mockUser       = "user"
-	mockApiToken   = "token"
-	mockAuthToken  = "1234567890"
-	mockSid        = "2345678901"
+	mockBaseUrl   = "http://localhost"
+	mockUser      = "user"
+	mockApiToken  = "token"
+	mockAuthToken = "1234567890"
+	mockSid       = "2345678901"
 )
 
 type AuthenticateTestCase struct {
@@ -30,7 +30,7 @@ func (tc *AuthenticateTestCase) GetTestObject() FreshRSSFeedManager {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
 	return NewFreshRSSFeedManager(
-		mockBaseUrl, mockUser, mockApiToken, context.Background(), mockClient,
+		mockBaseUrl, mockUser, mockApiToken, mockClient,
 	)
 }
 
@@ -78,8 +78,9 @@ func TestAuthenticate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.responses[0].Status, func(t *testing.T) {
+			ctx := context.Background()
 			testObject := tc.GetTestObject()
-			err := testObject.Authenticate()
+			err := testObject.Authenticate(ctx)
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")
@@ -183,7 +184,7 @@ func (tc *AddFeedTestCase) GetTestObject() FreshRSSFeedManager {
 	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegexPatterns)
 	mockClient := &http.Client{Transport: &mockTransport}
 	return NewFreshRSSFeedManager(
-		mockBaseUrl, mockUser, mockApiToken, context.Background(), mockClient,
+		mockBaseUrl, mockUser, mockApiToken, mockClient,
 	)
 }
 
@@ -273,8 +274,9 @@ func TestAddFeed(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
 			testObject := tc.GetTestObject()
-			err := testObject.AddFeed("http://localhost/feeds/123", "name", "category")
+			err := testObject.AddFeed(ctx, "http://localhost/feeds/123", "name", "category")
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")
@@ -299,7 +301,7 @@ func (tc *GetExistingFeedsTestCase) GetTestObject() FreshRSSFeedManager {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
 	return NewFreshRSSFeedManager(
-		mockBaseUrl, mockUser, mockApiToken, context.Background(), mockClient,
+		mockBaseUrl, mockUser, mockApiToken, mockClient,
 	)
 }
 
@@ -360,7 +362,8 @@ func TestGetExistingFeeds(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			testObject := tc.GetTestObject()
-			feeds, err := testObject.GetExistingFeeds()
+			ctx := context.Background()
+			feeds, err := testObject.GetExistingFeeds(ctx)
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")
@@ -395,7 +398,7 @@ func (tc *RemoveFeedTestCase) GetTestObject() FreshRSSFeedManager {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
 	return NewFreshRSSFeedManager(
-		mockBaseUrl, mockUser, mockApiToken, context.Background(), mockClient,
+		mockBaseUrl, mockUser, mockApiToken, mockClient,
 	)
 }
 
@@ -428,7 +431,8 @@ func TestRemoveFeed(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			testObject := tc.GetTestObject()
-			err := testObject.RemoveFeed(tc.feedUrl)
+			ctx := context.Background()
+			err := testObject.RemoveFeed(ctx, tc.feedUrl)
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")
@@ -441,6 +445,3 @@ func TestRemoveFeed(t *testing.T) {
 		})
 	}
 }
-
-// Note: doApiRequest is now a private method and cannot be tested directly through the interface.
-// Its functionality is tested indirectly through the public methods that use it.
