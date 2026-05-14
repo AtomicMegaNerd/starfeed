@@ -8,23 +8,23 @@
 GET /issues?filter=subscribed&state=all&per_page=100
 ```
 
-**Purpose:** Returns all issues *and* pull requests that the authenticated user has explicitly
+**Purpose:** Returns all issues _and_ pull requests that the authenticated user has explicitly
 subscribed to. GitHub models PRs as issues, so both types come from this single endpoint.
 
 #### Key query parameters
 
-| Parameter  | Value        | Notes                                         |
-|------------|--------------|-----------------------------------------------|
-| `filter`   | `subscribed` | Only explicitly subscribed items              |
-| `state`    | `all`        | Include open and closed items                 |
-| `per_page` | `100`        | Maximum allowed; use pagination for more      |
-| `since`    | ISO 8601     | Optional: only items updated after this time  |
+| Parameter  | Value        | Notes                                        |
+| ---------- | ------------ | -------------------------------------------- |
+| `filter`   | `subscribed` | Only explicitly subscribed items             |
+| `state`    | `all`        | Include open and closed items                |
+| `per_page` | `100`        | Maximum allowed; use pagination for more     |
+| `since`    | ISO 8601     | Optional: only items updated after this time |
 
-**Pagination:** Follow the `Link` header with `rel="next"` — identical to the existing starred
-repos pagination in `github/github.go`.
+**Pagination:** Follow the `Link` header with `rel="next"` — identical to the existing starred repos
+pagination in `github/github.go`.
 
-**Distinguishing issues from PRs:** Check for the presence of the `pull_request` field. It is
-absent on issues and present on PRs:
+**Distinguishing issues from PRs:** Check for the presence of the `pull_request` field. It is absent
+on issues and present on PRs:
 
 #### Issue — no pull_request field
 
@@ -79,13 +79,13 @@ https://api.github.com/repos/{owner}/{repo}
 GET /repos/{owner}/{repo}/issues/{number}/comments?per_page=100
 ```
 
-**Purpose:** Fetch general conversation comments on either an issue or a PR. This endpoint works
-for both — PRs share the issues comment thread. Call once per subscribed item per run.
+**Purpose:** Fetch general conversation comments on either an issue or a PR. This endpoint works for
+both — PRs share the issues comment thread. Call once per subscribed item per run.
 
 **Key query parameters:**
 
 | Parameter  | Value    | Notes                                           |
-|------------|----------|-------------------------------------------------|
+| ---------- | -------- | ----------------------------------------------- |
 | `per_page` | `100`    | Maximum allowed; paginate if thread is busy     |
 | `since`    | ISO 8601 | Optional: only comments created after this time |
 
@@ -118,8 +118,8 @@ golang/go #5678: feat: add worker pool (review by bradfitz on src/cmd/go/main.go
 GET /repos/{owner}/{repo}/pulls/{number}/reviews?per_page=100
 ```
 
-**Purpose:** Fetch top-level review submissions — the approve/request-changes/comment actions
-that wrap inline comments. These are meaningful feed events ("bradfitz approved", "rsc requested
+**Purpose:** Fetch top-level review submissions — the approve/request-changes/comment actions that
+wrap inline comments. These are meaningful feed events ("bradfitz approved", "rsc requested
 changes").
 
 **Key response fields per review:**
@@ -143,21 +143,20 @@ Use `html_url` as the Atom `<id>`. Include `state` in the entry title:
 golang/go #5678: feat: add worker pool (review APPROVED by bradfitz)
 ```
 
-**Rate limit consideration:** With N subscribed items (issues + PRs), the total API calls per
-daily run are:
+**Rate limit consideration:** With N subscribed items (issues + PRs), the total API calls per daily
+run are:
 
 - 1 call for the combined issues/PRs list
 - N calls for issue/PR conversation comments
 - P calls for PR review comments (PRs only)
 - P calls for PR reviews (PRs only)
 
-Where P ≤ N. This is well within the 5,000 requests/hour authenticated rate limit for typical
-use.
+Where P ≤ N. This is well within the 5,000 requests/hour authenticated rate limit for typical use.
 
 ## Synthetic Atom Feed Design
 
-The app generates two feed types per repository: one for subscribed issues, one for subscribed
-PRs. Each feed is served over HTTP and registered with FreshRSS.
+The app generates two feed types per repository: one for subscribed issues, one for subscribed PRs.
+Each feed is served over HTTP and registered with FreshRSS.
 
 ### Feed URL structure
 
@@ -181,14 +180,14 @@ Adjust to `.xml` for the PR feed if preferred — just be consistent.
 Use the GitHub HTML URL as the Atom `<id>` for every entry type. These URLs are permanent and
 globally unique. FreshRSS deduplicates by `<id>`, so no app-side state is needed.
 
-| Entry type          | Atom `<id>` value                                            |
-|---------------------|--------------------------------------------------------------|
-| Issue itself        | `html_url` — e.g. `.../issues/1234`                          |
-| Issue comment       | `html_url` — e.g. `...#issuecomment-987654321`               |
-| PR itself           | `html_url` — e.g. `.../pull/5678`                            |
-| PR conv. comment    | `html_url` — e.g. `...#issuecomment-987654321`               |
-| PR review comment   | `html_url` — e.g. `...#discussion_r112233445`                |
-| PR review           | `html_url` — e.g. `...#pullrequestreview-556677889`          |
+| Entry type        | Atom `<id>` value                                   |
+| ----------------- | --------------------------------------------------- |
+| Issue itself      | `html_url` — e.g. `.../issues/1234`                 |
+| Issue comment     | `html_url` — e.g. `...#issuecomment-987654321`      |
+| PR itself         | `html_url` — e.g. `.../pull/5678`                   |
+| PR conv. comment  | `html_url` — e.g. `...#issuecomment-987654321`      |
+| PR review comment | `html_url` — e.g. `...#discussion_r112233445`       |
+| PR review         | `html_url` — e.g. `...#pullrequestreview-556677889` |
 
 ### Atom entry examples
 
