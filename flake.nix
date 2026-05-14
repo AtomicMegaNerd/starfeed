@@ -35,6 +35,7 @@
             check-toml.enable = true;
             gofmt.enable = true;
             golangci-lint.enable = true;
+            nixfmt.enable = true;
           };
         };
     in
@@ -58,10 +59,13 @@
               pkgs.gopls
               pkgs.golangci-lint
               pkgs.go-task
-              pkgs.nodejs
               pkgs.bash-language-server
               pkgs.docker-language-server
               pkgs.yaml-language-server
+              pkgs.markdownlint-cli2
+              pkgs.nixfmt
+              pkgs.nil
+              pkgs.oxfmt
             ];
           };
         }

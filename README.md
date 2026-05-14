@@ -2,21 +2,29 @@
 
 ![Starfeed](./img/starfeed.png)
 
-Starfeed scans the current list of your GitHub stars, grabs the Releases RSS feed for each repo it finds, and publishes them to your own self-hosted [FreshRSS](https://www.freshrss.org/) RSS aggregator. Then by hooking up an RSS client to your FreshRSS server you can easily follow the releases for any of the repos that you have starred.
+Starfeed scans the current list of your GitHub stars, grabs the Releases RSS feed for each repo it
+finds, and publishes them to your own self-hosted [FreshRSS](https://www.freshrss.org/) RSS
+aggregator. Then by hooking up an RSS client to your FreshRSS server you can easily follow the
+releases for any of the repos that you have starred.
 
-Starfeed will omit any RSS feeds from GitHub that are empty. It will also remove any feeds for repos that you are no longer starring.
+Starfeed will omit any RSS feeds from GitHub that are empty. It will also remove any feeds for repos
+that you are no longer starring.
 
-Starfeed is written in Go and currently relies purely on the standard library with no external dependencies. The Docker image for this app is a little bigger than 25MB!
+Starfeed is written in Go and currently relies purely on the standard library with no external
+dependencies. The Docker image for this app is a little bigger than 25MB!
 
 ## Pre-Requisites
 
 ### Required Software
 
-- You must have [FreshRSS](https://www.freshrss.org) deployed in your local network. It must be reachable from the Starfeed Docker container.
+- You must have [FreshRSS](https://www.freshrss.org) deployed in your local network. It must be
+  reachable from the Starfeed Docker container.
 - You must have an API token generated in FreshRSS that has permissions to create/edit/delete feeds.
 - You must have an API token for GitHub with permission to read starred repos.
-- You must have [Docker](https://docker.com) or [Podman](https://podman.io) set up to run the container.
-- To build and run the app locally you need to install [Go](https://go.dev), [Taskfile](https://taskfile.dev), and [Direnv](https://direnv.net/).
+- You must have [Docker](https://docker.com) or [Podman](https://podman.io) set up to run the
+  container.
+- To build and run the app locally you need to install [Go](https://go.dev),
+  [Taskfile](https://taskfile.dev), and [Direnv](https://direnv.net/).
 
 ### Setting the Environment
 
@@ -41,11 +49,13 @@ Then activate your environment with:
 direnv allow
 ```
 
-This will load all of the environment variables in `.envrc` into your environment while you are in the project directory. See the direnv docs for more information.
+This will load all of the environment variables in `.envrc` into your environment while you are in
+the project directory. See the direnv docs for more information.
 
 ## Running with Docker or Podman
 
-You can use either **Docker** or **Podman** to run Starfeed. The instructions below show both options.
+You can use either **Docker** or **Podman** to run Starfeed. The instructions below show both
+options.
 
 ### Using Docker
 
@@ -85,7 +95,8 @@ podman-compose up --build
 
 ### Build and Run Go Binary (Local Development)
 
-This app uses [Taskfile](https://taskfile.dev) to build and run the app. You can use the following command to build the app:
+This app uses [Taskfile](https://taskfile.dev) to build and run the app. You can use the following
+command to build the app:
 
 #### Build
 
