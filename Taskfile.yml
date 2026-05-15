@@ -37,6 +37,12 @@ tasks:
       - cmd: codesign -f -s "RCD Local" {{.out}} --deep
         platforms: [darwin]
 
+  run:
+    desc: Build and run the app
+    deps: [build]
+    cmds:
+      - "{{.out}}"
+
   test:
     desc: Run tests with coverage
     cmds:

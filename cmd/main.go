@@ -17,11 +17,6 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	g, ctx := errgroup.WithContext(ctx)
-
-	defer cancel()
-
 	slog.Info("***********************************************")
 	slog.Info(" Welcome to Starfeed")
 	slog.Info("***********************************************")
@@ -50,17 +45,20 @@ func main() {
 		))
 	}
 
-	// In this case both os.Interrupt and syscall.SIGTERM are signals.
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-sigChan
-		slog.Warn("Received interrupt signal, shutting down...")
-		cancel()
-	}()
+	// Register signal handling
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
+	// Setup cancel function for SingleRunMode
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Setup our ticker for our timed execution
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
+
+	// Setup our primary error group
+	g, ctx := errgroup.WithContext(ctx)
 
 	// Let's run the RSS server in a separate Go routine
 	rss := rss.NewRSSServer(cfg)
@@ -83,7 +81,7 @@ func main() {
 	}
 
 	g.Go(func() error {
-		// Always run once.... if we are in SingleRunMode we will return and terminate the program
+		// Always run once...
 		if err := executeRunners(ctx, runners); err != nil {
 			slog.Error("Error executing runners", "error", err)
 			return err
@@ -110,22 +108,23 @@ func main() {
 		}
 	})
 
+	// NOTE: By the time g.Wait() is called if there is an error the RSS server will have
+	// gracefully shutdown because we used errgroup.WithContext()
 	if err := g.Wait(); err != nil {
 		slog.Error("Fatal error resulting in shutdown...", "error", err)
 		os.Exit(1)
 	}
 }
 
-// This function executes all of the runners sequentially. If SingleRunMode is set it returns
-// true, otherwise false. It will also return any errors.
+// This function executes all of the runners sequentially.
 func executeRunners(
 	ctx context.Context,
 	runners []runner.Runner,
 ) error {
+	g, ctx := errgroup.WithContext(ctx)
 	for _, r := range runners {
-		if err := r.Run(ctx); err != nil {
-			return err
-		}
+		g.Go(func() error { return r.Run(ctx) })
 	}
-	return nil
+
+	return g.Wait()
 }
