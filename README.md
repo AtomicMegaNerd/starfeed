@@ -139,4 +139,4 @@ task test
 - [x] Use errgroup for error propagation from goroutines instead of fire-and-forget
 - [ ] Create per repo feeds for issues I am subscribed to.
 - [ ] Create pre repo feeds for pull requests I am subscribed to.
-- [ ] Add colored logging.
+- [x] Add colored logging.

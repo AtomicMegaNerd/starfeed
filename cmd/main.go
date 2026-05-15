@@ -11,6 +11,7 @@ import (
 
 	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/runner"
+	"github.com/lmittmann/tint"
 )
 
 func main() {
@@ -27,17 +28,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}
+	// configure logger
+	w := os.Stderr
 	if cfg.DebugMode {
-		slog.Info("Debug mode enabled")
-		handler = &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		}
+		slog.SetDefault(slog.New(
+			tint.NewHandler(w, &tint.Options{
+				Level:      slog.LevelDebug,
+				TimeFormat: time.Kitchen,
+			}),
+		))
+	} else {
+		slog.SetDefault(slog.New(
+			tint.NewHandler(w, &tint.Options{
+				Level:      slog.LevelInfo,
+				TimeFormat: time.Kitchen,
+			}),
+		))
 	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, handler))
-	slog.SetDefault(logger)
 
 	// In this case both os.Interrupt and syscall.SIGTERM are signals.
 	sigChan := make(chan os.Signal, 1)

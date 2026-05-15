@@ -35,7 +35,7 @@ tasks:
     cmds:
       - cmd: go build -o {{.out}} {{.src}}
       - cmd: codesign -f -s "RCD Local" {{.out}} --deep
-        platforms: [darwin] # Only sign the binary on macOS.
+        platforms: [darwin]
 
   test:
     desc: Run tests with coverage

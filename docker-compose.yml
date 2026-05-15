@@ -1,3 +1,4 @@
+---
 services:
   starfeed:
     image: localhost/starfeed:latest
@@ -5,5 +6,5 @@ services:
       context: .
       dockerfile: Dockerfile
     env_file:
-      - .envrc
+      - .env
     restart: unless-stopped
