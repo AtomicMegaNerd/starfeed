@@ -10,12 +10,16 @@ import (
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/config"
+	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/runner"
 	"github.com/lmittmann/tint"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
+	g, ctx := errgroup.WithContext(ctx)
+
 	defer cancel()
 
 	slog.Info("***********************************************")
@@ -49,7 +53,6 @@ func main() {
 	// In this case both os.Interrupt and syscall.SIGTERM are signals.
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
 	go func() {
 		<-sigChan
 		slog.Warn("Received interrupt signal, shutting down...")
@@ -58,6 +61,12 @@ func main() {
 
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
+
+	// Let's run the RSS server in a separate Go routine
+	rss := rss.NewRSSServer(cfg)
+	g.Go(func() error {
+		return rss.Start(ctx)
+	})
 
 	releasesRunner := runner.NewPublishReleasesRunner(
 		cfg,
@@ -73,45 +82,50 @@ func main() {
 		releasesRunner, issuesRunner,
 	}
 
-	if done, err := executeRunners(ctx, cfg, runners); err != nil {
-		slog.Error("Error executing runners", "error", err)
-		return
-	} else if done {
-		return
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			slog.Info("Exiting...")
-			return
-		case <-ticker.C:
-			if done, err := executeRunners(ctx, cfg, runners); err != nil {
-				slog.Error("Error executing runners", "error", err)
-				return
-			} else if done {
-				return
-			}
-			slog.Info("Sleeping for 24 hours...")
+	g.Go(func() error {
+		// Always run once.... if we are in SingleRunMode we will return and terminate the program
+		if err := executeRunners(ctx, runners); err != nil {
+			slog.Error("Error executing runners", "error", err)
+			return err
 		}
+
+		// Cancel further execution if we are in SingleRunMode
+		if cfg.SingleRunMode {
+			slog.Info("Cancelling as we are in single run mode...")
+			cancel()
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				slog.Info("Exiting...")
+				return nil
+			case <-ticker.C:
+				if err := executeRunners(ctx, runners); err != nil {
+					slog.Error("Error executing runners", "error", err)
+					return err
+				}
+				slog.Info("Sleeping for 24 hours...")
+			}
+		}
+	})
+
+	if err := g.Wait(); err != nil {
+		slog.Error("Fatal error resulting in shutdown...", "error", err)
+		os.Exit(1)
 	}
 }
 
+// This function executes all of the runners sequentially. If SingleRunMode is set it returns
+// true, otherwise false. It will also return any errors.
 func executeRunners(
 	ctx context.Context,
-	cfg *config.Config,
 	runners []runner.Runner,
-) (bool, error) {
+) error {
 	for _, r := range runners {
 		if err := r.Run(ctx); err != nil {
-			return false, err
+			return err
 		}
 	}
-
-	if cfg.SingleRunMode {
-		slog.Info("Running in single run mode, exiting...")
-		return true, nil
-	}
-
-	return false, nil
+	return nil
 }

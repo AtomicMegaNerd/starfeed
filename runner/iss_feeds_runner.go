@@ -49,7 +49,7 @@ func (i *publishIssuesRunner) Run(ctx context.Context) error {
 		}
 	}
 	duration := time.Since(start)
-	slog.Info("FreshRSS issues feeds synced with GitHub successfully", "duration", duration)
+	slog.Info("All Followed GitHub Issues Published to RSS", "duration", duration)
 
 	return nil
 }

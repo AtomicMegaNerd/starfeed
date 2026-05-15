@@ -24,7 +24,8 @@ func NewAtomFeedChecker(client *http.Client) AtomFeedChecker {
 	}
 }
 
-// This function checks that the Atom feed has entries in it.
+// This function checks that the Atom feed has entries in it. It returns true if the feed is
+// not empty.
 func (a *atomFeedChecker) CheckFeedHasEntries(
 	ctx context.Context,
 	feedUrl string,

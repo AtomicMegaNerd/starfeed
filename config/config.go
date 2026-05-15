@@ -30,6 +30,7 @@ const (
 	freshRSSURLKey          = "STARFEED_FRESHRSS_URL"
 	freshRSSUserKey         = "STARFEED_FRESHRSS_USER"
 	freshRSSTokenKey        = "STARFEED_FRESHRSS_API_TOKEN"
+	rssServerAddressKey     = "STARFEED_RSS_SERVER_ADDRESS"
 	debugModeKey            = "STARFEED_DEBUG_MODE"
 	singleRunModeKey        = "STARFEED_SINGLE_RUN_MODE"
 	httpTimeoutKey          = "STARFEED_HTTP_TIMEOUT"
@@ -43,6 +44,7 @@ type Config struct {
 	FreshRSSURL          string
 	FreshRSSUser         string
 	FreshRSSToken        string
+	RSSServerAddress     string
 	DebugMode            bool
 	SingleRunMode        bool
 	DisableRepoFeedMode  bool
@@ -56,7 +58,8 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 	if envGetter.Getenv(ghTokenKey) == "" ||
 		envGetter.Getenv(freshRSSURLKey) == "" ||
 		envGetter.Getenv(freshRSSUserKey) == "" ||
-		envGetter.Getenv(freshRSSTokenKey) == "" {
+		envGetter.Getenv(freshRSSTokenKey) == "" ||
+		envGetter.Getenv(rssServerAddressKey) == "" {
 		return nil, errors.New("missing required environment variables")
 	}
 
@@ -94,6 +97,7 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 		FreshRSSURL:          envGetter.Getenv(freshRSSURLKey),
 		FreshRSSUser:         envGetter.Getenv(freshRSSUserKey),
 		FreshRSSToken:        envGetter.Getenv(freshRSSTokenKey),
+		RSSServerAddress:     envGetter.Getenv(rssServerAddressKey),
 		DebugMode:            debugMode,
 		SingleRunMode:        singleRunMode,
 		DisableRepoFeedMode:  disableRepoFeedMode,

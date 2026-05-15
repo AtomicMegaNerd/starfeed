@@ -2,7 +2,9 @@
 
 ## Overview
 
-Starfeed is a Go application that syncs GitHub release RSS feeds for repos you have starred into a FreshRSS instance. It uses only the Go standard library and is containerized via a multi-stage Dockerfile. CI builds, tests, lints, and publishes images via GitHub Actions.
+Starfeed is a Go application that syncs GitHub release RSS feeds for repos you have starred into a
+FreshRSS instance. It uses only the Go standard library and is containerized via a multi-stage
+Dockerfile. CI builds, tests, lints, and publishes images via GitHub Actions.
 
 ## Environment and Tooling
 
@@ -26,16 +28,17 @@ Starfeed is a Go application that syncs GitHub release RSS feeds for repos you h
 ## Environment Variables
 
 Required (config.NewConfig enforces):
+
 - `STARFEED_GITHUB_API_TOKEN`
 - `STARFEED_FRESHRSS_URL`
 - `STARFEED_FRESHRSS_USER`
 - `STARFEED_FRESHRSS_API_TOKEN`
 
 Optional:
+
 - `STARFEED_DEBUG_MODE` (any value valid for strconv.ParseBool is good here)
 - `STARFEED_SINGLE_RUN_MODE` (any value valid for strconv.ParseBool is good here)
 - `STARFEED_HTTP_TIMEOUT` (seconds; default 10)
-
 
 **NOTE**: The app defaults to 24-hour intervals unless `STARFEED_SINGLE_RUN_MODE=true`.
 
@@ -47,16 +50,16 @@ Local dev: keep secrets in `.envrc` (direnv) and symlink `.env` -> `.envrc` for 
   - Image set to `localhost/starfeed:latest`
   - `env_file: .envrc` (dotenv-style)
   - `restart: unless-stopped`
-- Compose expects `.envrc` to be dotenv-style (KEY=VALUE); if using direnv functions,
-  symlink a plain `.env`.
+- Compose expects `.envrc` to be dotenv-style (KEY=VALUE); if using direnv functions, symlink a
+  plain `.env`.
 
 ## Code Organization
 
 - `cmd/main.go`: Application entrypoint; sets up logging, reads config, handles signals, schedules
   24h ticker, and invokes the publisher.
 - `config/`: Configuration loading and validation from environment.
-- `runner/`: Orchestrates querying GitHub, checking feeds, publishing to FreshRSS, and pruning
-  stale feeds; uses goroutines and a WaitGroup.
+- `runner/`: Orchestrates querying GitHub, checking feeds, publishing to FreshRSS, and pruning stale
+  feeds; uses goroutines and a WaitGroup.
 - `github/`: GitHub API client (stars), pagination parsing, and release feed URL construction.
 - `freshrss/`: FreshRSS client for authentication and feed management.
 - `atom/`: Atom feed checker to ensure feeds have entries before adding.
