@@ -9,7 +9,6 @@ env:
   grc: $(if command -v grc > /dev/null; then echo "grc"; else echo ""; fi)
   cover_out: cover.out
   exclude_packages: "mocks|cmd"
-  coverage_threshold: 80
   CGO_ENABLED: "0"
 
 tasks:
