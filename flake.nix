@@ -15,13 +15,12 @@
       git-hooks,
     }:
     let
-      systems = nixpkgs.lib.systems.flakeExposed;
-      buildPkgsConf =
-        system:
-        import nixpkgs {
-          inherit system;
-          config.allowUnfree = true;
-        };
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
 
       buildPreCommitCheck =
         system:
@@ -54,7 +53,7 @@
       devShells = nixpkgs.lib.genAttrs systems (
         system:
         let
-          pkgs = buildPkgsConf system;
+          pkgs = import nixpkgs { inherit system; };
         in
         {
           default = pkgs.mkShell {
