@@ -38,10 +38,12 @@
             end-of-file-fixer.enable = true;
             check-yaml.enable = true;
             check-toml.enable = true;
-            gofmt.enable = true;
-            golangci-lint.enable = true;
             nixfmt.enable = true;
             flake-checker.enable = true;
+            markdownlint.enable = true;
+            # Go specific pre-commit hooks
+            gofmt.enable = true;
+            golangci-lint.enable = true;
           };
         };
     in
@@ -77,5 +79,4 @@
         }
       );
     };
-
 }
