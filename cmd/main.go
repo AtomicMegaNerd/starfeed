@@ -108,7 +108,7 @@ func main() {
 		}
 	})
 
-	// NOTE: By the time g.Wait() is called if there is an error the RSS server will have
+	// NOTE: By the time g.Wait() returns if there is an error the RSS server will have
 	// gracefully shutdown because we used errgroup.WithContext()
 	if err := g.Wait(); err != nil {
 		slog.Error("Fatal error resulting in shutdown...", "error", err)
@@ -116,7 +116,8 @@ func main() {
 	}
 }
 
-// This function executes all of the runners sequentially.
+// This function executes all of the runners in parallel using its own errgroup. It returns the
+// first error it finds
 func executeRunners(
 	ctx context.Context,
 	runners []runner.Runner,
@@ -125,6 +126,5 @@ func executeRunners(
 	for _, r := range runners {
 		g.Go(func() error { return r.Run(ctx) })
 	}
-
 	return g.Wait()
 }
