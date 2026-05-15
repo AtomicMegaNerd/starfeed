@@ -66,10 +66,12 @@
               pkgs.go-tools
               pkgs.gopls
               pkgs.golangci-lint
+              pkgs.gotestsum
               pkgs.go-task
               pkgs.bash-language-server
               pkgs.docker-language-server
               pkgs.yaml-language-server
+              pkgs.yamllint
               pkgs.markdownlint-cli2
               pkgs.nixfmt
               pkgs.nil

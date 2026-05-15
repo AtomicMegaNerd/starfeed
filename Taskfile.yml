@@ -1,27 +1,29 @@
 ---
 version: "3"
 
-dotenv: [./.env]
+dotenv: [.env]
 
 env:
   out: bin/starfeed
   src: ./cmd/
-  grc: $(if command -v grc > /dev/null; then echo "grc"; else echo ""; fi)
   cover_out: cover.out
   exclude_packages: "mocks|cmd"
   CGO_ENABLED: "0"
 
 tasks:
   clean:
+    desc: Remove build artifacts
     cmds:
       - rm -f {{.out}} {{.cover_out}}
 
   check-deps:
+    internal: true
     cmds:
       - go mod tidy
       - go mod verify
 
   build:
+    desc: Build the binary
     deps: [check-deps]
     sources:
       - "**/*.go"
@@ -35,23 +37,18 @@ tasks:
       - cmd: codesign -f -s "RCD Local" {{.out}} --deep
         platforms: [darwin] # Only sign the binary on macOS.
 
-  run:
-    deps: [build]
-    cmds:
-      - cmd: ./{{.out}}
-
   test:
+    desc: Run tests with coverage
     cmds:
       - |
-        {{.grc}} go test $(go list ./... | grep -Ev "{{.exclude_packages}}") -race \
-        -v -coverprofile={{.cover_out}}
+        gotestsum --format testdox -- \
+        $(go list ./... | grep -Ev "{{.exclude_packages}}") \
+        -race -coverprofile={{.cover_out}}
     env:
       CGO_ENABLED: "1"
 
   lint:
+    desc: Lint and auto-fix Go code
     cmds:
       - golangci-lint run --fix ./...
-
-  update-deps:
-    cmds:
-      - go get -u ./...
+      - go fix ./...
