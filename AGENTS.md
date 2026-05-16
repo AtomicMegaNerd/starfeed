@@ -3,8 +3,8 @@
 ## Overview
 
 Starfeed is a Go application that syncs GitHub release RSS feeds for repos you have starred into a
-FreshRSS instance. It uses only the Go standard library and is containerized via a multi-stage
-Dockerfile. CI builds, tests, lints, and publishes images via GitHub Actions.
+FreshRSS instance. It uses very few dependencies and is containerized via a multi-stage Dockerfile.
+CI builds, tests, lints, and publishes images via GitHub Actions.
 
 ## Environment and Tooling
 
@@ -48,10 +48,8 @@ Local dev: keep secrets in `.envrc` (direnv) and symlink `.env` -> `.envrc` for 
 
 - Compose service uses: `docker-compose.yml`
   - Image set to `localhost/starfeed:latest`
-  - `env_file: .envrc` (dotenv-style)
+  - `env_file: .env` (dotenv-style)
   - `restart: unless-stopped`
-- Compose expects `.envrc` to be dotenv-style (KEY=VALUE); if using direnv functions, symlink a
-  plain `.env`.
 
 ## Code Organization
 
@@ -59,7 +57,7 @@ Local dev: keep secrets in `.envrc` (direnv) and symlink `.env` -> `.envrc` for 
   24h ticker, and invokes the publisher.
 - `config/`: Configuration loading and validation from environment.
 - `runner/`: Orchestrates querying GitHub, checking feeds, publishing to FreshRSS, and pruning stale
-  feeds; uses goroutines and a WaitGroup.
+  feeds
 - `github/`: GitHub API client (stars), pagination parsing, and release feed URL construction.
 - `freshrss/`: FreshRSS client for authentication and feed management.
 - `atom/`: Atom feed checker to ensure feeds have entries before adding.
@@ -94,9 +92,11 @@ Local dev: keep secrets in `.envrc` (direnv) and symlink `.env` -> `.envrc` for 
 
 ## Dockerfile Notes
 
-- Multi-stage build; builder uses latest go alpine image and installs `go-task`.
+- Multi-stage build; builder uses latest go alpine image (but not latest tag, specifies version) and
+  installs `go-task`.
 - Binary built to `/app/bin/starfeed`; CGO disabled and binary stripped (`-s -w`).
-- Runner uses latest alpine image, non-root user created; `COPY --chown` and `PATH=/app/bin`.
+- Runner uses latest alpine image (again specific version like the builder), non-root user created;
+  `COPY --chown` and `PATH=/app/bin`.
 
 ## CI/CD
 

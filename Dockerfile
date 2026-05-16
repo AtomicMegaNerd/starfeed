@@ -30,7 +30,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM alpine:3.23 AS runner
 
 LABEL org.opencontainers.image.title="starfeed"
-LABEL org.opencontainers.image.description="Starfeed subsribes to RSS feeds for starred GitHub repos"
+LABEL org.opencontainers.image.description="Starfeed subscribes to RSS feeds for starred GitHub repos"
 LABEL org.opencontainers.image.authors="Chris Dunphy"
 LABEL org.opencontainers.image.source="https://github.com/atomicmeganerd/starfeed"
 LABEL org.opencontainers.image.licenses="MIT"
