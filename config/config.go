@@ -20,8 +20,8 @@ const (
 	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
 	httpTimeoutKey   = "STARFEED_HTTP_TIMEOUT"
 
-	gitHubHostConfigFields = 5
-	rssServerConfigFields  = 4
+	gitHubHostConfigFields = 6
+	rssServerConfigFields  = 5
 )
 
 // The main Config struct used to hold configuration state for the app
@@ -80,6 +80,7 @@ type GitHostConfig struct {
 	BaseURL string `validate:"required,url"`
 	ApiURL  string `validate:"required,url"`
 	Token   string `validate:"required,min=24"`
+	Enabled bool
 }
 
 func buildGitHostConfigs(
@@ -99,7 +100,11 @@ func buildGitHostConfigs(
 
 		parts := strings.SplitN(gitHostCsv, ",", gitHubHostConfigFields)
 		if len(parts) != gitHubHostConfigFields {
-			return nil, fmt.Errorf("expected csv to have %d parts but it had %d", 4, len(parts))
+			return nil, fmt.Errorf(
+				"expected csv to have %d parts but it had %d",
+				gitHubHostConfigFields,
+				len(parts),
+			)
 		}
 
 		hostType := strings.TrimSpace(parts[0])
@@ -107,9 +112,14 @@ func buildGitHostConfigs(
 		baseURL := strings.TrimSpace(parts[2])
 		apiURL := strings.TrimSpace(parts[3])
 		token := strings.TrimSpace(parts[4])
+		enabledStr := strings.TrimSpace(parts[5])
 
-		// This will fail validation on construction if any of these are invalid...
-		gitHostConfig := GitHostConfig{hostType, name, baseURL, apiURL, token}
+		enabled, err := strconv.ParseBool(enabledStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
+		}
+
+		gitHostConfig := GitHostConfig{hostType, name, baseURL, apiURL, token, enabled}
 
 		if err := validate.Struct(gitHostConfig); err != nil {
 			return nil, err
@@ -126,6 +136,7 @@ type RSSServerConfig struct {
 	BaseURL string `validate:"required,url"`
 	User    string `validate:"required,min=3"`
 	Token   string `validate:"required,min=10"`
+	Enabled bool
 }
 
 func buildRssServerConfig(
@@ -144,8 +155,14 @@ func buildRssServerConfig(
 	baseUrl := strings.TrimSpace(parts[1])
 	user := strings.TrimSpace(parts[2])
 	token := strings.TrimSpace(parts[3])
+	enabledStr := strings.TrimSpace(parts[4])
 
-	rssConfig := &RSSServerConfig{rssType, baseUrl, user, token}
+	enabled, err := strconv.ParseBool(enabledStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
+	}
+
+	rssConfig := &RSSServerConfig{rssType, baseUrl, user, token, enabled}
 
 	if err := validate.Struct(rssConfig); err != nil {
 		return nil, err

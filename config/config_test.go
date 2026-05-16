@@ -9,52 +9,116 @@ import (
 )
 
 var (
-	validGitHostCSV = fmt.Sprintf("%s,%s,%s,%s,%s",
-		mocks.GitHubType, mocks.GitHubName, mocks.GitHubURL, mocks.GitHubAPIURL, mocks.GitHubToken)
+	validGitHostCSV = fmt.Sprintf(
+		"%s,%s,%s,%s,%s,%s",
+		mocks.GitHubType,
+		mocks.GitHubName,
+		mocks.GitHubURL,
+		mocks.GitHubAPIURL,
+		mocks.GitHubToken,
+		mocks.TrueBool,
+	)
 	validForgejoCSV = fmt.Sprintf(
-		"%s,%s,%s,%s,%s",
+		"%s,%s,%s,%s,%s,%s",
 		mocks.ForgejoType,
 		mocks.ForgejoName,
 		mocks.ForgejoURL,
 		mocks.ForgejoAPIUrl,
 		mocks.ForgejoToken,
+		mocks.TrueBool,
 	)
-	validRSSCSV = fmt.Sprintf("%s,%s,%s,%s",
-		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser, mocks.FreshRSSToken)
+	validRSSCSV = fmt.Sprintf(
+		"%s,%s,%s,%s,%s",
+		mocks.FreshRSSType,
+		mocks.FreshRSSURL,
+		mocks.FreshRSSUser,
+		mocks.FreshRSSToken,
+		mocks.TrueBool,
+	)
 	invalidTypeCSV = fmt.Sprintf(
-		"gitlab,mygitlab,https://gitlab.com,https://api.gitlab.com,%s",
-		mocks.GitHubToken,
+		"gitlab,mygitlab,https://gitlab.com,https://api.gitlab.com,%s,%s",
+		mocks.GitHubToken, mocks.TrueBool,
 	)
 	missingPartsCSV = fmt.Sprintf("%s,%s", mocks.GitHubType, mocks.GitHubURL)
 	emptyURLCSV     = fmt.Sprintf(
-		"%s,%s,,%s,%s", mocks.GitHubType, mocks.GitHubName, mocks.GitHubAPIURL, mocks.GitHubToken,
+		"%s,%s,,%s,%s,%s",
+		mocks.GitHubType,
+		mocks.GitHubName,
+		mocks.GitHubAPIURL,
+		mocks.GitHubToken,
+		mocks.TrueBool,
 	)
 
 	emptyTokenCSV = fmt.Sprintf(
-		"%s,%s,%s,%s,",
+		"%s,%s,%s,%s,,%s",
 		mocks.GitHubType,
 		mocks.GitHubName,
 		mocks.GitHubURL,
 		mocks.GitHubAPIURL,
+		mocks.TrueBool,
 	)
 	missingRSSCSV = fmt.Sprintf("%s,%s", mocks.FreshRSSType, mocks.FreshRSSURL)
 
 	emptyBaseURLCSV = fmt.Sprintf(
-		"%s,%s,,%s,%s", mocks.GitHubType, mocks.GitHubName, mocks.GitHubAPIURL, mocks.GitHubToken,
+		"%s,%s,,%s,%s,%s",
+		mocks.GitHubType,
+		mocks.GitHubName,
+		mocks.GitHubAPIURL,
+		mocks.GitHubToken,
+		mocks.TrueBool,
 	)
 	emptyAPIURLCSV = fmt.Sprintf(
-		"%s,%s,%s,,%s", mocks.GitHubType, mocks.GitHubName, mocks.GitHubURL, mocks.GitHubToken,
+		"%s,%s,%s,,%s,%s",
+		mocks.GitHubType,
+		mocks.GitHubName,
+		mocks.GitHubURL,
+		mocks.GitHubToken,
+		mocks.TrueBool,
 	)
 
-	validGitHostCSVWithSpaces = fmt.Sprintf(" %s , %s , %s , %s , %s ",
-		mocks.GitHubType, mocks.GitHubName, mocks.GitHubURL, mocks.GitHubAPIURL, mocks.GitHubToken)
-	validRSSCSVWithSpaces = fmt.Sprintf(" %s , %s , %s , %s ",
-		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser, mocks.FreshRSSToken)
+	validGitHostCSVWithSpaces = fmt.Sprintf(
+		" %s , %s , %s , %s , %s , %s ",
+		mocks.GitHubType,
+		mocks.GitHubName,
+		mocks.GitHubURL,
+		mocks.GitHubAPIURL,
+		mocks.GitHubToken,
+		mocks.TrueBool,
+	)
+	validRSSCSVWithSpaces = fmt.Sprintf(
+		" %s , %s , %s , %s , %s ",
+		mocks.FreshRSSType,
+		mocks.FreshRSSURL,
+		mocks.FreshRSSUser,
+		mocks.FreshRSSToken,
+		mocks.TrueBool,
+	)
 
-	emptyURLRSSCSV = fmt.Sprintf("%s,,%s,%s",
-		mocks.FreshRSSType, mocks.FreshRSSUser, mocks.FreshRSSToken)
-	emptyTokenRSSCSV = fmt.Sprintf("%s,%s,%s,",
-		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser)
+	emptyURLRSSCSV = fmt.Sprintf("%s,,%s,%s,%s",
+		mocks.FreshRSSType, mocks.FreshRSSUser, mocks.FreshRSSToken, mocks.TrueBool)
+	emptyTokenRSSCSV = fmt.Sprintf("%s,%s,%s,,%s",
+		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser, mocks.TrueBool)
+	invalidEnabledGitHostCSV = fmt.Sprintf(
+		"%s,%s,%s,%s,%s,%s",
+		mocks.GitHubType,
+		mocks.GitHubName,
+		mocks.GitHubURL,
+		mocks.GitHubAPIURL,
+		mocks.GitHubToken,
+		mocks.Invalid,
+	)
+	invalidEnabledRSSCSV = fmt.Sprintf(
+		"%s,%s,%s,%s,%s",
+		mocks.FreshRSSType,
+		mocks.FreshRSSURL,
+		mocks.FreshRSSUser,
+		mocks.FreshRSSToken,
+		mocks.Invalid,
+	)
+	missingEnabledGitHostCSV = fmt.Sprintf("%s,%s,%s,%s,%s",
+		mocks.GitHubType, mocks.GitHubName, mocks.GitHubURL, mocks.GitHubAPIURL, mocks.GitHubToken)
+	missingEnabledRSSCSV = fmt.Sprintf("%s,%s,%s,%s",
+		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser, mocks.FreshRSSToken)
 )
 
 func validConfig() *Config {
@@ -261,6 +325,42 @@ func TestNewConfig(t *testing.T) {
 			envVars: map[string]string{
 				"STARFEED_GIT_HOST_0": emptyAPIURLCSV,
 				"STARFEED_RSS_SERVER": validRSSCSV,
+			},
+			expectError: true,
+			expected:    nil,
+		},
+		{
+			name: "Invalid Enabled in git host CSV should error",
+			envVars: map[string]string{
+				"STARFEED_GIT_HOST_0": invalidEnabledGitHostCSV,
+				"STARFEED_RSS_SERVER": validRSSCSV,
+			},
+			expectError: true,
+			expected:    nil,
+		},
+		{
+			name: "Invalid Enabled in RSS server CSV should error",
+			envVars: map[string]string{
+				"STARFEED_GIT_HOST_0": validGitHostCSV,
+				"STARFEED_RSS_SERVER": invalidEnabledRSSCSV,
+			},
+			expectError: true,
+			expected:    nil,
+		},
+		{
+			name: "Missing Enabled in git host CSV should error",
+			envVars: map[string]string{
+				"STARFEED_GIT_HOST_0": missingEnabledGitHostCSV,
+				"STARFEED_RSS_SERVER": validRSSCSV,
+			},
+			expectError: true,
+			expected:    nil,
+		},
+		{
+			name: "Missing Enabled in RSS server CSV should error",
+			envVars: map[string]string{
+				"STARFEED_GIT_HOST_0": validGitHostCSV,
+				"STARFEED_RSS_SERVER": missingEnabledRSSCSV,
 			},
 			expectError: true,
 			expected:    nil,

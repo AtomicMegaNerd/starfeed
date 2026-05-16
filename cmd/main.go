@@ -22,12 +22,14 @@ func main() {
 	slog.Info(" Welcome to Starfeed")
 	slog.Info("***********************************************")
 
+	// The configuration is loaded from the environment
 	cfg, err := config.NewConfig(config.OSEnvGetter{})
-	client := &http.Client{Timeout: cfg.HTTPTimeout}
 	if err != nil {
 		slog.Error("Failed to load configuration", "error", err.Error())
 		os.Exit(1)
 	}
+
+	client := &http.Client{Timeout: cfg.HTTPTimeout}
 
 	// configure logger
 	w := os.Stderr
@@ -67,7 +69,7 @@ func main() {
 		gitHost, err := githost.NewGitHost(gitHostConfig, client)
 		if err != nil {
 			slog.Error("Cannot configure git host...", "error", err)
-			return
+			os.Exit(1)
 		}
 		releasesRunner := runner.NewPublishReleasesRunner(gitHost, rssServer, feedChecker)
 		runners = append(runners, releasesRunner)
@@ -76,7 +78,7 @@ func main() {
 	// Always run once...
 	if err := executeRunners(ctx, runners); err != nil {
 		slog.Error("Error executing runers", "error", err)
-		return
+		os.Exit(1)
 	}
 
 	if cfg.SingleRunMode {
@@ -102,7 +104,7 @@ func main() {
 		case <-ticker.C:
 			if err := executeRunners(ctx, runners); err != nil {
 				slog.Error("Error executing runers", "error", err)
-				return
+				os.Exit(1)
 			}
 			slog.Info("Sleeping for 24 hours...")
 		}

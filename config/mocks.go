@@ -19,7 +19,12 @@ func (m *MockEnvGetter) Getenv(key string) string {
 
 var (
 	MockValidGitHubConfig = GitHostConfig{
-		mocks.GitHubType, mocks.GitHubName, mocks.GitHubURL, mocks.GitHubAPIURL, mocks.GitHubToken,
+		mocks.GitHubType,
+		mocks.GitHubName,
+		mocks.GitHubURL,
+		mocks.GitHubAPIURL,
+		mocks.GitHubToken,
+		true,
 	}
 
 	MockValidForgejoConfig = GitHostConfig{
@@ -28,9 +33,10 @@ var (
 		mocks.ForgejoURL,
 		mocks.ForgejoAPIUrl,
 		mocks.ForgejoToken,
+		true,
 	}
 
 	MockValidFreshRSSConfig = &RSSServerConfig{
-		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser, mocks.FreshRSSToken,
+		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser, mocks.FreshRSSToken, true,
 	}
 )
