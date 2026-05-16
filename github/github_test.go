@@ -39,12 +39,7 @@ type GetStarredReposTestCase struct {
 func (tc *GetStarredReposTestCase) GetTestObject() githost.GitHost {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
-	gitHost := githost.GitHostConfig{
-		Type:    mocks.GitHubType,
-		BaseURL: mocks.GitHubURL,
-		Token:   mocks.GitHubToken,
-	}
-	return NewGitHub(gitHost, mockClient)
+	return NewGitHub(githost.MockValidGitHub, mockClient)
 }
 
 func TestGetStarredRepos(t *testing.T) {
