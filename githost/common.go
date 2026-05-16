@@ -29,10 +29,10 @@ type gitHost struct {
 	token    string
 
 	// These are computed
-	GetReposURL      string
-	Headers          map[string]string
-	NextPagePattern  *regexp.Regexp
-	IsReleasePattern *regexp.Regexp
+	getReposURL      string
+	headers          map[string]string
+	nextPagePattern  *regexp.Regexp
+	isReleasePattern *regexp.Regexp
 	client           *http.Client
 }
 
@@ -47,36 +47,45 @@ func NewGitHost(
 		client:   client,
 	}
 
-	// This regex is used to find the next page link in the GitHub API response
-	nextPageLinkRegex := regexp.MustCompile(`<([^>]+)>; rel="next"`)
-	// This regex is used to determine if an RSS feed is a Forgejo release feed
-	isRelRepoRegex := regexp.MustCompile(
-		fmt.Sprintf(`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`, regexp.QuoteMeta(gitHost.baseURL)),
-	)
-
-	gitHost.NextPagePattern = nextPageLinkRegex
-	gitHost.IsReleasePattern = isRelRepoRegex
-
+	// Some of the fields on this object depend on what type of git host this is...
 	switch gitHost.hostType {
 	case "github":
-		gitHost.Headers = map[string]string{
+		gitHost.headers = map[string]string{
 			"Authorization":        fmt.Sprintf("Bearer %s", gitHost.token),
 			"X-GitHub-Api-Version": "2022-11-28",
 			"User-Agent":           "github.com/atomicmeganerd/starfeed",
 			"Content-Type":         "application/json",
 			"Accept":               "application/json",
 		}
-		gitHost.GetReposURL = ""
+		gitHost.getReposURL = "https://api.github.com/user/starred?per_page=100"
+
+		gitHost.nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
+		gitHost.isReleasePattern = regexp.MustCompile(
+			fmt.Sprintf(
+				`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
+				regexp.QuoteMeta(gitHost.baseURL),
+			),
+		)
+
 		return gitHost, nil
 
 	case "forgejo":
-		gitHost.Headers = map[string]string{
+		gitHost.headers = map[string]string{
 			"Authorization": fmt.Sprintf("Bearer %s", gitHost.token),
 			"User-Agent":    "TBD", // TODO: Fix this
 			"Content-Type":  "application/json",
 			"Accept":        "application/json",
 		}
-		gitHost.GetReposURL = ""
+
+		gitHost.nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
+		gitHost.isReleasePattern = regexp.MustCompile(
+			fmt.Sprintf(
+				`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
+				regexp.QuoteMeta(gitHost.baseURL),
+			),
+		)
+
+		gitHost.getReposURL = ""
 		return gitHost, nil
 	}
 
@@ -93,15 +102,14 @@ func (g *gitHost) GetStarredRepos(
 	ctx context.Context,
 ) (map[string]Repo, error) {
 	allFeeds := make(map[string]Repo)
-	getUrl := "https://api.github.com/user/starred?per_page=100"
-	slog.Debug("Querying GitHub for starred repos", "url", getUrl)
+	slog.Debug("Querying git host for starred repos", "host", g.Name, "url", g.getReposURL)
 
 	for {
 		resp, err := DoApiRequest(
 			ctx,
-			getUrl,
-			g.Headers,
-			g.NextPagePattern,
+			g.getReposURL,
+			g.headers,
+			g.nextPagePattern,
 			g.client,
 		)
 		if err != nil {
@@ -123,13 +131,13 @@ func (g *gitHost) GetStarredRepos(
 		}
 
 		slog.Debug("Found next page", "url", resp.NextPage)
-		getUrl = resp.NextPage
+		g.getReposURL = resp.NextPage
 	}
 }
 
-// This function returns true if a repoUrl is a GitHub release repo
+// This function returns true if the given repoUrl is a release repo
 // Arguments:
 // - feedUrl: The URL of the RSS feed to check.
 func (g *gitHost) IsReleaseFeed(feedUrl string) bool {
-	return g.IsReleasePattern.MatchString(feedUrl)
+	return g.isReleasePattern.MatchString(feedUrl)
 }

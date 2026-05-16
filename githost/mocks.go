@@ -23,10 +23,10 @@ var (
 			baseURL:          mocks.GitHubURL,
 			token:            mocks.GitHubToken,
 			client:           client,
-			GetReposURL:      "",
-			NextPagePattern:  nextPageLinkRegex,
-			IsReleasePattern: githubRelRegex,
-			Headers: map[string]string{
+			getReposURL:      "https://api.github.com",
+			nextPagePattern:  nextPageLinkRegex,
+			isReleasePattern: githubRelRegex,
+			headers: map[string]string{
 				"Authorization":        "Bearer " + mocks.GitHubToken,
 				"X-GitHub-Api-Version": "2022-11-28",
 				"User-Agent":           "github.com/atomicmeganerd/starfeed",
@@ -43,10 +43,10 @@ var (
 			baseURL:          mocks.ForgejoURL,
 			token:            mocks.ForgejoToken,
 			client:           client,
-			GetReposURL:      "",
-			NextPagePattern:  nextPageLinkRegex,
-			IsReleasePattern: forgejoRelRegex,
-			Headers: map[string]string{
+			getReposURL:      "https://api.forgejo.org",
+			nextPagePattern:  nextPageLinkRegex,
+			isReleasePattern: forgejoRelRegex,
+			headers: map[string]string{
 				"Authorization": "Bearer " + mocks.ForgejoToken,
 				"User-Agent":    "github.com/atomicmeganerd/starfeed",
 				"Content-Type":  "application/json",

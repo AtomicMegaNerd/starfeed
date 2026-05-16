@@ -62,7 +62,7 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 			urlRegex: []string{
 				`.*rss.*api.*accounts.*`,
 				`.*rss.*api.*reader.*`,
-				`.*api\.github\.com.*`,
+				`.*api\.[a-z0-9]*\.com.*`,
 			},
 			expectError: false,
 		},
