@@ -27,6 +27,7 @@
         git-hooks.lib.${system}.run {
           src = ./.;
           hooks = {
+            # This formats Markdown
             oxfmt = {
               enable = true;
               name = "oxfmt";
@@ -62,12 +63,15 @@
             inherit (self.checks.${system}.pre-commit-check) shellHook;
             # The packages we need for this project
             buildInputs = [
+              # Go tools
               pkgs.go_1_26
               pkgs.go-tools
               pkgs.gopls
               pkgs.golangci-lint
               pkgs.gotestsum
               pkgs.go-task
+
+              # Non-Go tools
               pkgs.bash-language-server
               pkgs.docker-language-server
               pkgs.yaml-language-server
