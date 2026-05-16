@@ -9,19 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/githost"
 	"github.com/atomicmeganerd/starfeed/github"
 	"github.com/atomicmeganerd/starfeed/mocks"
 	"github.com/atomicmeganerd/starfeed/rss"
 	"golang.org/x/sync/errgroup"
-)
-
-const (
-	mockGhToken       = "ghp_abcdefghijklmnopqrstuvwxyz"
-	mockFreshRSSURL   = "http://rss.example.com"
-	mockFreshRSSUser  = "testuser"
-	mockFreshRSSToken = "freshrss_token"
 )
 
 type QueryAndPublishFeedsTestCase struct {
@@ -34,21 +26,10 @@ type QueryAndPublishFeedsTestCase struct {
 func (tc *QueryAndPublishFeedsTestCase) GetTestRunner() Runner {
 	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegex)
 	mockClient := &http.Client{Transport: &mockTransport}
-	gitHost := githost.GitHostConfig{
-		Type:    "github",
-		BaseURL: "https://github.com",
-		Token:   mockGhToken,
-	}
+
 	return NewPublishReleasesRunner(
-		gitHost,
-		&config.Config{
-			RSSServer: rss.RSSServerConfig{
-				Type:    "freshrss",
-				BaseURL: mockFreshRSSURL,
-				User:    mockFreshRSSUser,
-				Token:   mockFreshRSSToken,
-			},
-		},
+		githost.MockValidGitHost,
+		rss.MockValidRSSServer,
 		mockClient,
 	)
 }

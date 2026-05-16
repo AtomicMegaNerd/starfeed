@@ -7,6 +7,12 @@ import (
 	"sync"
 )
 
+const (
+	StatusOKString           = "200 OK"
+	StatusNotFoundString     = "404 Not Found"
+	StatusUnauthorizedString = "401 Unauthorized"
+)
+
 // This is a mock round tripper that can be used to mock http responses
 // for testing purposes. It is used to mock the http.Client's transport
 // in the http.Client.Do method. It can be used to mock multiple responses

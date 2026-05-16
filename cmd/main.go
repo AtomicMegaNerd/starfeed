@@ -60,7 +60,7 @@ func main() {
 	for _, gitHost := range cfg.GitHosts {
 		releasesRunner := runner.NewPublishReleasesRunner(
 			gitHost,
-			cfg,
+			cfg.RSSServer,
 			&http.Client{Timeout: cfg.HTTPTimeout},
 		)
 		runners = append(runners, releasesRunner)

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/atom"
-	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/githost"
 	"github.com/atomicmeganerd/starfeed/rss"
 	"golang.org/x/sync/errgroup"
@@ -15,9 +14,9 @@ import (
 
 // RepoRSSPublisher is a struct that manages the main workflow of the application.
 type publishReleasesRunner struct {
-	gitHost githost.GitHostConfig
-	cfg     *config.Config
-	client  *http.Client
+	gitHost   githost.GitHostConfig
+	rssServer rss.RSSServerConfig
+	client    *http.Client
 }
 
 // NewPublishReleasesRunner creates a new RepoRSSPublisher instance.
@@ -26,12 +25,12 @@ type publishReleasesRunner struct {
 // - client: The http client to use for requests (used for mocking).
 func NewPublishReleasesRunner(
 	gitHost githost.GitHostConfig,
-	cfg *config.Config,
+	rssServer rss.RSSServerConfig,
 	client *http.Client,
 ) Runner {
 	return &publishReleasesRunner{
 		gitHost,
-		cfg,
+		rssServer,
 		client,
 	}
 }
@@ -47,7 +46,7 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	fr := rss.NewFreshRSSFeedManager(&p.cfg.RSSServer, p.client)
+	fr := rss.NewFreshRSSFeedManager(&p.rssServer, p.client)
 	at := atom.NewAtomFeedChecker(p.client)
 
 	// Authenticate to FreshRSS

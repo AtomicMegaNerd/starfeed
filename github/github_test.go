@@ -60,7 +60,7 @@ func TestGetStarredRepos(t *testing.T) {
 						}
 						]`),
 					),
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 					StatusCode: http.StatusOK,
 				},
 			},
@@ -87,7 +87,7 @@ func TestGetStarredRepos(t *testing.T) {
 						}
 						]`),
 					),
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 					StatusCode: http.StatusOK,
 					Header: http.Header{
 						"Link": []string{
@@ -107,7 +107,7 @@ func TestGetStarredRepos(t *testing.T) {
 						}
 						]`),
 					),
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 					StatusCode: http.StatusOK,
 				},
 			},
@@ -124,7 +124,7 @@ func TestGetStarredRepos(t *testing.T) {
 			responses: []http.Response{
 				{
 					Body:       io.NopCloser(strings.NewReader(``)),
-					Status:     "404 Not Found",
+					Status:     mocks.StatusNotFoundString,
 					StatusCode: http.StatusNotFound,
 				},
 			},
@@ -136,7 +136,7 @@ func TestGetStarredRepos(t *testing.T) {
 			responses: []http.Response{
 				{
 					Body:       mocks.NewErrorReadCloser(),
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 					StatusCode: http.StatusOK,
 				},
 			},
@@ -147,8 +147,8 @@ func TestGetStarredRepos(t *testing.T) {
 			name: "Invalid json should trigger an error",
 			responses: []http.Response{
 				{
-					Body:       io.NopCloser(strings.NewReader(`The higher, the fewer`)),
-					Status:     "200 OK",
+					Body:       io.NopCloser(strings.NewReader(mocks.Invalid)),
+					Status:     mocks.StatusOKString,
 					StatusCode: http.StatusOK,
 				},
 			},
