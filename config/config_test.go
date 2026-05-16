@@ -267,7 +267,11 @@ func TestNewConfig(t *testing.T) {
 			}
 
 			if len(cfg.GitHosts) != len(tc.expected.GitHosts) {
-				t.Errorf("Expected %d GitHosts, got %d", len(tc.expected.GitHosts), len(cfg.GitHosts))
+				t.Errorf(
+					"Expected %d GitHosts, got %d",
+					len(tc.expected.GitHosts),
+					len(cfg.GitHosts),
+				)
 				return
 			}
 

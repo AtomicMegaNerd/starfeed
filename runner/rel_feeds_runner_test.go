@@ -245,7 +245,14 @@ func TestPublishToFreshRSS(t *testing.T) {
 			ctx := context.Background()
 
 			g.Go(func() error {
-				return publishToFreshRSS(ctx, mockFreshRSS, mockAtom, tc.existingFeeds, tc.repo, "github")
+				return publishToFreshRSS(
+					ctx,
+					mockFreshRSS,
+					mockAtom,
+					tc.existingFeeds,
+					tc.repo,
+					"github",
+				)
 			})
 
 			if err := g.Wait(); err != nil {
