@@ -97,17 +97,18 @@ func (g *gitHost) Name() string {
 }
 
 // This will return all starred repos including the Atom feeds for their releases
-// It returns a map of releaseFeedUrl -> GitHubRepo
+// It returns a map of releaseFeedUrl -> Repo
 func (g *gitHost) GetStarredRepos(
 	ctx context.Context,
 ) (map[string]Repo, error) {
 	allFeeds := make(map[string]Repo)
 	slog.Debug("Querying git host for starred repos", "host", g.Name, "url", g.getReposURL)
 
+	nextPageUrl := g.getReposURL
 	for {
 		resp, err := DoApiRequest(
 			ctx,
-			g.getReposURL,
+			nextPageUrl,
 			g.headers,
 			g.nextPagePattern,
 			g.client,
@@ -131,7 +132,7 @@ func (g *gitHost) GetStarredRepos(
 		}
 
 		slog.Debug("Found next page", "url", resp.NextPage)
-		g.getReposURL = resp.NextPage
+		nextPageUrl = resp.NextPage
 	}
 }
 
