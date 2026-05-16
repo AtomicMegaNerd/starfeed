@@ -8,8 +8,8 @@ import (
 
 	"github.com/atomicmeganerd/starfeed/atom"
 	"github.com/atomicmeganerd/starfeed/config"
-	"github.com/atomicmeganerd/starfeed/freshrss"
 	"github.com/atomicmeganerd/starfeed/githost"
+	"github.com/atomicmeganerd/starfeed/rss"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -47,7 +47,7 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	fr := freshrss.NewFreshRSSFeedManager(p.cfg, p.client)
+	fr := rss.NewFreshRSSFeedManager(&p.cfg.RSSServer, p.client)
 	at := atom.NewAtomFeedChecker(p.client)
 
 	// Authenticate to FreshRSS
@@ -57,7 +57,7 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 
 	g, ctx := errgroup.WithContext(ctx)
 
-	var rssFeedMap map[string]freshrss.RSSFeed
+	var rssFeedMap map[string]rss.RSSFeed
 	var starredRepoMap map[string]githost.Repo
 
 	// Get existing subscriptions
@@ -126,9 +126,9 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 
 func publishToFreshRSS(
 	ctx context.Context,
-	fr freshrss.FreshRSSFeedManager,
+	fr rss.FreshRSSFeedManager,
 	at atom.AtomFeedChecker,
-	rssFeedMap map[string]freshrss.RSSFeed,
+	rssFeedMap map[string]rss.RSSFeed,
 	repo githost.Repo,
 	feedName string,
 ) error {
@@ -156,9 +156,9 @@ func publishToFreshRSS(
 // We never want to unsubscribe from non-github feeds.
 func filterOutNonGitHubFeeds(
 	gh githost.GitHost,
-	rssFeedMap map[string]freshrss.RSSFeed,
-) map[string]freshrss.RSSFeed {
-	filteredMap := make(map[string]freshrss.RSSFeed)
+	rssFeedMap map[string]rss.RSSFeed,
+) map[string]rss.RSSFeed {
+	filteredMap := make(map[string]rss.RSSFeed)
 	for k, v := range rssFeedMap {
 		if gh.IsReleaseFeed(k) {
 			filteredMap[k] = v
@@ -171,7 +171,7 @@ func filterOutNonGitHubFeeds(
 
 func removeStaleFeeds(
 	ctx context.Context,
-	fr freshrss.FreshRSSFeedManager,
+	fr rss.FreshRSSFeedManager,
 	starredRepoMap map[string]githost.Repo, // The key is the release ATOM feed
 	rssFeed string,
 ) error {

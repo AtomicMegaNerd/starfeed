@@ -29,10 +29,10 @@ CI builds, tests, lints, and publishes images via GitHub Actions.
 
 Required (config.NewConfig enforces):
 
-- `STARFEED_GITHUB_API_TOKEN`
-- `STARFEED_FRESHRSS_URL`
-- `STARFEED_FRESHRSS_USER`
-- `STARFEED_FRESHRSS_API_TOKEN`
+- `STARFEED_GIT_HOST_*n*` where _n_ is a number from 0..n. This is a CSV value with the following
+  format: `type,name,url,token`.
+- `STARFEED_RSS_SERVER` which again uses CSV to configure our RSS server. Format:
+  `type,url,user,token`.
 
 Optional:
 
@@ -54,24 +54,15 @@ Local dev: keep secrets in `.envrc` (direnv) and symlink `.env` -> `.envrc` for 
 ## Code Organization
 
 - `cmd/main.go`: Application entrypoint; sets up logging, reads config, handles signals, schedules
-  24h ticker, and invokes the publisher.
-- `config/`: Configuration loading and validation from environment.
-- `runner/`: Orchestrates querying GitHub, checking feeds, publishing to FreshRSS, and pruning stale
-  feeds.
-- `github/`: GitHub API client (stars), pagination parsing, and release feed URL construction.
-- `freshrss/`: FreshRSS client for authentication and feed management.
+  24h ticker, and invokes the runners.
+- `config/`: Loads configuration from the environment into our Go objects.
+- `runner/`: Orchestration layer which executes workflows based on the type of githost. feeds.
+- `githost/`: Shared code for all supported gihosts.
+- `github/`: Code that is specific to the GitHub kind of git host.
+- `forgejo/`: Code that is specific to the Forgejo kind of git host.
+- `rss/`: Code that handles publishing the release feeds to RSS.
 - `atom/`: Atom feed checker to ensure feeds have entries before adding.
-- `mocks/`: Test doubles.
-
-## Architecture
-
-3 layers:
-
-1. `cmd` — wiring and startup only. May log at any level.
-2. `runner` — orchestration. May log at any level. The only layer that calls business logic.
-3. `github`, `freshrss`, `atom` — business logic. No knowledge of upper layers. Debug logs only.
-
-`config` is a utility package used by `cmd` for startup validation.
+- `mocks/`: Test doubles related data and shared mocks/functions.
 
 ## Patterns and Conventions
 
@@ -80,15 +71,13 @@ Local dev: keep secrets in `.envrc` (direnv) and symlink `.env` -> `.envrc` for 
 - Secret values (tokens) must never be logged.
 - Use slog for structured logging; level toggled by `STARFEED_DEBUG_MODE`.
 - Guard/short-circuit style to keep nesting shallow.
-- Coverage threshold enforced in Taskfile (>=80%).
 - Line length limit 100 chars.
 - Ignore lints on resp.Body.Close() calls as that method never returns an error.
+- For tests used shared mocks and data consts from `mocks/` package when possible.
 
 ## Testing
 
-- Unit tests present across packages: `*_test.go`.
-- `task test` builds first, runs `go test` with `-race` and coverage, then checks threshold.
-  Generates `cover.out` and `coverage.html` via `task generate-test-reports`.
+- `task test` uses `gotestsum` and generates `cover.out` for coverage.
 
 ## Dockerfile Notes
 

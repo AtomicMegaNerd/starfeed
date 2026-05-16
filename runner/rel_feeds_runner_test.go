@@ -10,16 +10,16 @@ import (
 	"testing"
 
 	"github.com/atomicmeganerd/starfeed/config"
-	"github.com/atomicmeganerd/starfeed/freshrss"
 	"github.com/atomicmeganerd/starfeed/githost"
 	"github.com/atomicmeganerd/starfeed/github"
 	"github.com/atomicmeganerd/starfeed/mocks"
+	"github.com/atomicmeganerd/starfeed/rss"
 	"golang.org/x/sync/errgroup"
 )
 
 const (
-	mockGhToken       = "gh_token"
-	mockFreshRSSURL   = "http://freshrss.example.com"
+	mockGhToken       = "ghp_abcdefghijklmnopqrstuvwxyz"
+	mockFreshRSSURL   = "http://rss.example.com"
 	mockFreshRSSUser  = "testuser"
 	mockFreshRSSToken = "freshrss_token"
 )
@@ -35,16 +35,19 @@ func (tc *QueryAndPublishFeedsTestCase) GetTestRunner() Runner {
 	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegex)
 	mockClient := &http.Client{Transport: &mockTransport}
 	gitHost := githost.GitHostConfig{
-		Type:    githost.GitHub,
+		Type:    "github",
 		BaseURL: "https://github.com",
 		Token:   mockGhToken,
 	}
 	return NewPublishReleasesRunner(
 		gitHost,
 		&config.Config{
-			FreshRSSURL:   mockFreshRSSURL,
-			FreshRSSUser:  mockFreshRSSUser,
-			FreshRSSToken: mockFreshRSSToken,
+			RSSServer: rss.RSSServerConfig{
+				Type:  "freshrss",
+				URL:   mockFreshRSSURL,
+				User:  mockFreshRSSUser,
+				Token: mockFreshRSSToken,
+			},
 		},
 		mockClient,
 	)
@@ -75,8 +78,8 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 				},
 			},
 			urlRegex: []string{
-				`.*freshrss.*api.*accounts.*`,
-				`.*freshrss.*api.*reader.*`,
+				`.*rss.*api.*accounts.*`,
+				`.*rss.*api.*reader.*`,
 				`.*api\.github\.com.*`,
 			},
 			expectError: false,
@@ -91,7 +94,7 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 				},
 			},
 			urlRegex: []string{
-				`.*freshrss.*api.*accounts.*`,
+				`.*rss.*api.*accounts.*`,
 			},
 			expectError: true,
 		},
@@ -139,7 +142,7 @@ func (m *mockFreshRSSFeedManager) AddFeed(
 
 func (m *mockFreshRSSFeedManager) GetExistingFeeds(
 	ctx context.Context,
-) (map[string]freshrss.RSSFeed, error) {
+) (map[string]rss.RSSFeed, error) {
 	return nil, nil
 }
 
@@ -173,7 +176,7 @@ func (m mockRepo) FeedURL() string { return fmt.Sprintf("%s/releases.atom", m.ht
 func TestPublishToFreshRSS(t *testing.T) {
 	testCases := []struct {
 		name                string
-		existingFeeds       map[string]freshrss.RSSFeed
+		existingFeeds       map[string]rss.RSSFeed
 		repo                githost.Repo
 		atomHasEntries      bool
 		freshRSSAddError    error
@@ -182,7 +185,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 	}{
 		{
 			name: "Feed already exists - should skip",
-			existingFeeds: map[string]freshrss.RSSFeed{
+			existingFeeds: map[string]rss.RSSFeed{
 				"https://github.com/user/repo/releases.atom": {},
 			},
 			repo: mockRepo{
@@ -195,7 +198,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 		},
 		{
 			name:          "Feed has no entries - should skip",
-			existingFeeds: map[string]freshrss.RSSFeed{},
+			existingFeeds: map[string]rss.RSSFeed{},
 			repo: mockRepo{
 				name:    "repo",
 				htmlURL: "https://github.com/user/repo",
@@ -206,7 +209,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 		},
 		{
 			name:          "New feed with entries - should add",
-			existingFeeds: map[string]freshrss.RSSFeed{},
+			existingFeeds: map[string]rss.RSSFeed{},
 			repo: mockRepo{
 				name:    "repo",
 				htmlURL: "https://github.com/user/repo",
@@ -217,7 +220,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 		},
 		{
 			name:          "Add feed fails - should handle error gracefully",
-			existingFeeds: map[string]freshrss.RSSFeed{},
+			existingFeeds: map[string]rss.RSSFeed{},
 			repo: mockRepo{
 				name:    "repo",
 				htmlURL: "https://github.com/user/repo",
@@ -348,8 +351,8 @@ func TestRemoveStaleFeeds(t *testing.T) {
 
 type FilterOutNonGitHubFeedsTestCase struct {
 	name           string
-	inputFeeds     map[string]freshrss.RSSFeed
-	expectedFeeds  map[string]freshrss.RSSFeed
+	inputFeeds     map[string]rss.RSSFeed
+	expectedFeeds  map[string]rss.RSSFeed
 	expectedLength int
 }
 
@@ -357,12 +360,12 @@ func TestFilterOutNonGitHubFeeds(t *testing.T) {
 	testCases := []FilterOutNonGitHubFeedsTestCase{
 		{
 			name: "All feeds are GitHub releases",
-			inputFeeds: map[string]freshrss.RSSFeed{
+			inputFeeds: map[string]rss.RSSFeed{
 				"https://github.com/user/repo1/releases.atom": {},
 				"https://github.com/user/repo2/releases.atom": {},
 				"https://github.com/user/repo3/releases.atom": {},
 			},
-			expectedFeeds: map[string]freshrss.RSSFeed{
+			expectedFeeds: map[string]rss.RSSFeed{
 				"https://github.com/user/repo1/releases.atom": {},
 				"https://github.com/user/repo2/releases.atom": {},
 				"https://github.com/user/repo3/releases.atom": {},
@@ -371,13 +374,13 @@ func TestFilterOutNonGitHubFeeds(t *testing.T) {
 		},
 		{
 			name: "Mixed GitHub and non-GitHub feeds",
-			inputFeeds: map[string]freshrss.RSSFeed{
+			inputFeeds: map[string]rss.RSSFeed{
 				"https://github.com/user/repo1/releases.atom": {},
 				"https://example.com/feed.xml":                {},
 				"https://github.com/user/repo2/releases.atom": {},
 				"https://blog.example.com/rss":                {},
 			},
-			expectedFeeds: map[string]freshrss.RSSFeed{
+			expectedFeeds: map[string]rss.RSSFeed{
 				"https://github.com/user/repo1/releases.atom": {},
 				"https://github.com/user/repo2/releases.atom": {},
 			},
@@ -385,28 +388,28 @@ func TestFilterOutNonGitHubFeeds(t *testing.T) {
 		},
 		{
 			name: "No GitHub feeds",
-			inputFeeds: map[string]freshrss.RSSFeed{
+			inputFeeds: map[string]rss.RSSFeed{
 				"https://example.com/feed.xml":  {},
 				"https://blog.example.com/rss":  {},
 				"https://news.example.com/atom": {},
 			},
-			expectedFeeds:  map[string]freshrss.RSSFeed{},
+			expectedFeeds:  map[string]rss.RSSFeed{},
 			expectedLength: 0,
 		},
 		{
 			name:           "Empty input map",
-			inputFeeds:     map[string]freshrss.RSSFeed{},
-			expectedFeeds:  map[string]freshrss.RSSFeed{},
+			inputFeeds:     map[string]rss.RSSFeed{},
+			expectedFeeds:  map[string]rss.RSSFeed{},
 			expectedLength: 0,
 		},
 		{
 			name: "GitHub feeds with dots and dashes in names",
-			inputFeeds: map[string]freshrss.RSSFeed{
+			inputFeeds: map[string]rss.RSSFeed{
 				"https://github.com/nix-community/NixOS-WSL/releases.atom": {},
 				"https://github.com/EdenEast/nightfox.nvim/releases.atom":  {},
 				"https://example.com/feed.xml":                             {},
 			},
-			expectedFeeds: map[string]freshrss.RSSFeed{
+			expectedFeeds: map[string]rss.RSSFeed{
 				"https://github.com/nix-community/NixOS-WSL/releases.atom": {},
 				"https://github.com/EdenEast/nightfox.nvim/releases.atom":  {},
 			},
@@ -418,11 +421,11 @@ func TestFilterOutNonGitHubFeeds(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &http.Client{}
 			gitHost := githost.GitHostConfig{
-				Type:    githost.GitHub,
+				Type:    "github",
 				BaseURL: "https://github.com",
-				Token:   "test_token",
+				Token:   "ghp_abcdefghijklmnopqrstuvwxyz",
 			}
-			gh := github.NewGitHubStarredFeedBuilder(gitHost, mockClient)
+			gh := github.NewGitHub(gitHost, mockClient)
 
 			result := filterOutNonGitHubFeeds(gh, tc.inputFeeds)
 

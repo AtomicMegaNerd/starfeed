@@ -13,30 +13,26 @@ import (
 
 const (
 	// Repo 1
-	repoName1        = "repo1"
-	repoHtmlUrl1     = "https://github.com/user/repo1"
-	repoReleasesUrl1 = "https://github.com/user/repo1/releases.atom"
+	repoName1    = "repo1"
+	repoHtmlUrl1 = "https://github.com/user/repo1"
 
 	// Repo 2
-	repoName2        = "repo2"
-	repoHtmlUrl2     = "https://github.com/user/repo2"
-	repoReleasesUrl2 = "https://github.com/user/repo2/releases.atom"
+	repoName2    = "repo2"
+	repoHtmlUrl2 = "https://github.com/user/repo2"
 
 	// Repo 3
-	repoName3        = "repo3"
-	repoHtmlUrl3     = "https://github.com/user/repo3"
-	repoReleasesUrl3 = "https://github.com/user/repo3/releases.atom"
+	repoName3    = "repo3"
+	repoHtmlUrl3 = "https://github.com/user/repo3"
 
 	// Repo 4
-	repoName4        = "repo4"
-	repoHtmlUrl4     = "https://github.com/user/repo4"
-	repoReleasesUrl4 = "https://github.com/user/repo4/releases.atom"
+	repoName4    = "repo4"
+	repoHtmlUrl4 = "https://github.com/user/repo4"
 )
 
 type GetStarredReposTestCase struct {
 	name          string
 	responses     []http.Response
-	expectedRepos []GitHubRepo
+	expectedRepos []githost.BaseRepo
 	expectError   bool
 }
 
@@ -44,11 +40,11 @@ func (tc *GetStarredReposTestCase) GetTestObject() githost.GitHost {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
 	gitHost := githost.GitHostConfig{
-		Type:    githost.GitHub,
-		BaseURL: "https://github.com",
-		Token:   "test_token",
+		Type:    mocks.GitHubType,
+		BaseURL: mocks.GitHubURL,
+		Token:   mocks.GitHubToken,
 	}
-	return NewGitHubStarredFeedBuilder(gitHost, mockClient)
+	return NewGitHub(gitHost, mockClient)
 }
 
 func TestGetStarredRepos(t *testing.T) {
@@ -68,10 +64,10 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []GitHubRepo{
+			expectedRepos: []githost.BaseRepo{
 				{
 					RepoName: repoName1,
-					HTMLURL:  repoHtmlUrl1,
+					RepoURL:  repoHtmlUrl1,
 				},
 			},
 			expectError: false,
@@ -115,11 +111,11 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []GitHubRepo{
-				{RepoName: repoName1, HTMLURL: repoHtmlUrl1},
-				{RepoName: repoName2, HTMLURL: repoHtmlUrl2},
-				{RepoName: repoName3, HTMLURL: repoHtmlUrl3},
-				{RepoName: repoName4, HTMLURL: repoHtmlUrl4},
+			expectedRepos: []githost.BaseRepo{
+				{RepoName: repoName1, RepoURL: repoHtmlUrl1},
+				{RepoName: repoName2, RepoURL: repoHtmlUrl2},
+				{RepoName: repoName3, RepoURL: repoHtmlUrl3},
+				{RepoName: repoName4, RepoURL: repoHtmlUrl4},
 			},
 			expectError: false,
 		},
@@ -132,7 +128,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusNotFound,
 				},
 			},
-			expectedRepos: []GitHubRepo{},
+			expectedRepos: []githost.BaseRepo{},
 			expectError:   true,
 		},
 		{
@@ -144,7 +140,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []GitHubRepo{},
+			expectedRepos: []githost.BaseRepo{},
 			expectError:   true,
 		},
 		{
@@ -156,7 +152,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []GitHubRepo{},
+			expectedRepos: []githost.BaseRepo{},
 			expectError:   true,
 		},
 	}
@@ -204,11 +200,11 @@ type TestIsGitHubRepoTestCase struct {
 func TestIsReleaseFeed(t *testing.T) {
 	mockClient := http.Client{}
 	gitHost := githost.GitHostConfig{
-		Type:    githost.GitHub,
-		BaseURL: "https://github.com",
-		Token:   "test_token",
+		Type:    mocks.GitHubType,
+		BaseURL: mocks.GitHubURL,
+		Token:   mocks.GitHubToken,
 	}
-	gh := NewGitHubStarredFeedBuilder(gitHost, &mockClient)
+	gh := NewGitHub(gitHost, &mockClient)
 	testCases := []TestIsGitHubRepoTestCase{
 		{
 			name:        "Letters only",

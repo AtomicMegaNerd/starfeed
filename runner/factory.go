@@ -14,9 +14,9 @@ func GetGitHostFromConfig(
 	client *http.Client,
 ) (githost.GitHost, error) {
 	switch gitHost.Type {
-	case githost.GitHub:
-		return github.NewGitHubStarredFeedBuilder(gitHost, client), nil
-	case githost.Forgejo:
+	case "github":
+		return github.NewGitHub(gitHost, client), nil
+	case "forgejo":
 		return forgejo.NewForgejoStarredFeedBuilder(gitHost, client), nil
 	}
 	return nil, fmt.Errorf("invalid githost type %s", gitHost.Type)

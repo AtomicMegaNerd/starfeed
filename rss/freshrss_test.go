@@ -1,4 +1,4 @@
-package freshrss
+package rss
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/mocks"
 )
 
@@ -27,12 +26,20 @@ type AuthenticateTestCase struct {
 	expectError        bool
 }
 
+func getMockRSSConfig() *RSSServerConfig {
+	return &RSSServerConfig{
+		Type:  "freshrss",
+		URL:   mockBaseUrl,
+		User:  mockUser,
+		Token: mockAuthToken,
+	}
+}
+
 func (tc *AuthenticateTestCase) GetTestObject() FreshRSSFeedManager {
-	mockCfg := config.Config{}
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
 	return NewFreshRSSFeedManager(
-		&mockCfg, mockClient,
+		getMockRSSConfig(), mockClient,
 	)
 }
 
@@ -183,11 +190,10 @@ type AddFeedTestCase struct {
 }
 
 func (tc *AddFeedTestCase) GetTestObject() FreshRSSFeedManager {
-	mockCfg := config.Config{}
 	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegexPatterns)
 	mockClient := &http.Client{Transport: &mockTransport}
 	return NewFreshRSSFeedManager(
-		&mockCfg, mockClient,
+		getMockRSSConfig(), mockClient,
 	)
 }
 
@@ -301,11 +307,10 @@ type GetExistingFeedsTestCase struct {
 }
 
 func (tc *GetExistingFeedsTestCase) GetTestObject() FreshRSSFeedManager {
-	mockCfg := &config.Config{}
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
 	return NewFreshRSSFeedManager(
-		mockCfg, mockClient,
+		getMockRSSConfig(), mockClient,
 	)
 }
 
@@ -399,11 +404,10 @@ type RemoveFeedTestCase struct {
 }
 
 func (tc *RemoveFeedTestCase) GetTestObject() FreshRSSFeedManager {
-	mockCfg := config.Config{}
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
 	return NewFreshRSSFeedManager(
-		&mockCfg, mockClient,
+		getMockRSSConfig(), mockClient,
 	)
 }
 
