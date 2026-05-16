@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+
+	"github.com/atomicmeganerd/starfeed/config"
 )
 
 // GitHubStarredFeedBuilder is an interface for retrieving Atom feeds from GitHub
@@ -17,7 +19,7 @@ type GitHubStarredFeedBuilder interface {
 
 // gitHubStarredFeedBuilder is the private implementation of GitHubStarredFeedBuilder.
 type gitHubStarredFeedBuilder struct {
-	token             string // WARNING: Do not log this value as it is a secret
+	cfg               *config.Config
 	client            *http.Client
 	nextPageLinkRegex *regexp.Regexp
 	isRelRepoRegex    *regexp.Regexp
@@ -28,14 +30,14 @@ type gitHubStarredFeedBuilder struct {
 // - token: The GitHub API token to authenticate with.
 // - client: The http client to use for requests (used for mocking).
 func NewGitHubStarredFeedBuilder(
-	token string,
+	cfg *config.Config,
 	client *http.Client,
 ) GitHubStarredFeedBuilder {
 	// This regex is used to find the next page link in the GitHub API response
 	nextPageLinkRegex := regexp.MustCompile(`<([^>]+)>; rel="next"`)
 	// This regex is used to determine if an RSS feed is a GitHub release feed
 	isRelRepoRegex := regexp.MustCompile(`^https://github.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`)
-	return &gitHubStarredFeedBuilder{token, client, nextPageLinkRegex, isRelRepoRegex}
+	return &gitHubStarredFeedBuilder{cfg, client, nextPageLinkRegex, isRelRepoRegex}
 }
 
 // This will return all starred repos including the Atom feeds for their releases
@@ -48,7 +50,9 @@ func (gh *gitHubStarredFeedBuilder) GetStarredRepos(
 	slog.Debug("Querying GitHub for starred repos", "url", getUrl)
 
 	for {
-		ghResponse, err := doApiRequest(ctx, gh.client, getUrl, gh.token, gh.nextPageLinkRegex)
+		ghResponse, err := doApiRequest(
+			ctx, gh.client, getUrl, gh.cfg.GitHubToken, gh.nextPageLinkRegex,
+		)
 		if err != nil {
 			return nil, err
 		}

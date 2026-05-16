@@ -432,8 +432,9 @@ func TestFilterOutNonGitHubFeeds(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create GitHub builder for the test
+			mockCfg := &config.Config{}
 			mockClient := &http.Client{}
-			gh := github.NewGitHubStarredFeedBuilder("token", mockClient)
+			gh := github.NewGitHubStarredFeedBuilder(mockCfg, mockClient)
 
 			// Call the function under test
 			result := filterOutNonGitHubFeeds(gh, tc.inputFeeds)

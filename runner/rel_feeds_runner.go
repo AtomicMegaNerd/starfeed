@@ -40,7 +40,7 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 	slog.Info("Starting main workflow...")
 	start := time.Now()
 
-	gh := github.NewGitHubStarredFeedBuilder(p.cfg.GitHubToken, p.client)
+	gh := github.NewGitHubStarredFeedBuilder(p.cfg, p.client)
 	fr := freshrss.NewFreshRSSFeedManager(
 		p.cfg, p.client,
 	)

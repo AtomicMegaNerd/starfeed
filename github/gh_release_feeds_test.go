@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/mocks"
 )
 
@@ -40,9 +41,10 @@ type GetStarredReposTestCase struct {
 }
 
 func (tc *GetStarredReposTestCase) GetTestObject() GitHubStarredFeedBuilder {
+	mockCfg := &config.Config{}
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewGitHubStarredFeedBuilder("mockToken", mockClient)
+	return NewGitHubStarredFeedBuilder(mockCfg, mockClient)
 }
 
 func TestGetStarredRepos(t *testing.T) {
@@ -210,8 +212,9 @@ type TestIsGitHubRepoTestCase struct {
 }
 
 func TestIsGitHubReleaseRepo(t *testing.T) {
+	mockCfg := &config.Config{}
 	mockClient := http.Client{}
-	gh := NewGitHubStarredFeedBuilder("", &mockClient)
+	gh := NewGitHubStarredFeedBuilder(mockCfg, &mockClient)
 	testCases := []TestIsGitHubRepoTestCase{
 		{
 			name:        "Letters only",
