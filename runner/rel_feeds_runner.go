@@ -164,6 +164,7 @@ func filterOutNonRepoReleaseFeeds(
 	gh githost.GitHost,
 	rssFeedSet map[string]struct{},
 ) map[string]struct{} {
+	// NOTE: In Go map[T]struct{} is the idiomatic way to make a set as struct{} is 0-bytes
 	filteredSet := make(map[string]struct{})
 	for feedUrl := range rssFeedSet {
 		// This will only include a feed for potential removal if it is a release feed

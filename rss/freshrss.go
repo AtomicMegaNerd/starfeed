@@ -127,6 +127,7 @@ func (f *freshRSS) GetExistingFeeds(ctx context.Context) (map[string]struct{}, e
 		return nil, err
 	}
 
+	// NOTE: In Go map[T]struct{} is the idiomatic way to make a set as struct{} is 0-bytes
 	feedSet := make(map[string]struct{})
 	for _, feed := range feeds.Feeds {
 		feedSet[feed.Url] = struct{}{}
