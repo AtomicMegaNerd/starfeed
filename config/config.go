@@ -2,9 +2,13 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/atomicmeganerd/starfeed/githost"
 )
 
 type EnvGetter interface {
@@ -26,17 +30,16 @@ func parseBoolEnv(envGetter EnvGetter, key string) (bool, error) {
 }
 
 const (
-	ghTokenKey       = "STARFEED_GITHUB_API_TOKEN"
-	freshRSSURLKey   = "STARFEED_FRESHRSS_URL"
-	freshRSSUserKey  = "STARFEED_FRESHRSS_USER"
-	freshRSSTokenKey = "STARFEED_FRESHRSS_API_TOKEN"
+	fRSSURLKey       = "STARFEED_FRESHRSS_URL"
+	fRSSUserKey      = "STARFEED_FRESHRSS_USER"
+	fRSSTokenKey     = "STARFEED_FRESHRSS_API_TOKEN"
 	debugModeKey     = "STARFEED_DEBUG_MODE"
 	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
 	httpTimeoutKey   = "STARFEED_HTTP_TIMEOUT"
 )
 
 type Config struct {
-	GitHubToken   string // WARNING: Never log this secret
+	GitHosts      []githost.GitHostConfig
 	FreshRSSURL   string
 	FreshRSSUser  string
 	FreshRSSToken string // WARNING: Never log this secret
@@ -46,14 +49,6 @@ type Config struct {
 }
 
 func NewConfig(envGetter EnvGetter) (*Config, error) {
-	// Check for required environment variables
-	if envGetter.Getenv(ghTokenKey) == "" ||
-		envGetter.Getenv(freshRSSURLKey) == "" ||
-		envGetter.Getenv(freshRSSUserKey) == "" ||
-		envGetter.Getenv(freshRSSTokenKey) == "" {
-		return nil, errors.New("missing required environment variables")
-	}
-
 	// Parse optional HTTP timeout, default to 10 seconds
 	httpTimeout := 10 * time.Second
 	if timeoutStr := envGetter.Getenv(httpTimeoutKey); timeoutStr != "" {
@@ -71,13 +66,53 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 		return nil, err
 	}
 
-	return &Config{
-		GitHubToken:   envGetter.Getenv(ghTokenKey),
-		FreshRSSURL:   envGetter.Getenv(freshRSSURLKey),
-		FreshRSSUser:  envGetter.Getenv(freshRSSUserKey),
-		FreshRSSToken: envGetter.Getenv(freshRSSTokenKey),
+	gitHosts := make([]githost.GitHostConfig, 0)
+
+	for ix := 0; ; ix++ {
+		host := envGetter.Getenv(fmt.Sprintf("STARFEED_GIT_HOST_%d", ix))
+		if host == "" {
+			break
+		}
+
+		parts := strings.SplitN(host, ",", 3)
+
+		// Make sure we get 3 parts
+		if len(parts) != 3 {
+			return nil, fmt.Errorf("STARFEED_GIT_HOST_%d config invalid", ix)
+		}
+
+		// Make sure all are valid
+		// TODO: Check the URL field to make sure it is valid URL
+		// TODO: Check token length
+		gitHostType := githost.GitHostType(strings.TrimSpace(parts[0]))
+		if !gitHostType.Valid() || parts[1] == "" || parts[2] == "" {
+			return nil, fmt.Errorf("STARFEED_GIT_HOST_%d config invalid", ix)
+		}
+
+		gitHost := githost.GitHostConfig{
+			Type:    gitHostType,
+			BaseURL: strings.TrimSpace(parts[1]),
+			Token:   strings.TrimSpace(parts[2]),
+		}
+		gitHosts = append(gitHosts, gitHost)
+	}
+
+	cfg := &Config{
+		GitHosts:      gitHosts,
+		FreshRSSURL:   envGetter.Getenv(fRSSURLKey),
+		FreshRSSUser:  envGetter.Getenv(fRSSUserKey),
+		FreshRSSToken: envGetter.Getenv(fRSSTokenKey),
 		DebugMode:     debugMode,
 		SingleRunMode: singleRunMode,
 		HTTPTimeout:   httpTimeout,
-	}, nil
+	}
+
+	if len(cfg.GitHosts) < 1 ||
+		cfg.FreshRSSURL == "" ||
+		cfg.FreshRSSUser == "" ||
+		cfg.FreshRSSToken == "" {
+		return nil, errors.New("invalid config, required settings missing")
+	}
+
+	return cfg, nil
 }

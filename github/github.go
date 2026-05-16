@@ -10,19 +10,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/atomicmeganerd/starfeed/config"
+	"github.com/atomicmeganerd/starfeed/githost"
 )
-
-// GitHubStarredFeedBuilder is an interface for retrieving Atom feeds from GitHub
-// for all starred repos.
-type GitHubStarredFeedBuilder interface {
-	GetStarredRepos(ctx context.Context) (map[string]GitHubRepo, error)
-	IsGitHubReleasesFeed(feedUrl string) bool
-}
 
 // gitHubStarredFeedBuilder is the private implementation of GitHubStarredFeedBuilder.
 type gitHubStarredFeedBuilder struct {
-	cfg               *config.Config
+	gitHost           githost.GitHostConfig
 	client            *http.Client
 	nextPageLinkRegex *regexp.Regexp
 	isRelRepoRegex    *regexp.Regexp
@@ -33,22 +26,22 @@ type gitHubStarredFeedBuilder struct {
 // - cfg: This holds the configuration state this object needs.
 // - client: The http client to use for requests (used for mocking).
 func NewGitHubStarredFeedBuilder(
-	cfg *config.Config,
+	gitHost githost.GitHostConfig,
 	client *http.Client,
-) GitHubStarredFeedBuilder {
+) githost.GitHost {
 	// This regex is used to find the next page link in the GitHub API response
 	nextPageLinkRegex := regexp.MustCompile(`<([^>]+)>; rel="next"`)
 	// This regex is used to determine if an RSS feed is a GitHub release feed
 	isRelRepoRegex := regexp.MustCompile(`^https://github.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`)
-	return &gitHubStarredFeedBuilder{cfg, client, nextPageLinkRegex, isRelRepoRegex}
+	return &gitHubStarredFeedBuilder{gitHost, client, nextPageLinkRegex, isRelRepoRegex}
 }
 
 // This will return all starred repos including the Atom feeds for their releases
 // It returns a map of releaseFeedUrl -> GitHubRepo
 func (gh *gitHubStarredFeedBuilder) GetStarredRepos(
 	ctx context.Context,
-) (map[string]GitHubRepo, error) {
-	allFeeds := make(map[string]GitHubRepo)
+) (map[string]githost.Repo, error) {
+	allFeeds := make(map[string]githost.Repo)
 	getUrl := "https://api.github.com/user/starred?per_page=100"
 	slog.Debug("Querying GitHub for starred repos", "url", getUrl)
 
@@ -64,8 +57,7 @@ func (gh *gitHubStarredFeedBuilder) GetStarredRepos(
 		}
 
 		for _, repo := range repos {
-			repo.BuildReleasesFeedURL()
-			allFeeds[repo.ReleaseFeedURL] = repo
+			allFeeds[repo.FeedURL()] = &repo
 		}
 
 		// If there is no next page we are done...
@@ -81,7 +73,7 @@ func (gh *gitHubStarredFeedBuilder) GetStarredRepos(
 // This function returns true if a repoUrl is a GitHub release repo
 // Arguments:
 // - feedUrl: The URL of the RSS feed to check.
-func (gh *gitHubStarredFeedBuilder) IsGitHubReleasesFeed(feedUrl string) bool {
+func (gh *gitHubStarredFeedBuilder) IsReleaseFeed(feedUrl string) bool {
 	return gh.isRelRepoRegex.MatchString(feedUrl)
 }
 
@@ -90,7 +82,7 @@ func (gh *gitHubStarredFeedBuilder) doApiRequest(
 	ghReqUrl string,
 ) (*GitHubResponse, error) {
 	headers := map[string]string{
-		"Authorization":        fmt.Sprintf("Bearer %s", gh.cfg.GitHubToken),
+		"Authorization":        fmt.Sprintf("Bearer %s", gh.gitHost.Token),
 		"X-GitHub-Api-Version": "2022-11-28",
 		"User-Agent":           "github.com/atomicmeganerd/starfeed",
 		"Content-Type":         "application/json",

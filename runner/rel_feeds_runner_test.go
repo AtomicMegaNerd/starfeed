@@ -11,6 +11,7 @@ import (
 
 	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/freshrss"
+	"github.com/atomicmeganerd/starfeed/githost"
 	"github.com/atomicmeganerd/starfeed/github"
 	"github.com/atomicmeganerd/starfeed/mocks"
 	"golang.org/x/sync/errgroup"
@@ -33,9 +34,14 @@ type QueryAndPublishFeedsTestCase struct {
 func (tc *QueryAndPublishFeedsTestCase) GetTestRunner() Runner {
 	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegex)
 	mockClient := &http.Client{Transport: &mockTransport}
+	gitHost := githost.GitHostConfig{
+		Type:    githost.GitHub,
+		BaseURL: "https://github.com",
+		Token:   mockGhToken,
+	}
 	return NewPublishReleasesRunner(
+		gitHost,
 		&config.Config{
-			GitHubToken:   mockGhToken,
 			FreshRSSURL:   mockFreshRSSURL,
 			FreshRSSUser:  mockFreshRSSUser,
 			FreshRSSToken: mockFreshRSSToken,
@@ -69,16 +75,15 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 				},
 			},
 			urlRegex: []string{
-				`.*freshrss.*api.*accounts.*`, // FreshRSS auth
-				`.*freshrss.*api.*reader.*`,   // FreshRSS feeds
-				`.*api\.github\.com.*`,        // GitHub API
+				`.*freshrss.*api.*accounts.*`,
+				`.*freshrss.*api.*reader.*`,
+				`.*api\.github\.com.*`,
 			},
 			expectError: false,
 		},
 		{
 			name: "Authentication failure should exit early",
 			responses: []http.Response{
-				// FreshRSS auth request fails
 				{
 					Body:       io.NopCloser(strings.NewReader(`{"error": "unauthorized"}`)),
 					Status:     "401 Unauthorized",
@@ -86,7 +91,7 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 				},
 			},
 			urlRegex: []string{
-				`.*freshrss.*api.*accounts.*`, // FreshRSS auth
+				`.*freshrss.*api.*accounts.*`,
 			},
 			expectError: true,
 		},
@@ -98,17 +103,16 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 			ctx := context.Background()
 			err := publisher.Run(ctx)
 
-			if tc.expectError == true && err == nil {
+			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
-			if tc.expectError == false && err != nil {
+			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error %q", err)
 			}
 		})
 	}
 }
 
-// mock implementations for interface testing
 type mockFreshRSSFeedManager struct {
 	addFeedCalled    bool
 	addFeedError     error
@@ -158,11 +162,19 @@ func (m *mockAtomFeedChecker) CheckFeedHasEntries(
 	return m.hasEntries, m.err
 }
 
+type mockRepo struct {
+	name    string
+	htmlURL string
+}
+
+func (m mockRepo) Name() string    { return m.name }
+func (m mockRepo) FeedURL() string { return fmt.Sprintf("%s/releases.atom", m.htmlURL) }
+
 func TestPublishToFreshRSS(t *testing.T) {
 	testCases := []struct {
 		name                string
 		existingFeeds       map[string]freshrss.RSSFeed
-		repo                github.GitHubRepo
+		repo                githost.Repo
 		atomHasEntries      bool
 		freshRSSAddError    error
 		expectedFreshRSSAdd bool
@@ -173,10 +185,9 @@ func TestPublishToFreshRSS(t *testing.T) {
 			existingFeeds: map[string]freshrss.RSSFeed{
 				"https://github.com/user/repo/releases.atom": {},
 			},
-			repo: github.GitHubRepo{
-				Name:           "repo",
-				HTMLURL:        "https://github.com/user/repo",
-				ReleaseFeedURL: "https://github.com/user/repo/releases.atom",
+			repo: mockRepo{
+				name:    "repo",
+				htmlURL: "https://github.com/user/repo",
 			},
 			atomHasEntries:      true,
 			expectedFreshRSSAdd: false,
@@ -185,10 +196,9 @@ func TestPublishToFreshRSS(t *testing.T) {
 		{
 			name:          "Feed has no entries - should skip",
 			existingFeeds: map[string]freshrss.RSSFeed{},
-			repo: github.GitHubRepo{
-				Name:           "repo",
-				HTMLURL:        "https://github.com/user/repo",
-				ReleaseFeedURL: "https://github.com/user/repo/releases.atom",
+			repo: mockRepo{
+				name:    "repo",
+				htmlURL: "https://github.com/user/repo",
 			},
 			atomHasEntries:      false,
 			expectedFreshRSSAdd: false,
@@ -197,10 +207,9 @@ func TestPublishToFreshRSS(t *testing.T) {
 		{
 			name:          "New feed with entries - should add",
 			existingFeeds: map[string]freshrss.RSSFeed{},
-			repo: github.GitHubRepo{
-				Name:           "repo",
-				HTMLURL:        "https://github.com/user/repo",
-				ReleaseFeedURL: "https://github.com/user/repo/releases.atom",
+			repo: mockRepo{
+				name:    "repo",
+				htmlURL: "https://github.com/user/repo",
 			},
 			atomHasEntries:      true,
 			expectedFreshRSSAdd: true,
@@ -209,10 +218,9 @@ func TestPublishToFreshRSS(t *testing.T) {
 		{
 			name:          "Add feed fails - should handle error gracefully",
 			existingFeeds: map[string]freshrss.RSSFeed{},
-			repo: github.GitHubRepo{
-				Name:           "repo",
-				HTMLURL:        "https://github.com/user/repo",
-				ReleaseFeedURL: "https://github.com/user/repo/releases.atom",
+			repo: mockRepo{
+				name:    "repo",
+				htmlURL: "https://github.com/user/repo",
 			},
 			atomHasEntries:      true,
 			freshRSSAddError:    fmt.Errorf("failed to add feed"),
@@ -223,7 +231,6 @@ func TestPublishToFreshRSS(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Create mocks
 			mockFreshRSS := &mockFreshRSSFeedManager{
 				addFeedError: tc.freshRSSAddError,
 			}
@@ -234,42 +241,37 @@ func TestPublishToFreshRSS(t *testing.T) {
 			g := &errgroup.Group{}
 			ctx := context.Background()
 
-			// Call function
 			g.Go(func() error {
-				return publishToFreshRSS(ctx, mockFreshRSS, mockAtom, tc.existingFeeds, tc.repo)
+				return publishToFreshRSS(ctx, mockFreshRSS, mockAtom, tc.existingFeeds, tc.repo, "github")
 			})
 
-			// Wait for completion and check for errors
 			if err := g.Wait(); err != nil {
 				if err != tc.freshRSSAddError {
 					t.Fatalf("Expected error %v but got %v", tc.freshRSSAddError, err)
 				}
 			}
 
-			// Assert AddFeed was called as expected
 			if tc.expectedFreshRSSAdd != mockFreshRSS.addFeedCalled {
 				t.Errorf("Expected AddFeed called: %t, got: %t",
 					tc.expectedFreshRSSAdd, mockFreshRSS.addFeedCalled)
 			}
 
-			// If AddFeed should be called, verify the parameters
 			if tc.expectedFreshRSSAdd {
-				if mockFreshRSS.addFeedUrl != tc.repo.ReleaseFeedURL {
+				if mockFreshRSS.addFeedUrl != tc.repo.FeedURL() {
 					t.Errorf("Expected AddFeed called with URL %s, got %s",
-						tc.repo.ReleaseFeedURL, mockFreshRSS.addFeedUrl)
+						tc.repo.FeedURL(), mockFreshRSS.addFeedUrl)
 				}
-				if mockFreshRSS.addFeedName != tc.repo.Name {
+				if mockFreshRSS.addFeedName != tc.repo.Name() {
 					t.Errorf("Expected AddFeed called with name %s, got %s",
-						tc.repo.Name, mockFreshRSS.addFeedName)
+						tc.repo.Name(), mockFreshRSS.addFeedName)
 				}
 			}
 
-			// Check if atom checker was called when expected
 			if !tc.expectedLogSkip || tc.atomHasEntries {
-				found := slices.Contains(mockAtom.checkedFeeds, tc.repo.ReleaseFeedURL)
+				found := slices.Contains(mockAtom.checkedFeeds, tc.repo.FeedURL())
 				expectedAtomCheck := !tc.expectedLogSkip
 				if expectedAtomCheck && !found {
-					t.Errorf("Expected AtomFeedChecker to be called for %s", tc.repo.ReleaseFeedURL)
+					t.Errorf("Expected AtomFeedChecker to be called for %s", tc.repo.FeedURL())
 				}
 			}
 		})
@@ -279,18 +281,17 @@ func TestPublishToFreshRSS(t *testing.T) {
 func TestRemoveStaleFeeds(t *testing.T) {
 	testCases := []struct {
 		name                   string
-		starredRepoMap         map[string]github.GitHubRepo
+		starredRepoMap         map[string]githost.Repo
 		rssFeed                string
 		freshRSSRemoveError    error
 		expectedFreshRSSRemove bool
 	}{
 		{
 			name: "Feed still starred - should not remove",
-			starredRepoMap: map[string]github.GitHubRepo{
-				"https://github.com/user/repo/releases.atom": {
-					Name:           "repo",
-					HTMLURL:        "https://github.com/user/repo",
-					ReleaseFeedURL: "https://github.com/user/repo/releases.atom",
+			starredRepoMap: map[string]githost.Repo{
+				"https://github.com/user/repo/releases.atom": mockRepo{
+					name:    "repo",
+					htmlURL: "https://github.com/user/repo",
 				},
 			},
 			rssFeed:                "https://github.com/user/repo/releases.atom",
@@ -298,13 +299,13 @@ func TestRemoveStaleFeeds(t *testing.T) {
 		},
 		{
 			name:                   "Feed no longer starred - should remove",
-			starredRepoMap:         map[string]github.GitHubRepo{},
+			starredRepoMap:         map[string]githost.Repo{},
 			rssFeed:                "https://github.com/user/old-repo/releases.atom",
 			expectedFreshRSSRemove: true,
 		},
 		{
 			name:                   "Remove feed fails - should handle error gracefully",
-			starredRepoMap:         map[string]github.GitHubRepo{},
+			starredRepoMap:         map[string]githost.Repo{},
 			rssFeed:                "https://github.com/user/old-repo/releases.atom",
 			freshRSSRemoveError:    fmt.Errorf("failed to remove feed"),
 			expectedFreshRSSRemove: true,
@@ -313,7 +314,6 @@ func TestRemoveStaleFeeds(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Create mock
 			mockFreshRSS := &mockFreshRSSFeedManager{
 				removeFeedError: tc.freshRSSRemoveError,
 			}
@@ -325,20 +325,17 @@ func TestRemoveStaleFeeds(t *testing.T) {
 				return removeStaleFeeds(ctx, mockFreshRSS, tc.starredRepoMap, tc.rssFeed)
 			})
 
-			// Wait for completion
 			if err := g.Wait(); err != nil {
 				if err != tc.freshRSSRemoveError {
-					t.Fatalf("Exppected %v but got %v", tc.freshRSSRemoveError, err)
+					t.Fatalf("Expected %v but got %v", tc.freshRSSRemoveError, err)
 				}
 			}
 
-			// Assert RemoveFeed was called as expected
 			if tc.expectedFreshRSSRemove != mockFreshRSS.removeFeedCalled {
 				t.Errorf("Expected RemoveFeed called: %t, got: %t",
 					tc.expectedFreshRSSRemove, mockFreshRSS.removeFeedCalled)
 			}
 
-			// If RemoveFeed should be called, verify the parameter
 			if tc.expectedFreshRSSRemove {
 				if mockFreshRSS.removeFeedUrl != tc.rssFeed {
 					t.Errorf("Expected RemoveFeed called with URL %s, got %s",
@@ -419,27 +416,26 @@ func TestFilterOutNonGitHubFeeds(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Create GitHub builder for the test
-			mockCfg := &config.Config{}
 			mockClient := &http.Client{}
-			gh := github.NewGitHubStarredFeedBuilder(mockCfg, mockClient)
+			gitHost := githost.GitHostConfig{
+				Type:    githost.GitHub,
+				BaseURL: "https://github.com",
+				Token:   "test_token",
+			}
+			gh := github.NewGitHubStarredFeedBuilder(gitHost, mockClient)
 
-			// Call the function under test
 			result := filterOutNonGitHubFeeds(gh, tc.inputFeeds)
 
-			// Check the length
 			if len(result) != tc.expectedLength {
 				t.Errorf("Expected %d feeds, got %d", tc.expectedLength, len(result))
 			}
 
-			// Check each expected feed exists in result
 			for expectedFeed := range tc.expectedFeeds {
 				if _, exists := result[expectedFeed]; !exists {
 					t.Errorf("Expected feed %s to be in result, but it wasn't", expectedFeed)
 				}
 			}
 
-			// Check no unexpected feeds exist in result
 			for resultFeed := range result {
 				if _, exists := tc.expectedFeeds[resultFeed]; !exists {
 					t.Errorf("Unexpected feed %s found in result", resultFeed)

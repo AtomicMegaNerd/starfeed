@@ -9,14 +9,15 @@ import (
 	"github.com/atomicmeganerd/starfeed/atom"
 	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/freshrss"
-	"github.com/atomicmeganerd/starfeed/github"
+	"github.com/atomicmeganerd/starfeed/githost"
 	"golang.org/x/sync/errgroup"
 )
 
 // RepoRSSPublisher is a struct that manages the main workflow of the application.
 type publishReleasesRunner struct {
-	cfg    *config.Config
-	client *http.Client
+	gitHost githost.GitHostConfig
+	cfg     *config.Config
+	client  *http.Client
 }
 
 // NewPublishReleasesRunner creates a new RepoRSSPublisher instance.
@@ -24,10 +25,12 @@ type publishReleasesRunner struct {
 // - cfg: the config object that holds all of the relevant configuration.
 // - client: The http client to use for requests (used for mocking).
 func NewPublishReleasesRunner(
+	gitHost githost.GitHostConfig,
 	cfg *config.Config,
 	client *http.Client,
 ) Runner {
 	return &publishReleasesRunner{
+		gitHost,
 		cfg,
 		client,
 	}
@@ -40,8 +43,10 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 	slog.Info("Starting main workflow...")
 	start := time.Now()
 
-	// Construct all of the objects we will need
-	gh := github.NewGitHubStarredFeedBuilder(p.cfg, p.client)
+	gh, err := GetGitHostFromConfig(p.gitHost, p.client)
+	if err != nil {
+		return err
+	}
 	fr := freshrss.NewFreshRSSFeedManager(p.cfg, p.client)
 	at := atom.NewAtomFeedChecker(p.client)
 
@@ -53,7 +58,7 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 
 	var rssFeedMap map[string]freshrss.RSSFeed
-	var starredRepoMap map[string]github.GitHubRepo
+	var starredRepoMap map[string]githost.Repo
 
 	// Get existing subscriptions
 	g.Go(func() error {
@@ -74,7 +79,7 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 		return nil
 	})
 
-	// Get starred repos from GitHub
+	// Get starred repos from the Git provider
 	g.Go(func() error {
 		repos, err := gh.GetStarredRepos(ctx)
 		if err != nil {
@@ -101,7 +106,7 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 
 	for _, repo := range starredRepoMap {
 		g.Go(func() error {
-			return publishToFreshRSS(ctx, fr, at, rssFeedMap, repo)
+			return publishToFreshRSS(ctx, fr, at, rssFeedMap, repo, string(p.gitHost.Type))
 		})
 	}
 	for feed := range rssFeedMap {
@@ -124,9 +129,10 @@ func publishToFreshRSS(
 	fr freshrss.FreshRSSFeedManager,
 	at atom.AtomFeedChecker,
 	rssFeedMap map[string]freshrss.RSSFeed,
-	repo github.GitHubRepo,
+	repo githost.Repo,
+	feedName string,
 ) error {
-	repoFeed := repo.ReleaseFeedURL
+	repoFeed := repo.FeedURL()
 
 	// If we find that a matching repo in FreshRSS we don't want to add it again...
 	if _, exists := rssFeedMap[repoFeed]; exists {
@@ -144,17 +150,17 @@ func publishToFreshRSS(
 		return nil
 	}
 
-	return fr.AddFeed(ctx, repoFeed, repo.Name, "GitHub")
+	return fr.AddFeed(ctx, repoFeed, repo.Name(), feedName)
 }
 
 // We never want to unsubscribe from non-github feeds.
 func filterOutNonGitHubFeeds(
-	gh github.GitHubStarredFeedBuilder,
+	gh githost.GitHost,
 	rssFeedMap map[string]freshrss.RSSFeed,
 ) map[string]freshrss.RSSFeed {
 	filteredMap := make(map[string]freshrss.RSSFeed)
 	for k, v := range rssFeedMap {
-		if gh.IsGitHubReleasesFeed(k) {
+		if gh.IsReleaseFeed(k) {
 			filteredMap[k] = v
 		} else {
 			slog.Debug("Ignoring non-GitHub feed so we don't unsubscribe", "feed", k)
@@ -166,7 +172,7 @@ func filterOutNonGitHubFeeds(
 func removeStaleFeeds(
 	ctx context.Context,
 	fr freshrss.FreshRSSFeedManager,
-	starredRepoMap map[string]github.GitHubRepo, // The key is the release ATOM feed
+	starredRepoMap map[string]githost.Repo, // The key is the release ATOM feed
 	rssFeed string,
 ) error {
 	// If a FreshRSS feed does not exist in GitHub remove it

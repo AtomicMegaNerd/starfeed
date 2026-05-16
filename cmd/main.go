@@ -54,14 +54,22 @@ func main() {
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 
-	releasesRunner := runner.NewPublishReleasesRunner(
-		cfg,
-		&http.Client{Timeout: cfg.HTTPTimeout},
-	)
+	runners := make([]runner.Runner, 0)
+
+	// For each GitHost in our config let's create a new runner
+	for _, gitHost := range cfg.GitHosts {
+		releasesRunner := runner.NewPublishReleasesRunner(
+			gitHost,
+			cfg,
+			&http.Client{Timeout: cfg.HTTPTimeout},
+		)
+		runners = append(runners, releasesRunner)
+	}
 
 	// Always run once...
-	if err := releasesRunner.Run(ctx); err != nil {
-		slog.Error("Error executing runners", "error", err)
+	if err := executeRunners(ctx, runners); err != nil {
+		slog.Error("Error executing runers", "error", err)
+		return
 	}
 
 	if cfg.SingleRunMode {
@@ -85,10 +93,20 @@ func main() {
 		// already capture the timestamp when we execute. But it is good to recognize that
 		// the ticker channel is sent this data.
 		case <-ticker.C:
-			if err := releasesRunner.Run(ctx); err != nil {
-				slog.Error("Error executing runners", "error", err)
+			if err := executeRunners(ctx, runners); err != nil {
+				slog.Error("Error executing runers", "error", err)
+				return
 			}
 			slog.Info("Sleeping for 24 hours...")
 		}
 	}
+}
+
+func executeRunners(ctx context.Context, runners []runner.Runner) error {
+	for _, runner := range runners {
+		if err := runner.Run(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
