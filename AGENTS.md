@@ -57,7 +57,7 @@ Local dev: keep secrets in `.envrc` (direnv) and symlink `.env` -> `.envrc` for 
   24h ticker, and invokes the publisher.
 - `config/`: Configuration loading and validation from environment.
 - `runner/`: Orchestrates querying GitHub, checking feeds, publishing to FreshRSS, and pruning stale
-  feeds
+  feeds.
 - `github/`: GitHub API client (stars), pagination parsing, and release feed URL construction.
 - `freshrss/`: FreshRSS client for authentication and feed management.
 - `atom/`: Atom feed checker to ensure feeds have entries before adding.
@@ -92,11 +92,11 @@ Local dev: keep secrets in `.envrc` (direnv) and symlink `.env` -> `.envrc` for 
 
 ## Dockerfile Notes
 
-- Multi-stage build; builder uses latest go alpine image (but not latest tag, specifies version) and
-  installs `go-task`.
+- Multi-stage build; builder uses latest go alpine image version (but not latest tag) and installs
+  `go-task`.
 - Binary built to `/app/bin/starfeed`; CGO disabled and binary stripped (`-s -w`).
-- Runner uses latest alpine image (again specific version like the builder), non-root user created;
-  `COPY --chown` and `PATH=/app/bin`.
+- Runner uses latest alpine image version (not latest tag), non-root user created; `COPY --chown`
+  and `PATH=/app/bin`.
 
 ## CI/CD
 
