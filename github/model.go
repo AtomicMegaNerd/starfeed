@@ -31,7 +31,7 @@ type GitHubIssueBase struct {
 	ID            int64      `json:"id"`
 	Number        int64      `json:"number"`
 	Title         string     `json:"title"`
-	Status        string     `json:"status"`
+	State         string     `json:"state"`
 	HTMLURL       string     `json:"html_url"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 	CreatedAt     time.Time  `json:"created_at"`

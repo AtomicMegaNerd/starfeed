@@ -49,11 +49,6 @@ func NewPublishReleasesRunner(
 // It also removes any stale feeds from FreshRSS as long as they are not starred in GitHub but
 // are actually GitHub release feeds.
 func (p *publishReleasesRunner) Run(ctx context.Context) error {
-	if p.cfg.DisableRepoFeedMode {
-		slog.Warn("Releases workflow disabled")
-		return nil
-	}
-
 	slog.Info("Starting main workflow....")
 	start := time.Now()
 
@@ -97,8 +92,9 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 		"duration", duration,
 	)
 
-	// Sync feeds using an error group
+	// Sync feeds using an error group with concurrency limit to avoid overwhelming FreshRSS
 	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(5)
 	for _, repo := range starredRepoMap {
 		g.Go(func() error {
 			return publishToFreshRSS(ctx, fr, at, rssFeedMap, repo)

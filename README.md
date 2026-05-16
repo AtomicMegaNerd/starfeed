@@ -10,9 +10,6 @@ releases for any of the repos that you have starred.
 Starfeed will omit any RSS feeds from GitHub that are empty. It will also remove any feeds for repos
 that you are no longer starring.
 
-Starfeed is written in Go and currently relies purely on the standard library with no external
-dependencies. The Docker image for this app is a little bigger than 25MB!
-
 ## Pre-Requisites
 
 ### Required Software
@@ -117,26 +114,3 @@ To run the tests:
 ```bash
 task test
 ```
-
-## Tasks
-
-- [x] Query GitHub for starred repos
-- [x] Implement FreshRSS publishing
-- [x] Add a semaphore to throttle the requests to FreshRSS
-- [x] Only add feeds that are not already in FreshRSS
-- [x] Only add a feed if it has entries
-- [x] Come up with a better name
-- [x] Implement pruning of old feeds once they are no longer starred
-- [x] Containerize the app
-- [x] Make the app run on a schedule inside the container
-- [x] GitHub pipeline to build and publish the Docker image
-- [x] Write end-user documentation
-- [x] Add some performance profiling
-- [x] Draw a cute logo
-- [x] Add unit tests
-- [x] Add test coverage to Taskfile and to GitHub Actions
-- [ ] Fix unbounded goroutine spawning in runner — use a worker pool or semaphore
-- [x] Use errgroup for error propagation from goroutines instead of fire-and-forget
-- [ ] Create per repo feeds for issues I am subscribed to.
-- [ ] Create pre repo feeds for pull requests I am subscribed to.
-- [x] Add colored logging.

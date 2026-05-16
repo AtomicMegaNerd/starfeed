@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/config"
-	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/runner"
 	"github.com/lmittmann/tint"
 	"golang.org/x/sync/errgroup"
@@ -60,29 +59,14 @@ func main() {
 	// Setup our primary error group
 	g, ctx := errgroup.WithContext(ctx)
 
-	// Let's run the RSS server in a separate Go routine
-	rss := rss.NewRSSServer(cfg)
-	g.Go(func() error {
-		return rss.Start(ctx)
-	})
-
 	releasesRunner := runner.NewPublishReleasesRunner(
 		cfg,
 		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
-	issuesRunner := runner.PublishIssuesRunner(
-		cfg,
-		&http.Client{Timeout: cfg.HTTPTimeout},
-	)
-
-	runners := []runner.Runner{
-		releasesRunner, issuesRunner,
-	}
-
 	g.Go(func() error {
 		// Always run once...
-		if err := executeRunners(ctx, runners); err != nil {
+		if err := releasesRunner.Run(ctx); err != nil {
 			slog.Error("Error executing runners", "error", err)
 			return err
 		}
@@ -99,7 +83,7 @@ func main() {
 				slog.Info("Exiting...")
 				return nil
 			case <-ticker.C:
-				if err := executeRunners(ctx, runners); err != nil {
+				if err := releasesRunner.Run(ctx); err != nil {
 					slog.Error("Error executing runners", "error", err)
 					return err
 				}
@@ -114,17 +98,4 @@ func main() {
 		slog.Error("Fatal error resulting in shutdown...", "error", err)
 		os.Exit(1)
 	}
-}
-
-// This function executes all of the runners in parallel using its own errgroup. It returns the
-// first error it finds
-func executeRunners(
-	ctx context.Context,
-	runners []runner.Runner,
-) error {
-	g, ctx := errgroup.WithContext(ctx)
-	for _, r := range runners {
-		g.Go(func() error { return r.Run(ctx) })
-	}
-	return g.Wait()
 }
