@@ -63,10 +63,12 @@ func main() {
 	runners := make([]runner.Runner, 0)
 	feedChecker := atom.NewAtomFeedChecker(client)
 	rssServer := rss.NewFreshRSSFeedManager(cfg.RSSServerConfig, client)
+	slog.Info("Successfully registered RSS server...", "URL", cfg.RSSServerConfig.BaseURL)
 
 	// For each GitHost in our config let's create a new runner
 	for _, gitHostConfig := range cfg.GitHostConfigs {
 		gitHost, err := githost.NewGitHost(gitHostConfig, client)
+		slog.Info("Successfully registered git host", "name", gitHostConfig.Name)
 		if err != nil {
 			slog.Error("Cannot configure git host...", "error", err)
 			os.Exit(1)

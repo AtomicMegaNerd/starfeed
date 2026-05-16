@@ -134,7 +134,7 @@ func buildGitHostConfigs(
 type RSSServerConfig struct {
 	Type    string `validate:"required,oneof=freshrss"`
 	BaseURL string `validate:"required,url"`
-	User    string `validate:"required,min=3"`
+	User    string `validate:"required,email"`
 	Token   string `validate:"required,min=10"`
 	Enabled bool
 }
