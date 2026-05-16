@@ -412,7 +412,7 @@ func TestFilterOutNonGitHubFeeds(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			gitHost := githost.MockValidGitHub(&http.Client{})
-			result := filterOutNonGitHubFeeds(gitHost, tc.inputFeeds)
+			result := filterOutNonRepoReleaseFeeds(gitHost, tc.inputFeeds)
 
 			if len(result) != tc.expectedLength {
 				t.Errorf("Expected %d feeds, got %d", tc.expectedLength, len(result))

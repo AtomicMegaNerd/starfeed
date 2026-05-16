@@ -37,14 +37,14 @@ func main() {
 		slog.SetDefault(slog.New(
 			tint.NewHandler(w, &tint.Options{
 				Level:      slog.LevelDebug,
-				TimeFormat: time.Kitchen,
+				TimeFormat: time.RFC3339,
 			}),
 		))
 	} else {
 		slog.SetDefault(slog.New(
 			tint.NewHandler(w, &tint.Options{
 				Level:      slog.LevelInfo,
-				TimeFormat: time.Kitchen,
+				TimeFormat: time.RFC3339,
 			}),
 		))
 	}

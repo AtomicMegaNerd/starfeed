@@ -22,6 +22,8 @@ const (
 
 	gitHubHostConfigFields = 6
 	rssServerConfigFields  = 5
+
+	defaultHttpTimeoutSeconds = 60
 )
 
 // The main Config struct used to hold configuration state for the app
@@ -37,7 +39,7 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 	validate := validator.New()
 
 	// Parse optional HTTP timeout, default to 10 seconds
-	httpTimeout := 10 * time.Second
+	httpTimeout := defaultHttpTimeoutSeconds * time.Second
 	if timeoutStr := envGetter.Getenv(httpTimeoutKey); timeoutStr != "" {
 		if timeoutSeconds, err := strconv.Atoi(timeoutStr); err == nil && timeoutSeconds > 0 {
 			httpTimeout = time.Duration(timeoutSeconds) * time.Second

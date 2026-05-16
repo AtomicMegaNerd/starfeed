@@ -34,9 +34,9 @@ func NewPublishReleasesRunner(
 	}
 }
 
-// Run queries the starred repos from GitHub and publishes them to FreshRSS.
-// It also removes any stale feeds from FreshRSS as long as they are not starred in GitHub but
-// are actually GitHub release feeds.
+// This queries release feeds for all starred repos in the specified Git host and publishes them
+// to FreshRSS. It also removes any stale release feeds from FreshRSS if they are no longer
+// starred.
 func (p *publishReleasesRunner) Run(ctx context.Context) error {
 	if !p.gitHost.Enabled() {
 		slog.Warn("Skipping git host because it is not enabled", "githost", p.gitHost.Name())
@@ -46,20 +46,21 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 	slog.Info("Starting main workflow...")
 	start := time.Now()
 
-	g, ctx := errgroup.WithContext(ctx)
-
+	// Get starred repos from the Git provider, we set a limit on concurrent requests so we
+	// don't get rate limited by the Git host.
+	ghErrgoup, ghCtx := errgroup.WithContext(ctx)
+	ghErrgoup.SetLimit(5)
 	var starredRepoMap map[string]githost.Repo
-
-	// Get starred repos from the Git provider
-	g.Go(func() error {
-		repos, err := p.gitHost.GetStarredRepos(ctx)
+	ghErrgoup.Go(func() error {
+		repos, err := p.gitHost.GetStarredRepos(ghCtx)
 		if err != nil {
 			return err
 		}
 		starredRepoMap = repos
 
 		slog.Info(
-			"Queried starred repos in GitHub",
+			"Queried starred repos in Git host",
+			"Git host", p.gitHost.Name(),
 			"numberStarredRepos", len(starredRepoMap),
 			"duration", time.Since(start),
 		)
@@ -67,56 +68,63 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 	})
 
 	// Authenticate to FreshRSS
-	var rssFeedMap map[string]rss.RSSFeed
+	rssErrgoup, rssCtx := errgroup.WithContext(ctx)
+	var filteredRssFeedsMap map[string]rss.RSSFeed
 	if p.rssServer.Enabled() {
-		if err := p.rssServer.Authenticate(ctx); err != nil {
+		if err := p.rssServer.Authenticate(rssCtx); err != nil {
 			return err
 		}
+
 		// Get existing subscriptions
-		g.Go(func() error {
+		rssErrgoup.Go(func() error {
 			slog.Info("Querying existing RSS feeds in FreshRSS... ")
-			feeds, err := p.rssServer.GetExistingFeeds(ctx)
+			rawRssFeedsMap, err := p.rssServer.GetExistingFeeds(ghCtx)
 			if err != nil {
 				return err
 			}
 
-			// Filter out any subscriptions that are not GitHub release feeds so we
-			// do not unsubscribe from them
-			rssFeedMap = filterOutNonGitHubFeeds(p.gitHost, feeds)
+			// Filter out feeds from the list that are not from this git host
+			filteredRssFeedsMap = filterOutNonRepoReleaseFeeds(p.gitHost, rawRssFeedsMap)
 			slog.Info(
-				"Queried GitHub release feeds in FreshRSS",
-				"numberFeeds", len(rssFeedMap),
+				"Queried Git project release feeds in FreshRSS",
+				"numberFeeds", len(filteredRssFeedsMap),
 				"duration", time.Since(start),
 			)
 			return nil
 		})
 
 		// Wait for these two independent operations to finish...
-		if err := g.Wait(); err != nil {
+		if err := rssErrgoup.Wait(); err != nil {
+			return err
+		}
+		if err := ghErrgoup.Wait(); err != nil {
 			return err
 		}
 
-		// Sync feeds using an error group with concurrency limit to avoid overwhelming FreshRSS
-		g, ctx = errgroup.WithContext(ctx)
-		g.SetLimit(5)
-
+		// We can also overwhelm FreshRSS with this so we will also set a limit
+		rssErrgoup, rssCtx = errgroup.WithContext(ctx)
+		rssErrgoup.SetLimit(10)
 		for _, repo := range starredRepoMap {
-			g.Go(func() error {
-				return p.publishToFreshRSS(ctx, rssFeedMap, repo)
+			rssErrgoup.Go(func() error {
+				return p.publishToFreshRSS(rssCtx, filteredRssFeedsMap, repo)
 			})
 		}
-		for feed := range rssFeedMap {
-			g.Go(func() error {
-				return p.removeStaleFeeds(ctx, starredRepoMap, feed)
+		for feed := range filteredRssFeedsMap {
+			rssErrgoup.Go(func() error {
+				return p.removeStaleFeeds(rssCtx, starredRepoMap, feed)
 			})
 		}
 
-		if err := g.Wait(); err != nil {
+		if err := rssErrgoup.Wait(); err != nil {
 			return err
 		}
 
 		// Report success
-		slog.Info("FreshRSS feeds synced with GitHub successfully", "duration", time.Since(start))
+		slog.Info(
+			"FreshRSS feeds synced from the Git host successfully",
+			"Git host", p.gitHost.Name(),
+			"duration", time.Since(start),
+		)
 
 	} else {
 		slog.Warn("Skipping publishing to rss server because it is not enabled")
@@ -134,7 +142,7 @@ func (p *publishReleasesRunner) publishToFreshRSS(
 
 	// If we find that a matching repo in FreshRSS we don't want to add it again...
 	if _, exists := rssFeedMap[repoFeed]; exists {
-		slog.Info("Not adding feed as it is already in FreshRSS", "feed", repo.Name())
+		slog.Info("Not adding feed as it is already in RSS", "feed", repo.Name())
 		return nil
 	}
 
@@ -152,16 +160,19 @@ func (p *publishReleasesRunner) publishToFreshRSS(
 }
 
 // We never want to unsubscribe from non-github feeds.
-func filterOutNonGitHubFeeds(
+func filterOutNonRepoReleaseFeeds(
 	gh githost.GitHost,
 	rssFeedMap map[string]rss.RSSFeed,
 ) map[string]rss.RSSFeed {
 	filteredMap := make(map[string]rss.RSSFeed)
-	for k, v := range rssFeedMap {
-		if gh.IsReleaseFeed(k) {
-			filteredMap[k] = v
+	for feedUrl, feedObject := range rssFeedMap {
+		if gh.IsReleaseFeed(feedUrl) {
+			filteredMap[feedUrl] = feedObject
 		} else {
-			slog.Debug("Ignoring non-GitHub feed so we don't unsubscribe", "feed", k)
+			slog.Debug(
+				"Ignoring feeds that are't release feed from a git host so we don't unsubscribe",
+				"feed", feedUrl,
+			)
 		}
 	}
 	return filteredMap
@@ -175,7 +186,8 @@ func (p *publishReleasesRunner) removeStaleFeeds(
 	// If a FreshRSS feed does not exist in GitHub remove it
 	if _, exists := starredRepoMap[rssFeed]; !exists {
 		slog.Info(
-			"Removing feed from FreshRSS as it is no longer starred in GitHub", "feed", rssFeed,
+			"Removing feed from RSS Server as it is no longer starred",
+			"feed", rssFeed,
 		)
 		if err := p.rssServer.RemoveFeed(ctx, rssFeed); err != nil {
 			return err
