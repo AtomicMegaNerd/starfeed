@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -33,6 +34,20 @@ func NewFreshRSSFeedManager(
 	client *http.Client,
 ) (RSSServer, error) {
 	validate := validator.New()
+
+	if rssType == "" {
+		return nil, errors.New("rssType is required")
+	}
+	if baseUrl == "" {
+		return nil, errors.New("baseUrl is required")
+	}
+	if user == "" {
+		return nil, errors.New("user is required")
+	}
+	if token == "" {
+		return nil, errors.New("token is required")
+	}
+
 	rssServer := &freshRSS{
 		rssType: rssType,
 		baseURL: baseUrl,

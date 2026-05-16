@@ -216,6 +216,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 			}
 
 			mockRunner := &publishReleasesRunner{
+				gitHost:         githost.MockValidGitHub(&http.Client{}),
 				rssServer:       mockFreshRSS,
 				atomFeedChecker: mockAtom,
 			}

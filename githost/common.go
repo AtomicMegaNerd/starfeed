@@ -41,6 +41,19 @@ func NewGitHost(
 ) (GitHost, error) {
 	validate := validator.New()
 
+	if hostType == "" {
+		return nil, errors.New("hostType is required")
+	}
+	if hostName == "" {
+		return nil, errors.New("hostName is required")
+	}
+	if baseUrl == "" {
+		return nil, errors.New("baseUrl is required")
+	}
+	if token == "" {
+		return nil, errors.New("token is required")
+	}
+
 	gitHost := &gitHost{
 		hostType: hostType,
 		name:     hostName,
