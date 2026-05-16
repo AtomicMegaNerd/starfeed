@@ -14,6 +14,7 @@ type Repo interface {
 type BaseRepo struct {
 	RepoName string `json:"name"`
 	RepoURL  string `json:"html_url"`
+	Kind     string
 }
 
 func (gr *BaseRepo) Name() string {
@@ -21,11 +22,14 @@ func (gr *BaseRepo) Name() string {
 }
 
 func (gr *BaseRepo) FeedURL() string {
-	return fmt.Sprintf("%s/releases.atom", gr.RepoURL)
-}
-
-func (gr *BaseRepo) String() string {
-	return fmt.Sprintf("Name: %s, Release Feed: %s", gr.Name(), gr.FeedURL())
+	switch gr.Kind {
+	case "forgejo":
+		return fmt.Sprintf("%s/releases.rss", gr.RepoURL)
+	case "github":
+		return fmt.Sprintf("%s/releases.atom", gr.RepoURL)
+	}
+	// We validate this so we should never get here..
+	return ""
 }
 
 // This is the response we get from the Git Host

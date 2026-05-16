@@ -79,7 +79,7 @@ func main() {
 
 	// Always run once...
 	if err := executeRunners(ctx, runners); err != nil {
-		slog.Error("Error executing runers", "error", err)
+		slog.Error("Error executing runners", "error", err)
 		os.Exit(1)
 	}
 

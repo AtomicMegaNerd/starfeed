@@ -60,6 +60,7 @@ func TestGetStarredRepos(t *testing.T) {
 			},
 			expectedRepos: []BaseRepo{
 				{
+					Kind:     mocks.GitHubType,
 					RepoName: repoName1,
 					RepoURL:  repoHtmlUrl1,
 				},
@@ -106,10 +107,10 @@ func TestGetStarredRepos(t *testing.T) {
 				},
 			},
 			expectedRepos: []BaseRepo{
-				{RepoName: repoName1, RepoURL: repoHtmlUrl1},
-				{RepoName: repoName2, RepoURL: repoHtmlUrl2},
-				{RepoName: repoName3, RepoURL: repoHtmlUrl3},
-				{RepoName: repoName4, RepoURL: repoHtmlUrl4},
+				{RepoName: repoName1, RepoURL: repoHtmlUrl1, Kind: mocks.GitHubType},
+				{RepoName: repoName2, RepoURL: repoHtmlUrl2, Kind: mocks.GitHubType},
+				{RepoName: repoName3, RepoURL: repoHtmlUrl3, Kind: mocks.GitHubType},
+				{RepoName: repoName4, RepoURL: repoHtmlUrl4, Kind: mocks.GitHubType},
 			},
 			expectError: false,
 		},

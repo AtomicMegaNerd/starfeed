@@ -127,6 +127,18 @@ func (g *gitHost) GetStarredRepos(
 		}
 
 		for _, repo := range repos {
+			// Set the kind otherwise the FeedURL will not work properly
+			repo.Kind = g.hostType
+			feedUrl := repo.FeedURL()
+
+			slog.Debug(
+				"Parsed starred repo from JSON",
+				"gitHost", g.Name,
+				"repo", repo.Name(),
+				"kind", repo.Kind,
+				"feedUrl", feedUrl,
+			)
+
 			allFeeds[repo.FeedURL()] = &repo
 		}
 

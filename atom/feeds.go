@@ -43,7 +43,9 @@ func (a *atomFeedChecker) CheckFeedHasEntries(
 	defer res.Body.Close() // nolint:errcheck
 
 	if res.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("error response from ATOM feed %d", res.StatusCode)
+		return false, fmt.Errorf(
+			"error response from atom feed: %s, status: %d", feedUrl, res.StatusCode,
+		)
 	}
 
 	data, err := io.ReadAll(res.Body)
