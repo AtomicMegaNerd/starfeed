@@ -9,19 +9,20 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/atomicmeganerd/starfeed/config"
 )
 
 // GitHubStarredFeedBuilder is an interface for retrieving Atom feeds from GitHub
 // for all starred repos.
 type GitHubStarredFeedBuilder interface {
-	GetStarredRepos() (map[string]GitHubRepo, error)
+	GetStarredRepos(ctx context.Context) (map[string]GitHubRepo, error)
 	IsGitHubReleasesFeed(feedUrl string) bool
 }
 
 // gitHubStarredFeedBuilder is the private implementation of GitHubStarredFeedBuilder.
 type gitHubStarredFeedBuilder struct {
-	token             string // WARNING: Do not log this value as it is a secret
-	ctx               context.Context
+	cfg               *config.Config
 	client            *http.Client
 	nextPageLinkRegex *regexp.Regexp
 	isRelRepoRegex    *regexp.Regexp
@@ -29,30 +30,30 @@ type gitHubStarredFeedBuilder struct {
 
 // NewGitHubStarredFeedBuilder creates a new GitHubStarredFeedBuilder instance.
 // Arguments:
-// - token: The GitHub API token to authenticate with.
-// - ctx: The context to use for requests.
+// - cfg: This holds the configuration state this object needs.
 // - client: The http client to use for requests (used for mocking).
 func NewGitHubStarredFeedBuilder(
-	token string,
-	ctx context.Context,
+	cfg *config.Config,
 	client *http.Client,
 ) GitHubStarredFeedBuilder {
 	// This regex is used to find the next page link in the GitHub API response
 	nextPageLinkRegex := regexp.MustCompile(`<([^>]+)>; rel="next"`)
 	// This regex is used to determine if an RSS feed is a GitHub release feed
 	isRelRepoRegex := regexp.MustCompile(`^https://github.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`)
-	return &gitHubStarredFeedBuilder{token, ctx, client, nextPageLinkRegex, isRelRepoRegex}
+	return &gitHubStarredFeedBuilder{cfg, client, nextPageLinkRegex, isRelRepoRegex}
 }
 
 // This will return all starred repos including the Atom feeds for their releases
-// It returns a map of relaseFeedUrl -> GitHubRepo
-func (gh *gitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, error) {
+// It returns a map of releaseFeedUrl -> GitHubRepo
+func (gh *gitHubStarredFeedBuilder) GetStarredRepos(
+	ctx context.Context,
+) (map[string]GitHubRepo, error) {
 	allFeeds := make(map[string]GitHubRepo)
 	getUrl := "https://api.github.com/user/starred?per_page=100"
 	slog.Debug("Querying GitHub for starred repos", "url", getUrl)
 
 	for {
-		ghResponse, err := gh.doApiRequest(getUrl)
+		ghResponse, err := gh.doApiRequest(ctx, getUrl)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +65,7 @@ func (gh *gitHubStarredFeedBuilder) GetStarredRepos() (map[string]GitHubRepo, er
 
 		for _, repo := range repos {
 			repo.BuildReleasesFeedURL()
-			allFeeds[repo.FeedUrl] = repo
+			allFeeds[repo.ReleaseFeedURL] = repo
 		}
 
 		// If there is no next page we are done...
@@ -84,9 +85,12 @@ func (gh *gitHubStarredFeedBuilder) IsGitHubReleasesFeed(feedUrl string) bool {
 	return gh.isRelRepoRegex.MatchString(feedUrl)
 }
 
-func (gh *gitHubStarredFeedBuilder) doApiRequest(url string) (*GitHubResponse, error) {
+func (gh *gitHubStarredFeedBuilder) doApiRequest(
+	ctx context.Context,
+	ghReqUrl string,
+) (*GitHubResponse, error) {
 	headers := map[string]string{
-		"Authorization":        fmt.Sprintf("Bearer %s", gh.token),
+		"Authorization":        fmt.Sprintf("Bearer %s", gh.cfg.GitHubToken),
 		"X-GitHub-Api-Version": "2022-11-28",
 		"User-Agent":           "github.com/atomicmeganerd/starfeed",
 		"Content-Type":         "application/json",
@@ -94,7 +98,7 @@ func (gh *gitHubStarredFeedBuilder) doApiRequest(url string) (*GitHubResponse, e
 	}
 
 	// No request will always be valid here so we can ignore the error
-	req, err := http.NewRequestWithContext(gh.ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", ghReqUrl, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -113,12 +117,7 @@ func (gh *gitHubStarredFeedBuilder) doApiRequest(url string) (*GitHubResponse, e
 		return nil, fmt.Errorf("github returned an http error code %d", res.StatusCode)
 	}
 
-	ghResponse, err := gh.processGitHubResponse(res)
-	if err != nil {
-		return nil, err
-	}
-
-	return ghResponse, nil
+	return gh.processGitHubResponse(res)
 }
 
 func (gh *gitHubStarredFeedBuilder) processGitHubResponse(

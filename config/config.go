@@ -36,10 +36,10 @@ const (
 )
 
 type Config struct {
-	GitHubToken   string
+	GitHubToken   string // WARNING: Never log this secret
 	FreshRSSURL   string
 	FreshRSSUser  string
-	FreshRSSToken string
+	FreshRSSToken string // WARNING: Never log this secret
 	DebugMode     bool
 	SingleRunMode bool
 	HTTPTimeout   time.Duration

@@ -41,3 +41,6 @@ test-report*
 .claude
 .crush
 .pre-commit-config.yaml
+
+# Go task
+.task

@@ -3,20 +3,9 @@ package config
 import (
 	"testing"
 	"time"
+
+	"github.com/atomicmeganerd/starfeed/mocks"
 )
-
-// MockEnvGetter implements EnvGetter for testing
-type MockEnvGetter struct {
-	envVars map[string]string
-}
-
-func NewMockEnvGetter(envVars map[string]string) *MockEnvGetter {
-	return &MockEnvGetter{envVars: envVars}
-}
-
-func (m *MockEnvGetter) Getenv(key string) string {
-	return m.envVars[key]
-}
 
 type NewConfigTestCase struct {
 	name        string
@@ -148,11 +137,52 @@ func TestNewConfig(t *testing.T) {
 				HTTPTimeout:   10 * time.Second,
 			},
 		},
+		{
+			name: "All disable flags enabled",
+			envVars: map[string]string{
+				"STARFEED_GITHUB_API_TOKEN":   "gh_token123",
+				"STARFEED_FRESHRSS_URL":       "http://freshrss.example.com",
+				"STARFEED_FRESHRSS_USER":      "testuser",
+				"STARFEED_FRESHRSS_API_TOKEN": "freshrss_token456",
+			},
+			expectError: false,
+			expected: &Config{
+				GitHubToken:   "gh_token123",
+				FreshRSSURL:   "http://freshrss.example.com",
+				FreshRSSUser:  "testuser",
+				FreshRSSToken: "freshrss_token456",
+				HTTPTimeout:   10 * time.Second,
+			},
+		},
+		{
+			name: "Invalid bool for debug mode should error",
+			envVars: map[string]string{
+				"STARFEED_GITHUB_API_TOKEN":   "gh_token123",
+				"STARFEED_FRESHRSS_URL":       "http://freshrss.example.com",
+				"STARFEED_FRESHRSS_USER":      "testuser",
+				"STARFEED_FRESHRSS_API_TOKEN": "freshrss_token456",
+				"STARFEED_DEBUG_MODE":         "notabool",
+			},
+			expectError: true,
+			expected:    nil,
+		},
+		{
+			name: "Invalid bool for single run mode should error",
+			envVars: map[string]string{
+				"STARFEED_GITHUB_API_TOKEN":   "gh_token123",
+				"STARFEED_FRESHRSS_URL":       "http://freshrss.example.com",
+				"STARFEED_FRESHRSS_USER":      "testuser",
+				"STARFEED_FRESHRSS_API_TOKEN": "freshrss_token456",
+				"STARFEED_SINGLE_RUN_MODE":    "notabool",
+			},
+			expectError: true,
+			expected:    nil,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockEnvGetter := NewMockEnvGetter(tc.envVars)
+			mockEnvGetter := mocks.NewMockEnvGetter(tc.envVars)
 			config, err := NewConfig(mockEnvGetter)
 
 			if tc.expectError {

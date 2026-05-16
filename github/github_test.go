@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/mocks"
 )
 
@@ -40,9 +41,10 @@ type GetStarredReposTestCase struct {
 }
 
 func (tc *GetStarredReposTestCase) GetTestObject() GitHubStarredFeedBuilder {
+	mockCfg := &config.Config{}
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewGitHubStarredFeedBuilder("mockToken", context.Background(), mockClient)
+	return NewGitHubStarredFeedBuilder(mockCfg, mockClient)
 }
 
 func TestGetStarredRepos(t *testing.T) {
@@ -65,9 +67,9 @@ func TestGetStarredRepos(t *testing.T) {
 			},
 			expectedRepos: []GitHubRepo{
 				{
-					Name:    repoName1,
-					HtmlUrl: repoHtmlUrl1,
-					FeedUrl: repoReleasesUrl1,
+					Name:           repoName1,
+					HTMLURL:        repoHtmlUrl1,
+					ReleaseFeedURL: repoReleasesUrl1,
 				},
 			},
 			expectError: false,
@@ -117,26 +119,26 @@ func TestGetStarredRepos(t *testing.T) {
 			},
 			expectedRepos: []GitHubRepo{
 				{
-					Name:    repoName1,
-					HtmlUrl: repoHtmlUrl1,
-					FeedUrl: repoReleasesUrl1,
+					Name:           repoName1,
+					HTMLURL:        repoHtmlUrl1,
+					ReleaseFeedURL: repoReleasesUrl1,
 				},
 				{
-					Name:    repoName2,
-					HtmlUrl: repoHtmlUrl2,
-					FeedUrl: repoReleasesUrl2,
+					Name:           repoName2,
+					HTMLURL:        repoHtmlUrl2,
+					ReleaseFeedURL: repoReleasesUrl2,
 				},
 				{
 					Name:    repoName3,
-					HtmlUrl: repoHtmlUrl3,
+					HTMLURL: repoHtmlUrl3,
 
-					FeedUrl: repoReleasesUrl3,
+					ReleaseFeedURL: repoReleasesUrl3,
 				},
 				{
 					Name:    repoName4,
-					HtmlUrl: repoHtmlUrl4,
+					HTMLURL: repoHtmlUrl4,
 
-					FeedUrl: repoReleasesUrl4,
+					ReleaseFeedURL: repoReleasesUrl4,
 				},
 			},
 			expectError: false,
@@ -183,7 +185,8 @@ func TestGetStarredRepos(t *testing.T) {
 		t.Logf("Running test case: %s\n", tc.name)
 
 		gh := tc.GetTestObject()
-		repos, err := gh.GetStarredRepos()
+		ctx := context.Background()
+		repos, err := gh.GetStarredRepos(ctx)
 
 		if tc.expectError {
 			if err == nil {
@@ -209,8 +212,9 @@ type TestIsGitHubRepoTestCase struct {
 }
 
 func TestIsGitHubReleaseRepo(t *testing.T) {
+	mockCfg := &config.Config{}
 	mockClient := http.Client{}
-	gh := NewGitHubStarredFeedBuilder("", context.Background(), &mockClient)
+	gh := NewGitHubStarredFeedBuilder(mockCfg, &mockClient)
 	testCases := []TestIsGitHubRepoTestCase{
 		{
 			name:        "Letters only",

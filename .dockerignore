@@ -50,3 +50,12 @@ temp/
 *.tmp
 *.temp
 
+# Nix
+result
+result-*
+
+# direnv
+.direnv/
+
+# Coverage
+cover.out

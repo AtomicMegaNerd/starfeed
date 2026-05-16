@@ -17,25 +17,31 @@
     let
       systems = [
         "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
         "aarch64-darwin"
       ];
-      buildPkgsConf =
-        system:
-        import nixpkgs {
-          inherit system;
-          config.allowUnfree = true;
-        };
 
       buildPreCommitCheck =
         system:
         git-hooks.lib.${system}.run {
           src = ./.;
           hooks = {
+            oxfmt = {
+              enable = true;
+              name = "oxfmt";
+              entry = "oxfmt .";
+              pass_filenames = false;
+            };
             trim-trailing-whitespace.enable = true;
             mixed-line-endings.enable = true;
             end-of-file-fixer.enable = true;
             check-yaml.enable = true;
             check-toml.enable = true;
+            nixfmt.enable = true;
+            flake-checker.enable = true;
+            markdownlint.enable = true;
+            # Go specific pre-commit hooks
             gofmt.enable = true;
             golangci-lint.enable = true;
           };
@@ -49,7 +55,7 @@
       devShells = nixpkgs.lib.genAttrs systems (
         system:
         let
-          pkgs = buildPkgsConf system;
+          pkgs = import nixpkgs { inherit system; };
         in
         {
           default = pkgs.mkShell {
@@ -60,15 +66,19 @@
               pkgs.go-tools
               pkgs.gopls
               pkgs.golangci-lint
+              pkgs.gotestsum
               pkgs.go-task
-              pkgs.nodejs
               pkgs.bash-language-server
               pkgs.docker-language-server
               pkgs.yaml-language-server
+              pkgs.yamllint
+              pkgs.markdownlint-cli2
+              pkgs.nixfmt
+              pkgs.nil
+              pkgs.oxfmt
             ];
           };
         }
       );
     };
-
 }

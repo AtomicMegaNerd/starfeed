@@ -7,17 +7,17 @@ import (
 // This object represents a GitHub repo that is starred and that we want to
 // get the Atom feed for.
 type GitHubRepo struct {
-	Name    string `json:"name"`
-	HtmlUrl string `json:"html_url"`
-	FeedUrl string
+	Name           string `json:"name"`
+	HTMLURL        string `json:"html_url"`
+	ReleaseFeedURL string
 }
 
 func (gr *GitHubRepo) String() string {
-	return fmt.Sprintf("Name: %s, Releases Feed: %s", gr.Name, gr.FeedUrl)
+	return fmt.Sprintf("Name: %s, Releases Feed: %s", gr.Name, gr.ReleaseFeedURL)
 }
 
 func (gr *GitHubRepo) BuildReleasesFeedURL() {
-	gr.FeedUrl = fmt.Sprintf("%s/releases.atom", gr.HtmlUrl)
+	gr.ReleaseFeedURL = fmt.Sprintf("%s/releases.atom", gr.HTMLURL)
 }
 
 // This is the response we get from GitHub
