@@ -5,12 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-05-15
 
 ### Changed
 
-- Contexts are passed as arguments and are never struct members.
-- Use errgroup instead of sync groups.
+- All FreshRSS and GitHub client methods now require `context.Context` as first argument instead of
+  storing it in the structs.
+- Replaced `sync.WaitGroup` with `golang.org/x/sync/errgroup` for concurrent operations with proper
+  error propagation.
+- Added limit to FreshRSS go-routines to 5 max concurrent requests so we don't break the server.
+- More operations are performed simultaneously for speed.
+- Added `github.com/lmittmann/tint` library for nice coloured log output.
+- GitHub Actions workflow updated.
+- Taskfile cleaned up and simplified.
+- Nix flake cleaned up and changed some development tooling.
 
 ## [0.1.7] - 2026-04-01
 

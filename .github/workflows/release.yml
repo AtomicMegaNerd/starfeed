@@ -43,6 +43,9 @@ jobs:
           install-mode: "binary"
           version: latest
 
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
       - name: Install dependencies
         run: go mod tidy
 
