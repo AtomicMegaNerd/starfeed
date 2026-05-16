@@ -110,7 +110,7 @@ func (f *freshRSS) AddFeed(
 }
 
 // GetExistingFeeds gets the existing feeds from the FreshRSS instance.
-func (f *freshRSS) GetExistingFeeds(ctx context.Context) (map[string]RSSFeed, error) {
+func (f *freshRSS) GetExistingFeeds(ctx context.Context) (map[string]struct{}, error) {
 	getUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.baseURL,
 	)
@@ -127,11 +127,11 @@ func (f *freshRSS) GetExistingFeeds(ctx context.Context) (map[string]RSSFeed, er
 		return nil, err
 	}
 
-	feedMap := make(map[string]RSSFeed)
+	feedSet := make(map[string]struct{})
 	for _, feed := range feeds.Feeds {
-		feedMap[feed.Url] = feed
+		feedSet[feed.Url] = struct{}{}
 	}
-	return feedMap, nil
+	return feedSet, nil
 }
 
 // RemoveFeed removes a feed from the FreshRSS instance.

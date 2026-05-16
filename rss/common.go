@@ -8,7 +8,7 @@ import (
 type RSSServer interface {
 	Authenticate(ctx context.Context) error
 	AddFeed(ctx context.Context, feedUrl, name, category string) error
-	GetExistingFeeds(ctx context.Context) (map[string]RSSFeed, error)
+	GetExistingFeeds(ctx context.Context) (map[string]struct{}, error)
 	RemoveFeed(ctx context.Context, feedUrl string) error
 	Enabled() bool
 }

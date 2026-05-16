@@ -69,7 +69,7 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 
 	// Authenticate to FreshRSS
 	rssErrgoup, rssCtx := errgroup.WithContext(ctx)
-	var filteredRssFeedsMap map[string]rss.RSSFeed
+	var filteredRssFeedsSet map[string]struct{}
 	if p.rssServer.Enabled() {
 		if err := p.rssServer.Authenticate(rssCtx); err != nil {
 			return err
@@ -78,16 +78,16 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 		// Get existing subscriptions
 		rssErrgoup.Go(func() error {
 			slog.Info("Querying existing RSS feeds in FreshRSS... ")
-			rawRssFeedsMap, err := p.rssServer.GetExistingFeeds(ghCtx)
+			rawRssFeedsSet, err := p.rssServer.GetExistingFeeds(ghCtx)
 			if err != nil {
 				return err
 			}
 
 			// Filter out feeds from the list that are not from this git host
-			filteredRssFeedsMap = filterOutNonRepoReleaseFeeds(p.gitHost, rawRssFeedsMap)
+			filteredRssFeedsSet = filterOutNonRepoReleaseFeeds(p.gitHost, rawRssFeedsSet)
 			slog.Info(
 				"Queried Git project release feeds in FreshRSS",
-				"numberFeeds", len(filteredRssFeedsMap),
+				"numberFeeds", len(filteredRssFeedsSet),
 				"duration", time.Since(start),
 			)
 			return nil
@@ -106,10 +106,10 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 		rssErrgoup.SetLimit(10)
 		for _, repo := range starredRepoMap {
 			rssErrgoup.Go(func() error {
-				return p.publishToFreshRSS(rssCtx, filteredRssFeedsMap, repo)
+				return p.publishToFreshRSS(rssCtx, filteredRssFeedsSet, repo)
 			})
 		}
-		for feed := range filteredRssFeedsMap {
+		for feed := range filteredRssFeedsSet {
 			rssErrgoup.Go(func() error {
 				return p.removeStaleFeeds(rssCtx, starredRepoMap, feed)
 			})
@@ -135,13 +135,13 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 
 func (p *publishReleasesRunner) publishToFreshRSS(
 	ctx context.Context,
-	rssFeedMap map[string]rss.RSSFeed,
+	rssFeedSet map[string]struct{},
 	repo githost.Repo,
 ) error {
 	repoFeed := repo.FeedURL()
 
 	// If we find that a matching repo in FreshRSS we don't want to add it again...
-	if _, exists := rssFeedMap[repoFeed]; exists {
+	if _, exists := rssFeedSet[repoFeed]; exists {
 		slog.Info("Not adding feed as it is already in RSS", "feed", repo.Name())
 		return nil
 	}
@@ -162,15 +162,15 @@ func (p *publishReleasesRunner) publishToFreshRSS(
 // We never want to unsubscribe from non-github feeds.
 func filterOutNonRepoReleaseFeeds(
 	gh githost.GitHost,
-	rssFeedMap map[string]rss.RSSFeed,
-) map[string]rss.RSSFeed {
-	filteredMap := make(map[string]rss.RSSFeed)
-	for feedUrl, feedObject := range rssFeedMap {
+	rssFeedSet map[string]struct{},
+) map[string]struct{} {
+	filteredSet := make(map[string]struct{})
+	for feedUrl := range rssFeedSet {
 		// This will only include a feed for potential removal if it is a release feed
 		// for the current GitHost that we are working with. This is important otherwise
 		// we could remove feeds from other Git hosts which we do not want...
 		if gh.IsReleaseFeedForCurrentHost(feedUrl) {
-			filteredMap[feedUrl] = feedObject
+			filteredSet[feedUrl] = struct{}{}
 		} else {
 			slog.Debug(
 				"Ignoring feeds that are't release feed from a git host so we don't unsubscribe",
@@ -178,7 +178,7 @@ func filterOutNonRepoReleaseFeeds(
 			)
 		}
 	}
-	return filteredMap
+	return filteredSet
 }
 
 func (p *publishReleasesRunner) removeStaleFeeds(
