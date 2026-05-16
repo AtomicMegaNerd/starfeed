@@ -29,13 +29,11 @@ The Swagger-generated API docs are available at: `{baseURL}/api/swagger` The Ope
 GET {baseURL}/api/v1/user/starred
 ```
 
-**Authentication:** Required. Forgejo uses a non-standard token format:
+**Authentication:** Required. Forgejo supports `Bearer`, `token`, and Basic Auth:
 
 ```text
-Authorization: token {api_token}
+Authorization: Bearer {api_token}
 ```
-
-Note the literal word `token` (not `Bearer`). Basic auth and `Bearer` are also supported.
 
 ### Query Parameters
 
@@ -125,21 +123,21 @@ Response:
 
 ## Key Differences from GitHub
 
-| Aspect            | GitHub                          | Forgejo/Codeberg               |
-| ----------------- | ------------------------------- | ------------------------------ |
-| Auth header       | `Authorization: Bearer {token}` | `Authorization: token {token}` |
-| Pagination param  | `per_page`                      | `limit`                        |
-| Default page size | 30                              | 30                             |
-| Max page size     | 100                             | 50                             |
-| Endpoint prefix   | `/user/starred`                 | `/api/v1/user/starred`         |
-| Feed URL          | `{html_url}/releases.atom`      | `{html_url}/releases.atom`     |
+| Aspect            | GitHub                          | Forgejo/Codeberg                |
+| ----------------- | ------------------------------- | ------------------------------- |
+| Auth header       | `Authorization: Bearer {token}` | `Authorization: Bearer {token}` |
+| Pagination param  | `per_page`                      | `limit`                         |
+| Default page size | 30                              | 30                              |
+| Max page size     | 100                             | 50                              |
+| Endpoint prefix   | `/user/starred`                 | `/api/v1/user/starred`          |
+| Feed URL          | `{html_url}/releases.atom`      | `{html_url}/releases.atom`      |
 
 ## Authentication
 
 Forgejo supports:
 
-- `Authorization: token {api_token}` (preferred, Forgejo-specific format)
 - `Authorization: Bearer {api_token}`
+- `Authorization: token {api_token}`
 - HTTP Basic Auth
 
 For two-factor auth, add the `X-Forgejo-OTP: {code}` header.

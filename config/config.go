@@ -17,13 +17,15 @@ const (
 	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
 	httpTimeoutKey   = "STARFEED_HTTP_TIMEOUT"
 
-	expectedCsvFields = 4
+	gitHubHostConfigFields = 5
+	rssServerConfigFields  = 4
 )
 
 type GitHostConfig struct {
 	Type    string `validate:"required,oneof=github forgejo"`
 	Name    string `validate:"required,min=3"`
 	BaseURL string `validate:"required,url"`
+	ApiURL  string `validate:"required,url"`
 	Token   string `validate:"required,min=24"`
 }
 
@@ -97,18 +99,19 @@ func buildGitHostConfigs(
 			break
 		}
 
-		parts := strings.SplitN(gitHostCsv, ",", expectedCsvFields)
-		if len(parts) != expectedCsvFields {
+		parts := strings.SplitN(gitHostCsv, ",", gitHubHostConfigFields)
+		if len(parts) != gitHubHostConfigFields {
 			return nil, fmt.Errorf("expected csv to have %d parts but it had %d", 4, len(parts))
 		}
 
 		hostType := strings.TrimSpace(parts[0])
 		name := strings.TrimSpace(parts[1])
 		baseURL := strings.TrimSpace(parts[2])
-		token := strings.TrimSpace(parts[3])
+		apiURL := strings.TrimSpace(parts[3])
+		token := strings.TrimSpace(parts[4])
 
 		// This will fail validation on construction if any of these are invalid...
-		gitHostConfig := GitHostConfig{hostType, name, baseURL, token}
+		gitHostConfig := GitHostConfig{hostType, name, baseURL, apiURL, token}
 
 		if err := validate.Struct(gitHostConfig); err != nil {
 			return nil, err
@@ -125,10 +128,10 @@ func buildRssServerConfig(
 ) (*RSSServerConfig, error) {
 	rssCsv := envGetter.Getenv(rssServerKey)
 
-	parts := strings.SplitN(rssCsv, ",", expectedCsvFields)
-	if len(parts) != expectedCsvFields {
+	parts := strings.SplitN(rssCsv, ",", rssServerConfigFields)
+	if len(parts) != rssServerConfigFields {
 		return nil, fmt.Errorf(
-			"expected csv to have %d parts but it had %d", expectedCsvFields, len(parts),
+			"expected csv to have %d parts but it had %d", rssServerConfigFields, len(parts),
 		)
 	}
 	rssType := strings.TrimSpace(parts[0])

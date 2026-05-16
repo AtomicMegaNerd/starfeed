@@ -18,10 +18,7 @@ type GitHost interface {
 	IsReleaseFeed(string) bool
 }
 
-// This is the config for each Git Host that we read from the environment. We read it from an
-// environment variable called `STARFEED_GIT_HOST_ix` where ix is a number from 0..n.
-// The format of the CSV is as follows:
-// type,name,url,token
+// This object represents a supported git host where we have 'starred' repos.
 type gitHost struct {
 	hostType string
 	name     string
@@ -57,7 +54,7 @@ func NewGitHost(
 			"Content-Type":         "application/json",
 			"Accept":               "application/json",
 		}
-		gitHost.getReposURL = "https://api.github.com/user/starred?per_page=100"
+		gitHost.getReposURL = fmt.Sprintf("%s/user/starred?per_page=100", hostCfg.ApiURL)
 
 		gitHost.nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 		gitHost.isReleasePattern = regexp.MustCompile(
@@ -72,7 +69,7 @@ func NewGitHost(
 	case "forgejo":
 		gitHost.headers = map[string]string{
 			"Authorization": fmt.Sprintf("Bearer %s", gitHost.token),
-			"User-Agent":    "TBD", // TODO: Fix this
+			"User-Agent":    "github.com/atomicmeganerd/starfeed",
 			"Content-Type":  "application/json",
 			"Accept":        "application/json",
 		}
@@ -85,7 +82,7 @@ func NewGitHost(
 			),
 		)
 
-		gitHost.getReposURL = ""
+		gitHost.getReposURL = fmt.Sprintf("%s/user/starred?limit=50", hostCfg.ApiURL)
 		return gitHost, nil
 	}
 

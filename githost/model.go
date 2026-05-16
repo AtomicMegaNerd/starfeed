@@ -9,7 +9,7 @@ type Repo interface {
 	FeedURL() string
 }
 
-// This object represents a GitHub repo that is starred and that we want to
+// This object represents a Git repo in a supported Git Host that is starred and that we want to
 // get the Atom feed for.
 type BaseRepo struct {
 	RepoName string `json:"name"`
@@ -28,7 +28,7 @@ func (gr *BaseRepo) String() string {
 	return fmt.Sprintf("Name: %s, Release Feed: %s", gr.Name(), gr.FeedURL())
 }
 
-// This is the response we get from GitHub
+// This is the response we get from the Git Host
 type GitHostResponse struct {
 	Data     []byte
 	NextPage string
