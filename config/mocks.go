@@ -1,4 +1,4 @@
-package mocks
+package config
 
 // MockEnvGetter implements EnvGetter for testing
 type MockEnvGetter struct {

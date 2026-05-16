@@ -251,7 +251,7 @@ func TestNewConfig(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockEnvGetter := mocks.NewMockEnvGetter(tc.envVars)
+			mockEnvGetter := NewMockEnvGetter(tc.envVars)
 			cfg, err := NewConfig(mockEnvGetter)
 
 			if tc.expectError {
