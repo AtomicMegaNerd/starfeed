@@ -10,19 +10,16 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/go-playground/validator/v10"
 )
 
-// FreshRSSFeedManager is an interface that manages the interaction with a FreshRSS instance.
-type FreshRSSFeedManager interface {
-	Authenticate(ctx context.Context) error
-	AddFeed(ctx context.Context, feedUrl, name, category string) error
-	GetExistingFeeds(ctx context.Context) (map[string]RSSFeed, error)
-	RemoveFeed(ctx context.Context, feedUrl string) error
-}
-
-// The freshRSSFeedManager is a private struct that implements FreshRSSFeedManager.
-type freshRSSFeedManager struct {
-	rssConfig *RSSServerConfig
+// The freshRSS is a private struct that implements FreshRSSFeedManager.
+type freshRSS struct {
+	rssType   string `validate:"required,oneof=freshrss"`
+	baseURL   string `validate:"required,url"`
+	user      string `validate:"required,min=3"`
+	token     string `validate:"required,min=10"`
 	client    *http.Client
 	authToken string
 }
@@ -32,23 +29,31 @@ type freshRSSFeedManager struct {
 // - cfg: This holds the configuration state this object needs.
 // - client: The http client to use for requests (used for mocking).
 func NewFreshRSSFeedManager(
-	rssConfig *RSSServerConfig,
+	rssType, baseUrl, user, token string,
 	client *http.Client,
-) FreshRSSFeedManager {
-	return &freshRSSFeedManager{
-		rssConfig: rssConfig,
-		client:    client,
+) (RSSServer, error) {
+	validate := validator.New()
+	rssServer := &freshRSS{
+		rssType: rssType,
+		baseURL: baseUrl,
+		user:    user,
+		token:   token,
+		client:  client,
 	}
+	if err := validate.Struct(rssServer); err != nil {
+		return nil, err
+	}
+	return rssServer, nil
 }
 
 // Authenticate authenticates with the FreshRSS instance.
-func (f *freshRSSFeedManager) Authenticate(ctx context.Context) error {
-	reqUrl := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", f.rssConfig.BaseURL)
+func (f *freshRSS) Authenticate(ctx context.Context) error {
+	reqUrl := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", f.baseURL)
 	slog.Debug("Authenticating with FreshRSS", "url", reqUrl)
 
 	formData := url.Values{
-		"Email":  {f.rssConfig.User},
-		"Passwd": {f.rssConfig.Token},
+		"Email":  {f.user},
+		"Passwd": {f.token},
 	}
 
 	data, err := f.doApiRequest(ctx, reqUrl, []byte(formData.Encode()), false)
@@ -71,12 +76,12 @@ func (f *freshRSSFeedManager) Authenticate(ctx context.Context) error {
 // - feedUrl: The URL of the feed to add.
 // - name: The name of the feed.
 // - category: The category to add the feed to.
-func (f *freshRSSFeedManager) AddFeed(
+func (f *freshRSS) AddFeed(
 	ctx context.Context,
 	feedUrl, name, category string,
 ) error {
 	addUrl := fmt.Sprintf(
-		"%s/api/greader.php/reader/api/0/subscription/quickadd", f.rssConfig.BaseURL,
+		"%s/api/greader.php/reader/api/0/subscription/quickadd", f.baseURL,
 	)
 	formData := url.Values{
 		"quickadd": {feedUrl},
@@ -104,9 +109,9 @@ func (f *freshRSSFeedManager) AddFeed(
 }
 
 // GetExistingFeeds gets the existing feeds from the FreshRSS instance.
-func (f *freshRSSFeedManager) GetExistingFeeds(ctx context.Context) (map[string]RSSFeed, error) {
+func (f *freshRSS) GetExistingFeeds(ctx context.Context) (map[string]RSSFeed, error) {
 	getUrl := fmt.Sprintf(
-		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.rssConfig.BaseURL,
+		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.baseURL,
 	)
 
 	// Perform the request
@@ -131,9 +136,9 @@ func (f *freshRSSFeedManager) GetExistingFeeds(ctx context.Context) (map[string]
 // RemoveFeed removes a feed from the FreshRSS instance.
 // Arguments:
 // - feedUrl: The URL of the feed to remove.
-func (f *freshRSSFeedManager) RemoveFeed(ctx context.Context, feedUrl string) error {
+func (f *freshRSS) RemoveFeed(ctx context.Context, feedUrl string) error {
 	rmUrl := fmt.Sprintf(
-		"%s/api/greader.php/reader/api/0/subscription/edit", f.rssConfig.BaseURL,
+		"%s/api/greader.php/reader/api/0/subscription/edit", f.baseURL,
 	)
 
 	formData := url.Values{
@@ -149,19 +154,19 @@ func (f *freshRSSFeedManager) RemoveFeed(ctx context.Context, feedUrl string) er
 	return nil
 }
 
-func (f *freshRSSFeedManager) addFeedToCategory(
+func (f *freshRSS) addFeedToCategory(
 	ctx context.Context,
 	streamId, name, category string,
 ) error {
 	addUrl := fmt.Sprintf(
-		"%s/api/greader.php/reader/api/0/subscription/edit", f.rssConfig.BaseURL,
+		"%s/api/greader.php/reader/api/0/subscription/edit", f.baseURL,
 	)
 
 	formData := url.Values{
 		"ac": {"edit"},
 		"s":  {streamId},
 		"t":  {name},
-		"a":  {fmt.Sprintf("user/%s/label/%s", f.rssConfig.User, category)},
+		"a":  {fmt.Sprintf("user/%s/label/%s", f.user, category)},
 	}
 
 	_, err := f.doApiRequest(ctx, addUrl, []byte(formData.Encode()), true)
@@ -172,7 +177,7 @@ func (f *freshRSSFeedManager) addFeedToCategory(
 	return nil
 }
 
-func (f *freshRSSFeedManager) doApiRequest(
+func (f *freshRSS) doApiRequest(
 	ctx context.Context, url string, payload []byte, authHeader bool) ([]byte, error,
 ) {
 	// Set headers

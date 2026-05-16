@@ -1,10 +1,17 @@
 package rss
 
-import "github.com/atomicmeganerd/starfeed/mocks"
+import (
+	"net/http"
 
-var MockValidRSSServer = RSSServerConfig{
-	Type:    mocks.FreshRSSType,
-	BaseURL: mocks.FreshRSSURL,
-	User:    mocks.FreshRSSUser,
-	Token:   mocks.FreshRSSToken,
+	"github.com/atomicmeganerd/starfeed/mocks"
+)
+
+var MockValidRSSServer = func(client *http.Client) RSSServer {
+	return &freshRSS{
+		rssType: mocks.FreshRSSType,
+		baseURL: mocks.FreshRSSURL,
+		user:    mocks.FreshRSSUser,
+		token:   mocks.FreshRSSToken,
+		client:  client,
+	}
 }

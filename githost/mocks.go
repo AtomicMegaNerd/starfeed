@@ -1,19 +1,29 @@
 package githost
 
-import "github.com/atomicmeganerd/starfeed/mocks"
+import (
+	"net/http"
+
+	"github.com/atomicmeganerd/starfeed/mocks"
+)
 
 var (
-	MockValidGitHub = GitHostConfig{
-		Type:    mocks.GitHubType,
-		Name:    mocks.GitHubName,
-		BaseURL: mocks.GitHubURL,
-		Token:   mocks.GitHubToken,
+	MockValidGitHub = func(client *http.Client) GitHost {
+		return &gitHost{
+			hostType: mocks.GitHubType,
+			name:     mocks.GitHubName,
+			baseURL:  mocks.GitHubURL,
+			token:    mocks.GitHubToken,
+			client:   client,
+		}
 	}
 
-	MockValidForgejo = GitHostConfig{
-		Type:    mocks.ForgejoType,
-		Name:    mocks.ForgejoName,
-		BaseURL: mocks.ForgejoURL,
-		Token:   mocks.ForgejoToken,
+	MockValidForgejo = func(client *http.Client) GitHost {
+		return &gitHost{
+			hostType: mocks.ForgejoType,
+			name:     mocks.ForgejoName,
+			baseURL:  mocks.ForgejoURL,
+			token:    mocks.ForgejoToken,
+			client:   client,
+		}
 	}
 )

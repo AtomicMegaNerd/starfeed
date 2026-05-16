@@ -23,12 +23,10 @@ type AuthenticateTestCase struct {
 	expectError        bool
 }
 
-func (tc *AuthenticateTestCase) GetTestObject() FreshRSSFeedManager {
+func (tc *AuthenticateTestCase) GetTestObject() RSSServer {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewFreshRSSFeedManager(
-		&MockValidRSSServer, mockClient,
-	)
+	return MockValidRSSServer(mockClient)
 }
 
 func TestAuthenticate(t *testing.T) {
@@ -177,12 +175,10 @@ type AddFeedTestCase struct {
 	expectError      bool
 }
 
-func (tc *AddFeedTestCase) GetTestObject() FreshRSSFeedManager {
+func (tc *AddFeedTestCase) GetTestObject() RSSServer {
 	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegexPatterns)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewFreshRSSFeedManager(
-		&MockValidRSSServer, mockClient,
-	)
+	return MockValidRSSServer(mockClient)
 }
 
 func TestAddFeed(t *testing.T) {
@@ -294,12 +290,10 @@ type GetExistingFeedsTestCase struct {
 	expectError     bool
 }
 
-func (tc *GetExistingFeedsTestCase) GetTestObject() FreshRSSFeedManager {
+func (tc *GetExistingFeedsTestCase) GetTestObject() RSSServer {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewFreshRSSFeedManager(
-		&MockValidRSSServer, mockClient,
-	)
+	return MockValidRSSServer(mockClient)
 }
 
 func TestGetExistingFeeds(t *testing.T) {
@@ -391,12 +385,10 @@ type RemoveFeedTestCase struct {
 	expectError bool
 }
 
-func (tc *RemoveFeedTestCase) GetTestObject() FreshRSSFeedManager {
+func (tc *RemoveFeedTestCase) GetTestObject() RSSServer {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewFreshRSSFeedManager(
-		&MockValidRSSServer, mockClient,
-	)
+	return MockValidRSSServer(mockClient)
 }
 
 func TestRemoveFeed(t *testing.T) {

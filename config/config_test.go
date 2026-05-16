@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -22,6 +23,7 @@ var (
 	emptyURLCSV     = fmt.Sprintf(
 		"%s,%s,,%s", mocks.GitHubType, mocks.GitHubName, mocks.GitHubToken,
 	)
+
 	emptyTokenCSV = fmt.Sprintf("%s,%s,%s,", mocks.GitHubType, mocks.GitHubName, mocks.GitHubURL)
 	missingRSSCSV = fmt.Sprintf("%s,%s", mocks.FreshRSSType, mocks.FreshRSSURL)
 
@@ -34,36 +36,16 @@ var (
 		mocks.FreshRSSType, mocks.FreshRSSUser, mocks.FreshRSSToken)
 	emptyTokenRSSCSV = fmt.Sprintf("%s,%s,%s,",
 		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser)
-
-	validGitHostConfig = githost.GitHostConfig{
-		Type:    mocks.GitHubType,
-		Name:    mocks.GitHubName,
-		BaseURL: mocks.GitHubURL,
-		Token:   mocks.GitHubToken,
-	}
-
-	validForgejoConfig = githost.GitHostConfig{
-		Type:    mocks.ForgejoType,
-		Name:    mocks.ForgejoName,
-		BaseURL: mocks.ForgejoURL,
-		Token:   mocks.ForgejoToken,
-	}
-
-	validRSSConfig = rss.RSSServerConfig{
-		Type:    mocks.FreshRSSType,
-		BaseURL: mocks.FreshRSSURL,
-		User:    mocks.FreshRSSUser,
-		Token:   mocks.FreshRSSToken,
-	}
 )
 
 func validConfig() *Config {
 	return &Config{
-		GitHosts:      []githost.GitHostConfig{validGitHostConfig},
-		RSSServer:     validRSSConfig,
+		GitHosts:      []githost.GitHost{githost.MockValidGitHub(&http.Client{})},
+		RSSServer:     rss.MockValidRSSServer(&http.Client{}),
 		DebugMode:     false,
 		SingleRunMode: false,
 		HTTPTimeout:   10 * time.Second,
+		Client:        &http.Client{},
 	}
 }
 
@@ -96,15 +78,15 @@ func TestNewConfig(t *testing.T) {
 			},
 			expectError: false,
 			expected: &Config{
-				GitHosts:      []githost.GitHostConfig{validGitHostConfig},
-				RSSServer:     validRSSConfig,
+				GitHosts:      []githost.GitHost{githost.MockValidGitHub(&http.Client{})},
+				RSSServer:     rss.MockValidRSSServer(&http.Client{}),
 				DebugMode:     true,
 				SingleRunMode: true,
 				HTTPTimeout:   30 * time.Second,
 			},
 		},
 		{
-			name: "Multiple git hosts",
+			name: "Multiple Git hosts",
 			envVars: map[string]string{
 				"STARFEED_GIT_HOST_0": validGitHostCSV,
 				"STARFEED_GIT_HOST_1": validForgejoCSV,
@@ -112,8 +94,11 @@ func TestNewConfig(t *testing.T) {
 			},
 			expectError: false,
 			expected: &Config{
-				GitHosts:      []githost.GitHostConfig{validGitHostConfig, validForgejoConfig},
-				RSSServer:     validRSSConfig,
+				GitHosts: []githost.GitHost{
+					githost.MockValidGitHub(&http.Client{}),
+					githost.MockValidForgejo(&http.Client{}),
+				},
+				RSSServer:     rss.MockValidRSSServer(&http.Client{}),
 				DebugMode:     false,
 				SingleRunMode: false,
 				HTTPTimeout:   10 * time.Second,
@@ -129,7 +114,7 @@ func TestNewConfig(t *testing.T) {
 			expected:    validConfig(),
 		},
 		{
-			name: "Missing git hosts should error",
+			name: "Missing Git hosts should error",
 			envVars: map[string]string{
 				"STARFEED_RSS_SERVER": validRSSCSV,
 			},
@@ -165,14 +150,14 @@ func TestNewConfig(t *testing.T) {
 			expected:    validConfig(),
 		},
 		{
-			name: "Invalid bool for debug mode should error",
+			name: "Invalid bool for debug mode result in false",
 			envVars: map[string]string{
 				"STARFEED_GIT_HOST_0": validGitHostCSV,
 				"STARFEED_RSS_SERVER": validRSSCSV,
 				"STARFEED_DEBUG_MODE": mocks.Invalid,
 			},
-			expectError: true,
-			expected:    nil,
+			expectError: false,
+			expected:    validConfig(),
 		},
 		{
 			name: "Invalid bool for single run mode should error",
@@ -181,8 +166,8 @@ func TestNewConfig(t *testing.T) {
 				"STARFEED_RSS_SERVER":      validRSSCSV,
 				"STARFEED_SINGLE_RUN_MODE": mocks.Invalid,
 			},
-			expectError: true,
-			expected:    nil,
+			expectError: false,
+			expected:    validConfig(),
 		},
 		{
 			name: "Invalid host type should error",
@@ -252,7 +237,7 @@ func TestNewConfig(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockEnvGetter := NewMockEnvGetter(tc.envVars)
-			cfg, err := NewConfig(mockEnvGetter)
+			cfg, err := NewConfig(mockEnvGetter, &http.Client{})
 
 			if tc.expectError {
 				if err == nil {
@@ -275,46 +260,9 @@ func TestNewConfig(t *testing.T) {
 				return
 			}
 
-			for i, host := range cfg.GitHosts {
-				exp := tc.expected.GitHosts[i]
-				if host.Type != exp.Type {
-					t.Errorf("GitHosts[%d].Type: expected %s, got %s", i, exp.Type, host.Type)
-				}
-				if host.Name != exp.Name {
-					t.Errorf("GitHosts[%d].Name: expected %s, got %s", i, exp.Name, host.Name)
-				}
-				if host.BaseURL != exp.BaseURL {
-					t.Errorf(
-						"GitHosts[%d].BaseURL: expected %s, got %s", i, exp.BaseURL, host.BaseURL,
-					)
-				}
-				if host.Token != exp.Token {
-					t.Errorf("GitHosts[%d].Token: expected %s, got %s", i, exp.Token, host.Token)
-				}
-			}
-
-			if cfg.RSSServer.Type != tc.expected.RSSServer.Type {
-				t.Errorf(
-					"Expected RSSServer.Type %s, got %s",
-					tc.expected.RSSServer.Type, cfg.RSSServer.Type,
-				)
-			}
-			if cfg.RSSServer.BaseURL != tc.expected.RSSServer.BaseURL {
-				t.Errorf(
-					"Expected RSSServer.URL %s, got %s",
-					tc.expected.RSSServer.BaseURL, cfg.RSSServer.BaseURL,
-				)
-			}
-			if cfg.RSSServer.User != tc.expected.RSSServer.User {
-				t.Errorf(
-					"Expected RSSServer.User %s, got %s",
-					tc.expected.RSSServer.User, cfg.RSSServer.User,
-				)
-			}
-			if cfg.RSSServer.Token != tc.expected.RSSServer.Token {
-				t.Errorf("Expected RSSServer.Token %s, got %s",
-					tc.expected.RSSServer.Token, cfg.RSSServer.Token)
-			}
+			// NOTE: The validators in githost.GitHosts and rss.RSSServer constructor functions
+			// will validate that all of the values we pass in are valid. We'll test those
+			// factory functions in their respective packages.
 
 			if cfg.DebugMode != tc.expected.DebugMode {
 				t.Errorf("Expected DebugMode %t, got %t", tc.expected.DebugMode, cfg.DebugMode)

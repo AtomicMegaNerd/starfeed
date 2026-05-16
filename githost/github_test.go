@@ -1,4 +1,4 @@
-package github
+package githost
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/atomicmeganerd/starfeed/githost"
 	"github.com/atomicmeganerd/starfeed/mocks"
 )
 
@@ -32,14 +31,14 @@ const (
 type GetStarredReposTestCase struct {
 	name          string
 	responses     []http.Response
-	expectedRepos []githost.BaseRepo
+	expectedRepos []BaseRepo
 	expectError   bool
 }
 
-func (tc *GetStarredReposTestCase) GetTestObject() githost.GitHost {
+func (tc *GetStarredReposTestCase) GetTestObject() GitHost {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewGitHub(githost.MockValidGitHub, mockClient)
+	return MockValidGitHub(mockClient)
 }
 
 func TestGetStarredRepos(t *testing.T) {
@@ -59,7 +58,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []githost.BaseRepo{
+			expectedRepos: []BaseRepo{
 				{
 					RepoName: repoName1,
 					RepoURL:  repoHtmlUrl1,
@@ -106,7 +105,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []githost.BaseRepo{
+			expectedRepos: []BaseRepo{
 				{RepoName: repoName1, RepoURL: repoHtmlUrl1},
 				{RepoName: repoName2, RepoURL: repoHtmlUrl2},
 				{RepoName: repoName3, RepoURL: repoHtmlUrl3},
@@ -123,7 +122,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusNotFound,
 				},
 			},
-			expectedRepos: []githost.BaseRepo{},
+			expectedRepos: []BaseRepo{},
 			expectError:   true,
 		},
 		{
@@ -135,7 +134,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []githost.BaseRepo{},
+			expectedRepos: []BaseRepo{},
 			expectError:   true,
 		},
 		{
@@ -147,7 +146,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []githost.BaseRepo{},
+			expectedRepos: []BaseRepo{},
 			expectError:   true,
 		},
 	}
@@ -193,13 +192,8 @@ type TestIsGitHubRepoTestCase struct {
 }
 
 func TestIsReleaseFeed(t *testing.T) {
-	mockClient := http.Client{}
-	gitHost := githost.GitHostConfig{
-		Type:    mocks.GitHubType,
-		BaseURL: mocks.GitHubURL,
-		Token:   mocks.GitHubToken,
-	}
-	gh := NewGitHub(gitHost, &mockClient)
+	mockHost := MockValidGitHub(&http.Client{})
+
 	testCases := []TestIsGitHubRepoTestCase{
 		{
 			name:        "Letters only",
@@ -235,11 +229,11 @@ func TestIsReleaseFeed(t *testing.T) {
 
 	for _, tc := range testCases {
 		if tc.expectMatch {
-			if !gh.IsReleaseFeed(tc.feedUrl) {
+			if !mockHost.IsReleaseFeed(tc.feedUrl) {
 				t.Errorf("Expected feed %s to match but it did not", tc.feedUrl)
 			}
 		} else {
-			if gh.IsReleaseFeed(tc.feedUrl) {
+			if mockHost.IsReleaseFeed(tc.feedUrl) {
 				t.Errorf("Expected feed %s to not match but it did", tc.feedUrl)
 			}
 		}

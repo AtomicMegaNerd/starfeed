@@ -1,8 +1,11 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/githost"
@@ -16,17 +19,20 @@ const (
 	debugModeKey     = "STARFEED_DEBUG_MODE"
 	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
 	httpTimeoutKey   = "STARFEED_HTTP_TIMEOUT"
+
+	expectedCsvFields = 4
 )
 
 type Config struct {
-	GitHosts      []githost.GitHostConfig `validate:"required,min=1"`
-	RSSServer     rss.RSSServerConfig
+	GitHosts      []githost.GitHost `validate:"required,min=1"`
+	RSSServer     rss.RSSServer     `validate:"required"`
 	DebugMode     bool
 	SingleRunMode bool
-	HTTPTimeout   time.Duration
+	HTTPTimeout   time.Duration `validate:"required"`
+	Client        *http.Client  `validate:"required"`
 }
 
-func NewConfig(envGetter EnvGetter) (*Config, error) {
+func NewConfig(envGetter EnvGetter, client *http.Client) (*Config, error) {
 	validate := validator.New()
 
 	// Parse optional HTTP timeout, default to 10 seconds
@@ -36,44 +42,75 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 			httpTimeout = time.Duration(timeoutSeconds) * time.Second
 		}
 	}
+	// Set the timeout
+	client.Timeout = httpTimeout
 
-	debugMode, err := parseBoolEnv(envGetter, debugModeKey)
-	if err != nil {
-		return nil, err
-	}
-	singleRunMode, err := parseBoolEnv(envGetter, singleRunModeKey)
-	if err != nil {
-		return nil, err
-	}
+	debugMode := false
+	debugMode, _ = parseBoolEnv(envGetter, debugModeKey)
 
-	hostConfigs := make([]githost.GitHostConfig, 0)
+	singleRunMode := false
+	singleRunMode, _ = parseBoolEnv(envGetter, singleRunModeKey)
+
+	gitHosts := make([]githost.GitHost, 0)
 
 	for ix := 0; ; ix++ {
 		gitHostCsv := envGetter.Getenv(fmt.Sprintf("%s%d", gitHostKey, ix))
 		if gitHostCsv == "" {
+			if ix == 0 {
+				return nil, errors.New("must define at least 1 git host")
+			}
 			break
 		}
 
-		hostConfig, err := githost.ParseGitHostConfigFromCsv(gitHostCsv)
+		parts := strings.SplitN(gitHostCsv, ",", expectedCsvFields)
+		if len(parts) != expectedCsvFields {
+			return nil, fmt.Errorf("expected csv to have %d parts but it had %d", 4, len(parts))
+		}
+
+		hostType := strings.TrimSpace(parts[0])
+		name := strings.TrimSpace(parts[1])
+		baseURL := strings.TrimSpace(parts[2])
+		token := strings.TrimSpace(parts[3])
+
+		// This will fail validation on construction if any of these are invalid...
+		gitHost, err := githost.NewGitHost(hostType, name, baseURL, token, client)
 		if err != nil {
 			return nil, err
 		}
 
-		hostConfigs = append(hostConfigs, *hostConfig)
+		gitHosts = append(gitHosts, gitHost)
 	}
 
-	rssConfig, err := rss.ParseRSSServerConfigFromCSV(envGetter.Getenv(rssServerKey))
+	rssCsv := envGetter.Getenv(rssServerKey)
+	parts := strings.SplitN(rssCsv, ",", expectedCsvFields)
+	if len(parts) != expectedCsvFields {
+		return nil, fmt.Errorf(
+			"expected csv to have %d parts but it had %d", expectedCsvFields, len(parts),
+		)
+	}
+
+	rssType := strings.TrimSpace(parts[0])
+	baseUrl := strings.TrimSpace(parts[1])
+	user := strings.TrimSpace(parts[2])
+	token := strings.TrimSpace(parts[3])
+
+	rssServer, err := rss.NewFreshRSSFeedManager(rssType, baseUrl, user, token, client)
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := &Config{
-		GitHosts:      hostConfigs,
-		RSSServer:     *rssConfig,
+		GitHosts:      gitHosts,
+		RSSServer:     rssServer,
 		DebugMode:     debugMode,
 		SingleRunMode: singleRunMode,
 		HTTPTimeout:   httpTimeout,
+		Client:        client,
 	}
 
-	return cfg, validate.Struct(cfg)
+	if err := validate.Struct(cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/atomicmeganerd/starfeed/atom"
 	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/runner"
 	"github.com/lmittmann/tint"
@@ -19,7 +20,7 @@ func main() {
 	slog.Info(" Welcome to Starfeed")
 	slog.Info("***********************************************")
 
-	cfg, err := config.NewConfig(config.OSEnvGetter{})
+	cfg, err := config.NewConfig(config.OSEnvGetter{}, http.DefaultClient)
 	if err != nil {
 		slog.Error("Failed to load configuration", "error", err.Error())
 		os.Exit(1)
@@ -61,7 +62,7 @@ func main() {
 		releasesRunner := runner.NewPublishReleasesRunner(
 			gitHost,
 			cfg.RSSServer,
-			&http.Client{Timeout: cfg.HTTPTimeout},
+			atom.NewAtomFeedChecker(cfg.Client),
 		)
 		runners = append(runners, releasesRunner)
 	}
