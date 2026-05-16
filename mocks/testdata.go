@@ -14,7 +14,7 @@ const (
 	ForgejoToken  = "cb_abcdefghijklmnopqrstuvwxyz"
 	FreshRSSType  = "freshrss"
 	FreshRSSURL   = "http://freshrss.example.com"
-	FreshRSSUser  = "testuser"
+	FreshRSSUser  = "testuser@email.com"
 	FreshRSSToken = "freshrss_token456"
 	// Use this whenever we need an invalid string
 	Invalid      = "invalid"

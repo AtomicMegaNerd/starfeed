@@ -166,7 +166,10 @@ func filterOutNonRepoReleaseFeeds(
 ) map[string]rss.RSSFeed {
 	filteredMap := make(map[string]rss.RSSFeed)
 	for feedUrl, feedObject := range rssFeedMap {
-		if gh.IsReleaseFeed(feedUrl) {
+		// This will only include a feed for potential removal if it is a release feed
+		// for the current GitHost that we are working with. This is important otherwise
+		// we could remove feeds from other Git hosts which we do not want...
+		if gh.IsReleaseFeedForCurrentHost(feedUrl) {
 			filteredMap[feedUrl] = feedObject
 		} else {
 			slog.Debug(

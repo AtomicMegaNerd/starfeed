@@ -229,11 +229,11 @@ func TestIsReleaseFeed(t *testing.T) {
 
 	for _, tc := range testCases {
 		if tc.expectMatch {
-			if !mockHost.IsReleaseFeed(tc.feedUrl) {
+			if !mockHost.IsReleaseFeedForCurrentHost(tc.feedUrl) {
 				t.Errorf("Expected feed %s to match but it did not", tc.feedUrl)
 			}
 		} else {
-			if mockHost.IsReleaseFeed(tc.feedUrl) {
+			if mockHost.IsReleaseFeedForCurrentHost(tc.feedUrl) {
 				t.Errorf("Expected feed %s to not match but it did", tc.feedUrl)
 			}
 		}

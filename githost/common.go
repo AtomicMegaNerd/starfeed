@@ -16,7 +16,7 @@ type GitHost interface {
 	Name() string
 	Enabled() bool
 	GetStarredRepos(context.Context) (map[string]Repo, error)
-	IsReleaseFeed(string) bool
+	IsReleaseFeedForCurrentHost(string) bool
 }
 
 // This object represents a supported git host where we have 'starred' repos.
@@ -143,6 +143,6 @@ func (g *gitHost) GetStarredRepos(
 // This function returns true if the given repoUrl is a release repo
 // Arguments:
 // - feedUrl: The URL of the RSS feed to check.
-func (g *gitHost) IsReleaseFeed(feedUrl string) bool {
+func (g *gitHost) IsReleaseFeedForCurrentHost(feedUrl string) bool {
 	return g.isReleasePattern.MatchString(feedUrl)
 }
