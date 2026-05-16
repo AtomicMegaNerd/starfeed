@@ -14,7 +14,6 @@ import (
 const (
 	mockBaseUrl   = "http://localhost"
 	mockUser      = "user"
-	mockApiToken  = "token"
 	mockAuthToken = "1234567890"
 	mockSid       = "2345678901"
 )
@@ -28,10 +27,10 @@ type AuthenticateTestCase struct {
 
 func getMockRSSConfig() *RSSServerConfig {
 	return &RSSServerConfig{
-		Type:  "freshrss",
-		URL:   mockBaseUrl,
-		User:  mockUser,
-		Token: mockAuthToken,
+		Type:    "freshrss",
+		BaseURL: mockBaseUrl,
+		User:    mockUser,
+		Token:   mockAuthToken,
 	}
 }
 

@@ -19,9 +19,11 @@ var (
 		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser, mocks.FreshRSSToken)
 	invalidTypeCSV  = fmt.Sprintf("gitlab,mygitlab,https://gitlab.com,%s", mocks.GitHubToken)
 	missingPartsCSV = fmt.Sprintf("%s,%s", mocks.GitHubType, mocks.GitHubURL)
-	emptyURLCSV     = fmt.Sprintf("%s,%s,,%s", mocks.GitHubType, mocks.GitHubName, mocks.GitHubToken)
-	emptyTokenCSV   = fmt.Sprintf("%s,%s,%s,", mocks.GitHubType, mocks.GitHubName, mocks.GitHubURL)
-	missingRSSCSV   = fmt.Sprintf("%s,%s", mocks.FreshRSSType, mocks.FreshRSSURL)
+	emptyURLCSV     = fmt.Sprintf(
+		"%s,%s,,%s", mocks.GitHubType, mocks.GitHubName, mocks.GitHubToken,
+	)
+	emptyTokenCSV = fmt.Sprintf("%s,%s,%s,", mocks.GitHubType, mocks.GitHubName, mocks.GitHubURL)
+	missingRSSCSV = fmt.Sprintf("%s,%s", mocks.FreshRSSType, mocks.FreshRSSURL)
 
 	validGitHostCSVWithSpaces = fmt.Sprintf(" %s , %s , %s , %s ",
 		mocks.GitHubType, mocks.GitHubName, mocks.GitHubURL, mocks.GitHubToken)
@@ -48,10 +50,10 @@ var (
 	}
 
 	validRSSConfig = rss.RSSServerConfig{
-		Type:  mocks.FreshRSSType,
-		URL:   mocks.FreshRSSURL,
-		User:  mocks.FreshRSSUser,
-		Token: mocks.FreshRSSToken,
+		Type:    mocks.FreshRSSType,
+		BaseURL: mocks.FreshRSSURL,
+		User:    mocks.FreshRSSUser,
+		Token:   mocks.FreshRSSToken,
 	}
 )
 
@@ -278,7 +280,9 @@ func TestNewConfig(t *testing.T) {
 					t.Errorf("GitHosts[%d].Name: expected %s, got %s", i, exp.Name, host.Name)
 				}
 				if host.BaseURL != exp.BaseURL {
-					t.Errorf("GitHosts[%d].BaseURL: expected %s, got %s", i, exp.BaseURL, host.BaseURL)
+					t.Errorf(
+						"GitHosts[%d].BaseURL: expected %s, got %s", i, exp.BaseURL, host.BaseURL,
+					)
 				}
 				if host.Token != exp.Token {
 					t.Errorf("GitHosts[%d].Token: expected %s, got %s", i, exp.Token, host.Token)
@@ -286,13 +290,22 @@ func TestNewConfig(t *testing.T) {
 			}
 
 			if cfg.RSSServer.Type != tc.expected.RSSServer.Type {
-				t.Errorf("Expected RSSServer.Type %s, got %s", tc.expected.RSSServer.Type, cfg.RSSServer.Type)
+				t.Errorf(
+					"Expected RSSServer.Type %s, got %s",
+					tc.expected.RSSServer.Type, cfg.RSSServer.Type,
+				)
 			}
-			if cfg.RSSServer.URL != tc.expected.RSSServer.URL {
-				t.Errorf("Expected RSSServer.URL %s, got %s", tc.expected.RSSServer.URL, cfg.RSSServer.URL)
+			if cfg.RSSServer.BaseURL != tc.expected.RSSServer.BaseURL {
+				t.Errorf(
+					"Expected RSSServer.URL %s, got %s",
+					tc.expected.RSSServer.BaseURL, cfg.RSSServer.BaseURL,
+				)
 			}
 			if cfg.RSSServer.User != tc.expected.RSSServer.User {
-				t.Errorf("Expected RSSServer.User %s, got %s", tc.expected.RSSServer.User, cfg.RSSServer.User)
+				t.Errorf(
+					"Expected RSSServer.User %s, got %s",
+					tc.expected.RSSServer.User, cfg.RSSServer.User,
+				)
 			}
 			if cfg.RSSServer.Token != tc.expected.RSSServer.Token {
 				t.Errorf("Expected RSSServer.Token %s, got %s",
@@ -304,11 +317,16 @@ func TestNewConfig(t *testing.T) {
 			}
 
 			if cfg.SingleRunMode != tc.expected.SingleRunMode {
-				t.Errorf("Expected SingleRunMode %t, got %t", tc.expected.SingleRunMode, cfg.SingleRunMode)
+				t.Errorf(
+					"Expected SingleRunMode %t, got %t",
+					tc.expected.SingleRunMode, cfg.SingleRunMode,
+				)
 			}
 
 			if cfg.HTTPTimeout != tc.expected.HTTPTimeout {
-				t.Errorf("Expected HTTPTimeout %v, got %v", tc.expected.HTTPTimeout, cfg.HTTPTimeout)
+				t.Errorf(
+					"Expected HTTPTimeout %v, got %v", tc.expected.HTTPTimeout, cfg.HTTPTimeout,
+				)
 			}
 		})
 	}

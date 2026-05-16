@@ -43,10 +43,10 @@ func (tc *QueryAndPublishFeedsTestCase) GetTestRunner() Runner {
 		gitHost,
 		&config.Config{
 			RSSServer: rss.RSSServerConfig{
-				Type:  "freshrss",
-				URL:   mockFreshRSSURL,
-				User:  mockFreshRSSUser,
-				Token: mockFreshRSSToken,
+				Type:    "freshrss",
+				BaseURL: mockFreshRSSURL,
+				User:    mockFreshRSSUser,
+				Token:   mockFreshRSSToken,
 			},
 		},
 		mockClient,

@@ -8,10 +8,10 @@ import (
 )
 
 type RSSServerConfig struct {
-	Type  string `validate:"required,oneof=freshrss"`
-	URL   string `validate:"required,url"`
-	User  string `validate:"required,min=3"`
-	Token string `validate:"required,min=10"`
+	Type    string `validate:"required,oneof=freshrss"`
+	BaseURL string `validate:"required,url"`
+	User    string `validate:"required,min=3"`
+	Token   string `validate:"required,min=10"`
 }
 
 func ParseRSSServerConfigFromCSV(csvLine string) (*RSSServerConfig, error) {
@@ -22,10 +22,10 @@ func ParseRSSServerConfigFromCSV(csvLine string) (*RSSServerConfig, error) {
 	}
 
 	rssConfig := &RSSServerConfig{
-		Type:  strings.TrimSpace(parts[0]),
-		URL:   strings.TrimSpace(parts[1]),
-		User:  strings.TrimSpace(parts[2]),
-		Token: strings.TrimSpace(parts[3]),
+		Type:    strings.TrimSpace(parts[0]),
+		BaseURL: strings.TrimSpace(parts[1]),
+		User:    strings.TrimSpace(parts[2]),
+		Token:   strings.TrimSpace(parts[3]),
 	}
 
 	return rssConfig, validate.Struct(rssConfig)
