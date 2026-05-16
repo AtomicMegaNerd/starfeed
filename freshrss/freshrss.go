@@ -31,9 +31,7 @@ type freshRSSFeedManager struct {
 
 // NewFreshRSSFeedManager creates a new FreshRSSFeedManager instance.
 // Arguments:
-// - baseUrl: The base URL of the FreshRSS instance.
-// - user: The username to authenticate with.
-// - apiToken: The API token to authenticate with.
+// - cfg: This holds the configuration state this object needs.
 // - client: The http client to use for requests (used for mocking).
 func NewFreshRSSFeedManager(
 	cfg *config.Config,

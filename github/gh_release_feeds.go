@@ -27,7 +27,7 @@ type gitHubStarredFeedBuilder struct {
 
 // NewGitHubStarredFeedBuilder creates a new GitHubStarredFeedBuilder instance.
 // Arguments:
-// - token: The GitHub API token to authenticate with.
+// - cfg: This holds the configuration state this object needs.
 // - client: The http client to use for requests (used for mocking).
 func NewGitHubStarredFeedBuilder(
 	cfg *config.Config,
