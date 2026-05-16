@@ -15,31 +15,19 @@ import (
 
 // RepoRSSPublisher is a struct that manages the main workflow of the application.
 type publishReleasesRunner struct {
-	ghToken       string // WARNING: Do not log this value as it is a secret
-	freshRSSURL   string
-	freshRSSUser  string
-	freshRSSToken string // WARNING: Do not log this value as it is a secret
-	cfg           *config.Config
-	client        *http.Client
+	cfg    *config.Config
+	client *http.Client
 }
 
 // NewPublishReleasesRunner creates a new RepoRSSPublisher instance.
 // Arguments:
-// - ghToken: The GitHub API token to authenticate with.
-// - freshRSSUrl: The base URL of the FreshRSS instance.
-// - freshRSSUser: The username to authenticate to FreshRSS.
-// - freshRSSToken: The API token to authenticate with FreshRSS.
-// - ctx: The context to use for requests.
+// - cfg: the config object that holds all of the relevant configuration.
 // - client: The http client to use for requests (used for mocking).
 func NewPublishReleasesRunner(
 	cfg *config.Config,
 	client *http.Client,
 ) Runner {
 	return &publishReleasesRunner{
-		cfg.GitHubToken,
-		cfg.FreshRSSURL,
-		cfg.FreshRSSUser,
-		cfg.FreshRSSToken,
 		cfg,
 		client,
 	}
@@ -49,12 +37,12 @@ func NewPublishReleasesRunner(
 // It also removes any stale feeds from FreshRSS as long as they are not starred in GitHub but
 // are actually GitHub release feeds.
 func (p *publishReleasesRunner) Run(ctx context.Context) error {
-	slog.Info("Starting main workflow....")
+	slog.Info("Starting main workflow...")
 	start := time.Now()
 
-	gh := github.NewGitHubStarredFeedBuilder(p.ghToken, p.client)
+	gh := github.NewGitHubStarredFeedBuilder(p.cfg.GitHubToken, p.client)
 	fr := freshrss.NewFreshRSSFeedManager(
-		p.freshRSSURL, p.freshRSSUser, p.freshRSSToken, p.client,
+		p.cfg, p.client,
 	)
 	at := atom.NewAtomFeedChecker(p.client)
 
@@ -141,10 +129,7 @@ func publishToFreshRSS(
 		return nil
 	}
 
-	if err := fr.AddFeed(ctx, repoFeed, repo.Name, "GitHub"); err != nil {
-		return err
-	}
-	return nil
+	return fr.AddFeed(ctx, repoFeed, repo.Name, "GitHub")
 }
 
 func filterOutNonGitHubFeeds(

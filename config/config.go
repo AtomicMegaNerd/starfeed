@@ -26,25 +26,23 @@ func parseBoolEnv(envGetter EnvGetter, key string) (bool, error) {
 }
 
 const (
-	ghTokenKey          = "STARFEED_GITHUB_API_TOKEN"
-	freshRSSURLKey      = "STARFEED_FRESHRSS_URL"
-	freshRSSUserKey     = "STARFEED_FRESHRSS_USER"
-	freshRSSTokenKey    = "STARFEED_FRESHRSS_API_TOKEN"
-	rssServerAddressKey = "STARFEED_RSS_SERVER_ADDRESS"
-	debugModeKey        = "STARFEED_DEBUG_MODE"
-	singleRunModeKey    = "STARFEED_SINGLE_RUN_MODE"
-	httpTimeoutKey      = "STARFEED_HTTP_TIMEOUT"
+	ghTokenKey       = "STARFEED_GITHUB_API_TOKEN"
+	freshRSSURLKey   = "STARFEED_FRESHRSS_URL"
+	freshRSSUserKey  = "STARFEED_FRESHRSS_USER"
+	freshRSSTokenKey = "STARFEED_FRESHRSS_API_TOKEN"
+	debugModeKey     = "STARFEED_DEBUG_MODE"
+	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
+	httpTimeoutKey   = "STARFEED_HTTP_TIMEOUT"
 )
 
 type Config struct {
-	GitHubToken      string
-	FreshRSSURL      string
-	FreshRSSUser     string
-	FreshRSSToken    string
-	RSSServerAddress string
-	DebugMode        bool
-	SingleRunMode    bool
-	HTTPTimeout      time.Duration
+	GitHubToken   string // WARNING: Never log this secret
+	FreshRSSURL   string
+	FreshRSSUser  string
+	FreshRSSToken string // WARNING: Never log this secret
+	DebugMode     bool
+	SingleRunMode bool
+	HTTPTimeout   time.Duration
 }
 
 func NewConfig(envGetter EnvGetter) (*Config, error) {
@@ -52,8 +50,7 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 	if envGetter.Getenv(ghTokenKey) == "" ||
 		envGetter.Getenv(freshRSSURLKey) == "" ||
 		envGetter.Getenv(freshRSSUserKey) == "" ||
-		envGetter.Getenv(freshRSSTokenKey) == "" ||
-		envGetter.Getenv(rssServerAddressKey) == "" {
+		envGetter.Getenv(freshRSSTokenKey) == "" {
 		return nil, errors.New("missing required environment variables")
 	}
 
@@ -75,13 +72,12 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 	}
 
 	return &Config{
-		GitHubToken:      envGetter.Getenv(ghTokenKey),
-		FreshRSSURL:      envGetter.Getenv(freshRSSURLKey),
-		FreshRSSUser:     envGetter.Getenv(freshRSSUserKey),
-		FreshRSSToken:    envGetter.Getenv(freshRSSTokenKey),
-		RSSServerAddress: envGetter.Getenv(rssServerAddressKey),
-		DebugMode:        debugMode,
-		SingleRunMode:    singleRunMode,
-		HTTPTimeout:      httpTimeout,
+		GitHubToken:   envGetter.Getenv(ghTokenKey),
+		FreshRSSURL:   envGetter.Getenv(freshRSSURLKey),
+		FreshRSSUser:  envGetter.Getenv(freshRSSUserKey),
+		FreshRSSToken: envGetter.Getenv(freshRSSTokenKey),
+		DebugMode:     debugMode,
+		SingleRunMode: singleRunMode,
+		HTTPTimeout:   httpTimeout,
 	}, nil
 }

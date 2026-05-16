@@ -12,7 +12,6 @@ import (
 	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/runner"
 	"github.com/lmittmann/tint"
-	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -44,58 +43,52 @@ func main() {
 		))
 	}
 
-	// Register signal handling
+	// Again written by the human:
+	// Register signal handling. This will setup a private channel in our ctx object will
+	// be closed if one of these signals is received. This is easy to understand...
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// Setup cancel function for SingleRunMode
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	// Setup our ticker for our timed execution
+	// Setup our ticker for our timed execution. This will send a time.Time value to the ticker.C
+	// every 24 hours.
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
-
-	// Setup our primary error group
-	g, ctx := errgroup.WithContext(ctx)
 
 	releasesRunner := runner.NewPublishReleasesRunner(
 		cfg,
 		&http.Client{Timeout: cfg.HTTPTimeout},
 	)
 
-	g.Go(func() error {
-		// Always run once...
-		if err := releasesRunner.Run(ctx); err != nil {
-			slog.Error("Error executing runners", "error", err)
-			return err
-		}
+	// Always run once...
+	if err := releasesRunner.Run(ctx); err != nil {
+		slog.Error("Error executing runners", "error", err)
+	}
 
-		// Cancel further execution if we are in SingleRunMode
-		if cfg.SingleRunMode {
-			slog.Info("Cancelling as we are in single run mode...")
-			cancel()
-		}
+	if cfg.SingleRunMode {
+		slog.Info("Cancelling as we are in single run mode...")
+		return
+	}
 
-		for {
-			select {
-			case <-ctx.Done():
-				slog.Info("Exiting...")
-				return nil
-			case <-ticker.C:
-				if err := releasesRunner.Run(ctx); err != nil {
-					slog.Error("Error executing runners", "error", err)
-					return err
-				}
-				slog.Info("Sleeping for 24 hours...")
+	// The comments below were written by me the human as I try to better understand how Go
+	// uses channels and select in this context.
+	for {
+		select {
+		// If the signal handler closes the private channel, the fact the channel was closed will
+		// wake up this goroutine and trigger this clause. Done() here is a getter for the private
+		// channel that the signal notifier uses behind the scenes. Reading from a closed channel
+		// results in no data being returned but all we need here is wake the goroutine and execute
+		// the clause.
+		case <-ctx.Done():
+			slog.Info("Exiting...")
+			return
+		// ticker.C receives a time.Time value here but we ignore it because our logs will
+		// already capture the timestamp when we execute. But it is good to recognize that
+		// the ticker channel is sent this data.
+		case <-ticker.C:
+			if err := releasesRunner.Run(ctx); err != nil {
+				slog.Error("Error executing runners", "error", err)
 			}
+			slog.Info("Sleeping for 24 hours...")
 		}
-	})
-
-	// NOTE: By the time g.Wait() returns if there is an error the RSS server will have
-	// gracefully shutdown because we used errgroup.WithContext()
-	if err := g.Wait(); err != nil {
-		slog.Error("Fatal error resulting in shutdown...", "error", err)
-		os.Exit(1)
 	}
 }

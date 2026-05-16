@@ -352,28 +352,8 @@ func TestNewRepoRSSPublisher(t *testing.T) {
 	mockClient := &http.Client{}
 
 	publisher := publishReleasesRunner{
-		mockGhToken,
-		mockFreshRSSURL,
-		mockFreshRSSUser,
-		mockFreshRSSToken,
 		&config.Config{},
 		mockClient,
-	}
-
-	if publisher.ghToken != mockGhToken {
-		t.Errorf("Expected ghToken %s, got %s", mockGhToken, publisher.ghToken)
-	}
-
-	if publisher.freshRSSURL != mockFreshRSSURL {
-		t.Errorf("Expected freshRSSUrl %s, got %s", mockFreshRSSURL, publisher.freshRSSURL)
-	}
-
-	if publisher.freshRSSUser != mockFreshRSSUser {
-		t.Errorf("Expected freshRSSUser %s, got %s", mockFreshRSSUser, publisher.freshRSSUser)
-	}
-
-	if publisher.freshRSSToken != mockFreshRSSToken {
-		t.Errorf("Expected freshRSSToken %s, got %s", mockFreshRSSToken, publisher.freshRSSToken)
 	}
 
 	if publisher.client != mockClient {
