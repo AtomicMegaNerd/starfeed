@@ -110,7 +110,7 @@ func buildGitHostConfigs(
 		// This will fail validation on construction if any of these are invalid...
 		gitHostConfig := GitHostConfig{hostType, name, baseURL, token}
 
-		if err := validate.Struct(gitHostConfigs); err != nil {
+		if err := validate.Struct(gitHostConfig); err != nil {
 			return nil, err
 		}
 		gitHostConfigs = append(gitHostConfigs, gitHostConfig)
