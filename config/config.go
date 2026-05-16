@@ -11,8 +11,11 @@ import (
 )
 
 const (
-	gitHostKey       = "STARFEED_GIT_HOST_"
-	rssServerKey     = "STARFEED_RSS_SERVER"
+	// required
+	gitHostKey   = "STARFEED_GIT_HOST_"
+	rssServerKey = "STARFEED_RSS_SERVER"
+
+	// optional
 	debugModeKey     = "STARFEED_DEBUG_MODE"
 	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
 	httpTimeoutKey   = "STARFEED_HTTP_TIMEOUT"
@@ -21,21 +24,7 @@ const (
 	rssServerConfigFields  = 4
 )
 
-type GitHostConfig struct {
-	Type    string `validate:"required,oneof=github forgejo"`
-	Name    string `validate:"required,min=3"`
-	BaseURL string `validate:"required,url"`
-	ApiURL  string `validate:"required,url"`
-	Token   string `validate:"required,min=24"`
-}
-
-type RSSServerConfig struct {
-	Type    string `validate:"required,oneof=freshrss"`
-	BaseURL string `validate:"required,url"`
-	User    string `validate:"required,min=3"`
-	Token   string `validate:"required,min=10"`
-}
-
+// The main Config struct used to hold configuration state for the app
 type Config struct {
 	GitHostConfigs  []GitHostConfig  `validate:"required,min=1"`
 	RSSServerConfig *RSSServerConfig `validate:"required"`
@@ -84,6 +73,15 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 	return cfg, nil
 }
 
+// This type both holds and validates the config for a GitHost
+type GitHostConfig struct {
+	Type    string `validate:"required,oneof=github forgejo"`
+	Name    string `validate:"required,min=3"`
+	BaseURL string `validate:"required,url"`
+	ApiURL  string `validate:"required,url"`
+	Token   string `validate:"required,min=24"`
+}
+
 func buildGitHostConfigs(
 	validate *validator.Validate,
 	envGetter EnvGetter,
@@ -120,6 +118,14 @@ func buildGitHostConfigs(
 	}
 
 	return gitHostConfigs, nil
+}
+
+// This type both holds and validates the conmfig for the RSS Server
+type RSSServerConfig struct {
+	Type    string `validate:"required,oneof=freshrss"`
+	BaseURL string `validate:"required,url"`
+	User    string `validate:"required,min=3"`
+	Token   string `validate:"required,min=10"`
 }
 
 func buildRssServerConfig(
