@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/go-playground/validator/v10"
+	"github.com/atomicmeganerd/starfeed/config"
 )
 
 type GitHost interface {
@@ -23,10 +23,10 @@ type GitHost interface {
 // The format of the CSV is as follows:
 // type,name,url,token
 type gitHost struct {
-	hostType string `validate:"required,oneof=github forgejo"`
-	name     string `validate:"required,min=3"`
-	baseURL  string `validate:"required,url"`
-	token    string `validate:"required,min=24"`
+	hostType string
+	name     string
+	baseURL  string
+	token    string
 
 	// These are computed
 	GetReposURL      string
@@ -37,46 +37,27 @@ type gitHost struct {
 }
 
 func NewGitHost(
-	hostType, hostName, baseUrl, token string, client *http.Client,
+	hostCfg config.GitHostConfig, client *http.Client,
 ) (GitHost, error) {
-	validate := validator.New()
-
-	if hostType == "" {
-		return nil, errors.New("hostType is required")
-	}
-	if hostName == "" {
-		return nil, errors.New("hostName is required")
-	}
-	if baseUrl == "" {
-		return nil, errors.New("baseUrl is required")
-	}
-	if token == "" {
-		return nil, errors.New("token is required")
-	}
-
 	gitHost := &gitHost{
-		hostType: hostType,
-		name:     hostName,
-		baseURL:  baseUrl,
-		token:    token,
+		hostType: hostCfg.Type,
+		name:     hostCfg.Name,
+		baseURL:  hostCfg.BaseURL,
+		token:    hostCfg.Token,
 		client:   client,
-	}
-
-	if err := validate.Struct(gitHost); err != nil {
-		return nil, err
 	}
 
 	// This regex is used to find the next page link in the GitHub API response
 	nextPageLinkRegex := regexp.MustCompile(`<([^>]+)>; rel="next"`)
 	// This regex is used to determine if an RSS feed is a Forgejo release feed
 	isRelRepoRegex := regexp.MustCompile(
-		fmt.Sprintf(`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`, regexp.QuoteMeta(baseUrl)),
+		fmt.Sprintf(`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`, regexp.QuoteMeta(gitHost.baseURL)),
 	)
 
 	gitHost.NextPagePattern = nextPageLinkRegex
 	gitHost.IsReleasePattern = isRelRepoRegex
 
-	switch hostType {
+	switch gitHost.hostType {
 	case "github":
 		gitHost.Headers = map[string]string{
 			"Authorization":        fmt.Sprintf("Bearer %s", gitHost.token),

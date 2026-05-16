@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -12,15 +11,15 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/go-playground/validator/v10"
+	"github.com/atomicmeganerd/starfeed/config"
 )
 
 // The freshRSS is a private struct that implements FreshRSSFeedManager.
 type freshRSS struct {
-	rssType   string `validate:"required,oneof=freshrss"`
-	baseURL   string `validate:"required,url"`
-	user      string `validate:"required,min=3"`
-	token     string `validate:"required,min=10"`
+	rssType   string
+	baseURL   string
+	user      string
+	token     string
 	client    *http.Client
 	authToken string
 }
@@ -30,35 +29,16 @@ type freshRSS struct {
 // - cfg: This holds the configuration state this object needs.
 // - client: The http client to use for requests (used for mocking).
 func NewFreshRSSFeedManager(
-	rssType, baseUrl, user, token string,
+	rssConfig *config.RSSServerConfig,
 	client *http.Client,
-) (RSSServer, error) {
-	validate := validator.New()
-
-	if rssType == "" {
-		return nil, errors.New("rssType is required")
-	}
-	if baseUrl == "" {
-		return nil, errors.New("baseUrl is required")
-	}
-	if user == "" {
-		return nil, errors.New("user is required")
-	}
-	if token == "" {
-		return nil, errors.New("token is required")
-	}
-
-	rssServer := &freshRSS{
-		rssType: rssType,
-		baseURL: baseUrl,
-		user:    user,
-		token:   token,
+) RSSServer {
+	return &freshRSS{
+		rssType: rssConfig.Type,
+		baseURL: rssConfig.BaseURL,
+		user:    rssConfig.User,
+		token:   rssConfig.Token,
 		client:  client,
 	}
-	if err := validate.Struct(rssServer); err != nil {
-		return nil, err
-	}
-	return rssServer, nil
 }
 
 // Authenticate authenticates with the FreshRSS instance.

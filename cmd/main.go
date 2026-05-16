@@ -11,6 +11,8 @@ import (
 
 	"github.com/atomicmeganerd/starfeed/atom"
 	"github.com/atomicmeganerd/starfeed/config"
+	"github.com/atomicmeganerd/starfeed/githost"
+	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/runner"
 	"github.com/lmittmann/tint"
 )
@@ -20,7 +22,8 @@ func main() {
 	slog.Info(" Welcome to Starfeed")
 	slog.Info("***********************************************")
 
-	cfg, err := config.NewConfig(config.OSEnvGetter{}, http.DefaultClient)
+	cfg, err := config.NewConfig(config.OSEnvGetter{})
+	client := &http.Client{Timeout: cfg.HTTPTimeout}
 	if err != nil {
 		slog.Error("Failed to load configuration", "error", err.Error())
 		os.Exit(1)
@@ -56,14 +59,17 @@ func main() {
 	defer ticker.Stop()
 
 	runners := make([]runner.Runner, 0)
+	feedChecker := atom.NewAtomFeedChecker(client)
+	rssServer := rss.NewFreshRSSFeedManager(cfg.RSSServerConfig, client)
 
 	// For each GitHost in our config let's create a new runner
-	for _, gitHost := range cfg.GitHosts {
-		releasesRunner := runner.NewPublishReleasesRunner(
-			gitHost,
-			cfg.RSSServer,
-			atom.NewAtomFeedChecker(cfg.Client),
-		)
+	for _, gitHostConfig := range cfg.GitHostConfigs {
+		gitHost, err := githost.NewGitHost(gitHostConfig, client)
+		if err != nil {
+			slog.Error("Cannot configure git host...", "error", err)
+			return
+		}
+		releasesRunner := runner.NewPublishReleasesRunner(gitHost, rssServer, feedChecker)
 		runners = append(runners, releasesRunner)
 	}
 

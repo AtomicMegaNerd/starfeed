@@ -2,13 +2,10 @@ package config
 
 import (
 	"fmt"
-	"net/http"
 	"testing"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/githost"
 	"github.com/atomicmeganerd/starfeed/mocks"
-	"github.com/atomicmeganerd/starfeed/rss"
 )
 
 var (
@@ -40,12 +37,11 @@ var (
 
 func validConfig() *Config {
 	return &Config{
-		GitHosts:      []githost.GitHost{githost.MockValidGitHub(&http.Client{})},
-		RSSServer:     rss.MockValidRSSServer(&http.Client{}),
-		DebugMode:     false,
-		SingleRunMode: false,
-		HTTPTimeout:   10 * time.Second,
-		Client:        &http.Client{},
+		GitHostConfigs:  []GitHostConfig{MockValidGitHubConfig},
+		RSSServerConfig: MockValidFreshRSSConfig,
+		DebugMode:       false,
+		SingleRunMode:   false,
+		HTTPTimeout:     10 * time.Second,
 	}
 }
 
@@ -78,11 +74,11 @@ func TestNewConfig(t *testing.T) {
 			},
 			expectError: false,
 			expected: &Config{
-				GitHosts:      []githost.GitHost{githost.MockValidGitHub(&http.Client{})},
-				RSSServer:     rss.MockValidRSSServer(&http.Client{}),
-				DebugMode:     true,
-				SingleRunMode: true,
-				HTTPTimeout:   30 * time.Second,
+				GitHostConfigs:  []GitHostConfig{MockValidGitHubConfig},
+				RSSServerConfig: MockValidFreshRSSConfig,
+				DebugMode:       true,
+				SingleRunMode:   true,
+				HTTPTimeout:     30 * time.Second,
 			},
 		},
 		{
@@ -94,14 +90,11 @@ func TestNewConfig(t *testing.T) {
 			},
 			expectError: false,
 			expected: &Config{
-				GitHosts: []githost.GitHost{
-					githost.MockValidGitHub(&http.Client{}),
-					githost.MockValidForgejo(&http.Client{}),
-				},
-				RSSServer:     rss.MockValidRSSServer(&http.Client{}),
-				DebugMode:     false,
-				SingleRunMode: false,
-				HTTPTimeout:   10 * time.Second,
+				GitHostConfigs:  []GitHostConfig{MockValidGitHubConfig, MockValidForgejoConfig},
+				RSSServerConfig: MockValidFreshRSSConfig,
+				DebugMode:       false,
+				SingleRunMode:   false,
+				HTTPTimeout:     10 * time.Second,
 			},
 		},
 		{
@@ -237,7 +230,7 @@ func TestNewConfig(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockEnvGetter := NewMockEnvGetter(tc.envVars)
-			cfg, err := NewConfig(mockEnvGetter, &http.Client{})
+			cfg, err := NewConfig(mockEnvGetter)
 
 			if tc.expectError {
 				if err == nil {
@@ -251,11 +244,11 @@ func TestNewConfig(t *testing.T) {
 				return
 			}
 
-			if len(cfg.GitHosts) != len(tc.expected.GitHosts) {
+			if len(cfg.GitHostConfigs) != len(tc.expected.GitHostConfigs) {
 				t.Errorf(
 					"Expected %d GitHosts, got %d",
-					len(tc.expected.GitHosts),
-					len(cfg.GitHosts),
+					len(tc.expected.GitHostConfigs),
+					len(cfg.GitHostConfigs),
 				)
 				return
 			}

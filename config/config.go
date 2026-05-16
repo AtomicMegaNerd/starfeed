@@ -3,13 +3,10 @@ package config
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/githost"
-	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -23,16 +20,29 @@ const (
 	expectedCsvFields = 4
 )
 
-type Config struct {
-	GitHosts      []githost.GitHost `validate:"required,min=1"`
-	RSSServer     rss.RSSServer     `validate:"required"`
-	DebugMode     bool
-	SingleRunMode bool
-	HTTPTimeout   time.Duration `validate:"required"`
-	Client        *http.Client  `validate:"required"`
+type GitHostConfig struct {
+	Type    string `validate:"required,oneof=github forgejo"`
+	Name    string `validate:"required,min=3"`
+	BaseURL string `validate:"required,url"`
+	Token   string `validate:"required,min=24"`
 }
 
-func NewConfig(envGetter EnvGetter, client *http.Client) (*Config, error) {
+type RSSServerConfig struct {
+	Type    string `validate:"required,oneof=freshrss"`
+	BaseURL string `validate:"required,url"`
+	User    string `validate:"required,min=3"`
+	Token   string `validate:"required,min=10"`
+}
+
+type Config struct {
+	GitHostConfigs  []GitHostConfig  `validate:"required,min=1"`
+	RSSServerConfig *RSSServerConfig `validate:"required"`
+	DebugMode       bool
+	SingleRunMode   bool
+	HTTPTimeout     time.Duration `validate:"required"`
+}
+
+func NewConfig(envGetter EnvGetter) (*Config, error) {
 	validate := validator.New()
 
 	// Parse optional HTTP timeout, default to 10 seconds
@@ -42,16 +52,41 @@ func NewConfig(envGetter EnvGetter, client *http.Client) (*Config, error) {
 			httpTimeout = time.Duration(timeoutSeconds) * time.Second
 		}
 	}
-	// Set the timeout
-	client.Timeout = httpTimeout
 
 	debugMode := false
 	debugMode, _ = parseBoolEnv(envGetter, debugModeKey)
-
 	singleRunMode := false
 	singleRunMode, _ = parseBoolEnv(envGetter, singleRunModeKey)
 
-	gitHosts := make([]githost.GitHost, 0)
+	gitHostConfigs, err := buildGitHostConfigs(validate, envGetter)
+	if err != nil {
+		return nil, err
+	}
+	rssConfig, err := buildRssServerConfig(validate, envGetter)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := &Config{
+		GitHostConfigs:  gitHostConfigs,
+		RSSServerConfig: rssConfig,
+		DebugMode:       debugMode,
+		SingleRunMode:   singleRunMode,
+		HTTPTimeout:     httpTimeout,
+	}
+
+	if err := validate.Struct(cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+func buildGitHostConfigs(
+	validate *validator.Validate,
+	envGetter EnvGetter,
+) ([]GitHostConfig, error) {
+	gitHostConfigs := make([]GitHostConfig, 0)
 
 	for ix := 0; ; ix++ {
 		gitHostCsv := envGetter.Getenv(fmt.Sprintf("%s%d", gitHostKey, ix))
@@ -73,44 +108,39 @@ func NewConfig(envGetter EnvGetter, client *http.Client) (*Config, error) {
 		token := strings.TrimSpace(parts[3])
 
 		// This will fail validation on construction if any of these are invalid...
-		gitHost, err := githost.NewGitHost(hostType, name, baseURL, token, client)
-		if err != nil {
+		gitHostConfig := GitHostConfig{hostType, name, baseURL, token}
+
+		if err := validate.Struct(gitHostConfigs); err != nil {
 			return nil, err
 		}
-
-		gitHosts = append(gitHosts, gitHost)
+		gitHostConfigs = append(gitHostConfigs, gitHostConfig)
 	}
 
+	return gitHostConfigs, nil
+}
+
+func buildRssServerConfig(
+	validate *validator.Validate,
+	envGetter EnvGetter,
+) (*RSSServerConfig, error) {
 	rssCsv := envGetter.Getenv(rssServerKey)
+
 	parts := strings.SplitN(rssCsv, ",", expectedCsvFields)
 	if len(parts) != expectedCsvFields {
 		return nil, fmt.Errorf(
 			"expected csv to have %d parts but it had %d", expectedCsvFields, len(parts),
 		)
 	}
-
 	rssType := strings.TrimSpace(parts[0])
 	baseUrl := strings.TrimSpace(parts[1])
 	user := strings.TrimSpace(parts[2])
 	token := strings.TrimSpace(parts[3])
 
-	rssServer, err := rss.NewFreshRSSFeedManager(rssType, baseUrl, user, token, client)
-	if err != nil {
+	rssConfig := &RSSServerConfig{rssType, baseUrl, user, token}
+
+	if err := validate.Struct(rssConfig); err != nil {
 		return nil, err
 	}
 
-	cfg := &Config{
-		GitHosts:      gitHosts,
-		RSSServer:     rssServer,
-		DebugMode:     debugMode,
-		SingleRunMode: singleRunMode,
-		HTTPTimeout:   httpTimeout,
-		Client:        client,
-	}
-
-	if err := validate.Struct(cfg); err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
+	return rssConfig, nil
 }
