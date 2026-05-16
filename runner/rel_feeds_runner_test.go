@@ -108,6 +108,10 @@ type mockFreshRSSFeedManager struct {
 	removeFeedUrl    string
 }
 
+func (m *mockFreshRSSFeedManager) Enabled() bool {
+	return true
+}
+
 func (m *mockFreshRSSFeedManager) Authenticate(ctx context.Context) error {
 	return nil
 }

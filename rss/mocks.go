@@ -12,6 +12,7 @@ var MockValidRSSServer = func(client *http.Client) RSSServer {
 		baseURL: mocks.FreshRSSURL,
 		user:    mocks.FreshRSSUser,
 		token:   mocks.FreshRSSToken,
+		enabled: true,
 		client:  client,
 	}
 }

@@ -20,6 +20,7 @@ type freshRSS struct {
 	baseURL   string
 	user      string
 	token     string
+	enabled   bool
 	client    *http.Client
 	authToken string
 }
@@ -37,8 +38,13 @@ func NewFreshRSSFeedManager(
 		baseURL: rssConfig.BaseURL,
 		user:    rssConfig.User,
 		token:   rssConfig.Token,
+		enabled: rssConfig.Enabled,
 		client:  client,
 	}
+}
+
+func (f *freshRSS) Enabled() bool {
+	return f.enabled
 }
 
 // Authenticate authenticates with the FreshRSS instance.

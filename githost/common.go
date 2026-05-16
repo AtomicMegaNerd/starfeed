@@ -14,6 +14,7 @@ import (
 
 type GitHost interface {
 	Name() string
+	Enabled() bool
 	GetStarredRepos(context.Context) (map[string]Repo, error)
 	IsReleaseFeed(string) bool
 }
@@ -24,6 +25,7 @@ type gitHost struct {
 	name     string
 	baseURL  string
 	token    string
+	enabled  bool
 
 	// These are computed
 	getReposURL      string
@@ -41,6 +43,7 @@ func NewGitHost(
 		name:     hostCfg.Name,
 		baseURL:  hostCfg.BaseURL,
 		token:    hostCfg.Token,
+		enabled:  hostCfg.Enabled,
 		client:   client,
 	}
 
@@ -91,6 +94,10 @@ func NewGitHost(
 
 func (g *gitHost) Name() string {
 	return g.name
+}
+
+func (g *gitHost) Enabled() bool {
+	return g.enabled
 }
 
 // This will return all starred repos including the Atom feeds for their releases
