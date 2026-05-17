@@ -30,6 +30,11 @@ func (a *atomFeedChecker) CheckFeedHasEntries(
 	ctx context.Context,
 	feedUrl string,
 ) (bool, error) {
+	// A blank feedUrl means that this repo doesn't have a releases feed
+	if feedUrl == "" {
+		return false, nil
+	}
+
 	// No request will always be valid here so we can ignore the error
 	req, err := http.NewRequestWithContext(ctx, "GET", feedUrl, nil)
 	if err != nil {

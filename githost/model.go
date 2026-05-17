@@ -14,22 +14,26 @@ type Repo interface {
 type BaseRepo struct {
 	RepoName string `json:"name"`
 	RepoURL  string `json:"html_url"`
-	Kind     string
+}
+
+func (gr *BaseRepo) FeedURL() string {
+	return fmt.Sprintf("%s/releases.atom", gr.RepoURL)
 }
 
 func (gr *BaseRepo) Name() string {
 	return gr.RepoName
 }
 
-func (gr *BaseRepo) FeedURL() string {
-	switch gr.Kind {
-	case "forgejo":
-		return fmt.Sprintf("%s/releases.rss", gr.RepoURL)
-	case "github":
-		return fmt.Sprintf("%s/releases.atom", gr.RepoURL)
+type ForgejoRepo struct {
+	BaseRepo
+	HasReleases bool `json:"has_releases"`
+}
+
+func (gr *ForgejoRepo) FeedURL() string {
+	if !gr.HasReleases {
+		return ""
 	}
-	// We validate this so we should never get here..
-	return ""
+	return fmt.Sprintf("%s/releases.atom", gr.RepoURL)
 }
 
 // This is the response we get from the Git Host

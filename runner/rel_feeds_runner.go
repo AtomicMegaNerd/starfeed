@@ -38,45 +38,41 @@ func NewPublishReleasesRunner(
 // to FreshRSS. It also removes any stale release feeds from FreshRSS if they are no longer
 // starred.
 func (p *publishReleasesRunner) Run(ctx context.Context) error {
+	// If this gitHost is not enabled there is nothing to do...
 	if !p.gitHost.Enabled() {
 		slog.Warn("Skipping git host because it is not enabled", "githost", p.gitHost.Name())
 		return nil
 	}
 
-	slog.Info("Starting main workflow...")
+	slog.Info("Starting publish releases workflow", "Git host", p.gitHost.Name())
 	start := time.Now()
 
 	// Get starred repos from the Git provider, we set a limit on concurrent requests so we
 	// don't get rate limited by the Git host.
 	ghErrgoup, ghCtx := errgroup.WithContext(ctx)
 	ghErrgoup.SetLimit(5)
-	var starredRepoMap map[string]githost.Repo
+	var repoMapFeedByURL map[string]githost.Repo
 	ghErrgoup.Go(func() error {
-		repos, err := p.gitHost.GetStarredRepos(ghCtx)
+		var err error
+		repoMapFeedByURL, err = p.gitHost.GetStarredRepos(ghCtx)
 		if err != nil {
 			return err
 		}
-		starredRepoMap = repos
-
-		slog.Info(
-			"Queried starred repos in Git host",
-			"Git host", p.gitHost.Name(),
-			"numberStarredRepos", len(starredRepoMap),
-			"duration", time.Since(start),
-		)
 		return nil
 	})
 
-	// Authenticate to FreshRSS
-	rssErrgoup, rssCtx := errgroup.WithContext(ctx)
-	var filteredRssFeedsSet map[string]struct{}
+	// Only publish to RSS if the server is enabled
 	if p.rssServer.Enabled() {
-		if err := p.rssServer.Authenticate(rssCtx); err != nil {
-			return err
-		}
-
-		// Get existing subscriptions
+		rssErrgoup, rssCtx := errgroup.WithContext(ctx)
+		// NOTE: Using map[T]struct{} is idiomatic for creating sets in Go.
+		var filteredRssFeedsSet map[string]struct{}
 		rssErrgoup.Go(func() error {
+			// Authenticate to FreshRSS
+			if err := p.rssServer.Authenticate(rssCtx); err != nil {
+				return err
+			}
+
+			// Get existing subscriptions
 			slog.Info("Querying existing RSS feeds in FreshRSS... ")
 			rawRssFeedsSet, err := p.rssServer.GetExistingFeeds(ghCtx)
 			if err != nil {
@@ -94,24 +90,24 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 		})
 
 		// Wait for these two independent operations to finish...
-		if err := rssErrgoup.Wait(); err != nil {
+		if err := ghErrgoup.Wait(); err != nil {
 			return err
 		}
-		if err := ghErrgoup.Wait(); err != nil {
+		if err := rssErrgoup.Wait(); err != nil {
 			return err
 		}
 
 		// We can also overwhelm FreshRSS with this so we will also set a limit
 		rssErrgoup, rssCtx = errgroup.WithContext(ctx)
 		rssErrgoup.SetLimit(10)
-		for _, repo := range starredRepoMap {
+		for _, repo := range repoMapFeedByURL {
 			rssErrgoup.Go(func() error {
 				return p.publishToFreshRSS(rssCtx, filteredRssFeedsSet, repo)
 			})
 		}
 		for feed := range filteredRssFeedsSet {
 			rssErrgoup.Go(func() error {
-				return p.removeStaleFeeds(rssCtx, starredRepoMap, feed)
+				return p.removeStaleFeeds(rssCtx, repoMapFeedByURL, feed)
 			})
 		}
 
@@ -128,6 +124,10 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 
 	} else {
 		slog.Warn("Skipping publishing to rss server because it is not enabled")
+		// We also need to wait here for the github queries if the RSS server is disabled
+		if err := ghErrgoup.Wait(); err != nil {
+			return err
+		}
 	}
 
 	return nil

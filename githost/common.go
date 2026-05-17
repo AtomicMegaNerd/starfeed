@@ -121,25 +121,38 @@ func (g *gitHost) GetStarredRepos(
 			return nil, err
 		}
 
-		var repos []BaseRepo
-		if err = json.Unmarshal(resp.Data, &repos); err != nil {
+		// This will get our repos based on what type they are (github, forgejo, etc.)
+		repos, err := parseRepos(resp.Data, g.hostType)
+		if err != nil {
 			return nil, err
 		}
 
+		slog.Info(
+			"Sucessfully loaded starred repos from Git host",
+			"gitHost", g.Name(),
+			"numberStarredRepos", len(repos),
+		)
+
 		for _, repo := range repos {
-			// Set the kind otherwise the FeedURL will not work properly
-			repo.Kind = g.hostType
 			feedUrl := repo.FeedURL()
+			if feedUrl == "" {
+				slog.Debug(
+					"Skipping repo without releases",
+					"gitHost", g.Name(),
+					"repo", repo.Name(),
+				)
+				continue
+			}
 
 			slog.Debug(
 				"Parsed starred repo from JSON",
 				"gitHost", g.Name,
 				"repo", repo.Name(),
-				"kind", repo.Kind,
+				"kind", g.hostType,
 				"feedUrl", feedUrl,
 			)
 
-			allFeeds[repo.FeedURL()] = &repo
+			allFeeds[feedUrl] = repo
 		}
 
 		// If there is no next page we are done...
@@ -150,6 +163,37 @@ func (g *gitHost) GetStarredRepos(
 		slog.Debug("Found next page", "url", resp.NextPage)
 		nextPageUrl = resp.NextPage
 	}
+}
+
+// This generic method will parse any supported repo type
+func parseTypedRepos[T BaseRepo | ForgejoRepo](data []byte) ([]Repo, error) {
+	// This will be the concrete type so that JSON can unmarshal
+	var genericRepoSlice []T
+	if err := json.Unmarshal(data, &genericRepoSlice); err != nil {
+		return nil, err
+	}
+
+	// Now to make this work with the rest of the app we have to copy the concrete types into a
+	// slice of the interface type
+	repoInterfaceSlice := make([]Repo, len(genericRepoSlice))
+	for i := range genericRepoSlice {
+		repo := genericRepoSlice[i]
+		// This forces a runtime check to ensure that r always satisfies the Repo interface
+		// this will panic if we are not correct, but both concrete types of T do so we are fine.
+		repoInterfaceSlice[i] = any(&repo).(Repo)
+	}
+
+	return repoInterfaceSlice, nil
+}
+
+func parseRepos(data []byte, hostType string) ([]Repo, error) {
+	switch hostType {
+	case "github":
+		return parseTypedRepos[BaseRepo](data)
+	case "forgejo":
+		return parseTypedRepos[ForgejoRepo](data)
+	}
+	return nil, fmt.Errorf("unknown host type: %s", hostType)
 }
 
 // This function returns true if the given repoUrl is a release repo

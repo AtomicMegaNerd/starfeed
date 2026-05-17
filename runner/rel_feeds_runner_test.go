@@ -168,7 +168,6 @@ func TestPublishToFreshRSS(t *testing.T) {
 			},
 			repo: &githost.BaseRepo{
 				RepoName: "repo",
-				Kind:     mocks.GitHubType,
 				RepoURL:  "https://github.com/user/repo",
 			},
 			atomHasEntries:      true,
@@ -180,7 +179,6 @@ func TestPublishToFreshRSS(t *testing.T) {
 			existingFeeds: map[string]struct{}{},
 			repo: &githost.BaseRepo{
 				RepoName: "repo",
-				Kind:     mocks.GitHubType,
 				RepoURL:  "https://github.com/user/repo",
 			},
 			atomHasEntries:      false,
@@ -192,7 +190,6 @@ func TestPublishToFreshRSS(t *testing.T) {
 			existingFeeds: map[string]struct{}{},
 			repo: &githost.BaseRepo{
 				RepoName: "repo",
-				Kind:     mocks.GitHubType,
 				RepoURL:  "https://github.com/user/repo",
 			},
 			atomHasEntries:      true,
@@ -204,7 +201,6 @@ func TestPublishToFreshRSS(t *testing.T) {
 			existingFeeds: map[string]struct{}{},
 			repo: &githost.BaseRepo{
 				RepoName: "repo",
-				Kind:     mocks.GitHubType,
 				RepoURL:  "https://github.com/user/repo",
 			},
 			atomHasEntries:      true,
