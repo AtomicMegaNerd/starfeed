@@ -15,6 +15,8 @@ Currently supported Git Hosts:
 - GitHub
 - Forgejo based (including Codeberg)
 
+---
+
 ## Pre-Requisites
 
 ### Required Software
@@ -27,6 +29,8 @@ Currently supported Git Hosts:
   container.
 - To build and run the app locally you need to install [Go](https://go.dev),
   [Taskfile](https://taskfile.dev), and [Direnv](https://direnv.net/).
+
+---
 
 ## Environment Variables
 
@@ -42,6 +46,17 @@ Currently supported Git Hosts:
 - `STARFEED_HTTP_TIMEOUT` (seconds; default 60)
 
 **NOTE**: The app defaults to 24-hour intervals unless `STARFEED_SINGLE_RUN_MODE=true`.
+
+### FreshRSS Test Harness for Docker Compose
+
+These 3 variables can be used to configure a local FreshRSS instance running with docker-compose. If
+you are not running this test harness locally these can be ignored.
+
+- `STARFEED_RSS_USER` set this to the same user in `STARFEED_RSS_SERVER`.
+- `STARFEED_RSS_API_TOKEN` this will be the same token you use in `STARFEED_RSS_SERVER`.
+- `STARFEED_RSS_PASS` this is a separate password that you use to login to the GUI.
+
+See the local `docker-compose.yml` to see how these variables are used.
 
 ### Setting the Environment
 
@@ -69,6 +84,11 @@ export STARFEED_GIT_HOST_1=github,GitHub,https://github.com,https://api.github.c
 # RSS Server
 export STARFEED_RSS_SERVER=freshrss,http://freshrss:80,chris@megaparsec.ca,*****************,true
 
+# Use these with `docker-compose.yml` if you want the FreshRSS test harness locally.
+export STARFEED_RSS_USER=chris@megaparsec.ca
+export STARFEED_RSS_PASS=*********
+export STARFEED_RSS_API_TOKEN=*********
+
 # Flags
 export STARFEED_DEBUG_MODE=true
 export STARFEED_SINGLE_RUN_MODE=true
@@ -90,49 +110,13 @@ options.
 
 ### Running Locally with Containers (Recommended)
 
-The following `docker-compose.yml` file will run freshrss and starfeed locally. As long as the
+The included `docker-compose.yml` file will run freshrss and starfeed locally. As long as the
 environment is setup correctly above it will configure starfeed to connect to this local test
 instance of FreshRSS. Note that we use tmpfs so that the data is not persisted for FreshRSS after
 the container is shut down.
 
-**NOTE** See
-[https://github.com/containers/podman-compose/issues/1422](https://github.com/containers/podman-compose/issues/1422)
-to see why we can't use depends_on with docker-compose right now.
-
-```yaml
----
-services:
-  freshrss:
-    image: freshrss/freshrss:latest
-    container_name: freshrss-test
-    restart: unless-stopped
-    env_file:
-      - .env
-    ports:
-      - "8080:80"
-    tmpfs:
-      - /var/www/FreshRSS/data
-    environment:
-      TZ: UTC
-      FRESHRSS_INSTALL: |
-        --api-enabled
-        --base-url http://localhost:8080
-        --default-user ${STARFEED_RSS_USER}
-      FRESHRSS_USER: |
-        --user ${STARFEED_RSS_USER}
-        --password ${STARFEED_RSS_PASS}
-        --email test@example.net
-        --api-password ${STARFEED_RSS_API_TOKEN}
-        --language en
-  starfeed:
-    image: localhost/starfeed:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: ["sh", "-c", "sleep 5 && starfeed"]
-    env_file:
-      - .env
-```
+While I use podman as my container runtime, `docker-compose` (the Go version) is pretty much a
+requirement as `podman-compose` has bugs that break basics like `depends_on` with `healthcheck`.
 
 #### Using Docker Compose
 
@@ -141,16 +125,6 @@ If you want to build and run the app locally:
 ```bash
 docker-compose up --build
 ```
-
-#### Using Podman Compose
-
-If you want to build and run the app locally:
-
-```bash
-podman-compose up --build
-```
-
----
 
 ### Build and Run Go Binary (Local Development)
 
@@ -178,3 +152,26 @@ To run the tests:
 ```bash
 task test
 ```
+
+## Roadmap
+
+These are future items that I want to focus on.
+
+### High Priority
+
+I really want to get these items done.
+
+- [ ] Monitoring
+- [ ] Setup integration test with a local test instance of Forgejo in the `docker-compose.yml` file.
+- [ ] Migrate to a config file (TOML) with secrets being stored in the environment.
+- [ ] Nix flake for deploying to my NixOS server (and not just for setting up dev shell).
+
+### Backlog
+
+These are less important and may or may not happen.
+
+- [ ] Migrate to [codeberg](https://codeberg.org) or another host?
+- [ ] Support other RSS backends?
+- [ ] Support other Git Hosts (Gitea, Bitbucket, Gitlab)?
+- [ ] Create RSS feeds for notifications that we can serve up from this daemon.
+- [ ] Specify watched instead of starred repos?
