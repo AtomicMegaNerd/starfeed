@@ -20,8 +20,8 @@ const (
 	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
 	httpTimeoutKey   = "STARFEED_HTTP_TIMEOUT"
 
-	gitHubHostConfigFields = 6
-	rssServerConfigFields  = 5
+	gitHostConfigFields   = 6
+	rssServerConfigFields = 5
 
 	defaultHttpTimeoutSeconds = 60
 )
@@ -100,11 +100,11 @@ func buildGitHostConfigs(
 			break
 		}
 
-		parts := strings.SplitN(gitHostCsv, ",", gitHubHostConfigFields)
-		if len(parts) != gitHubHostConfigFields {
+		parts := strings.SplitN(gitHostCsv, ",", gitHostConfigFields)
+		if len(parts) != gitHostConfigFields {
 			return nil, fmt.Errorf(
 				"expected csv to have %d parts but it had %d",
-				gitHubHostConfigFields,
+				gitHostConfigFields,
 				len(parts),
 			)
 		}

@@ -106,7 +106,7 @@ func (g *gitHost) GetStarredRepos(
 	ctx context.Context,
 ) (map[string]Repo, error) {
 	allFeeds := make(map[string]Repo)
-	slog.Debug("Querying git host for starred repos", "host", g.Name, "url", g.getReposURL)
+	slog.Debug("Querying git host for starred repos", "host", g.Name(), "url", g.getReposURL)
 
 	nextPageUrl := g.getReposURL
 	for {
@@ -146,7 +146,7 @@ func (g *gitHost) GetStarredRepos(
 
 			slog.Debug(
 				"Parsed starred repo from JSON",
-				"gitHost", g.Name,
+				"gitHost", g.Name(),
 				"repo", repo.Name(),
 				"kind", g.hostType,
 				"feedUrl", feedUrl,
@@ -165,40 +165,38 @@ func (g *gitHost) GetStarredRepos(
 	}
 }
 
-// This generic method will parse any supported repo type
-func parseTypedRepos[T BaseRepo | ForgejoRepo](data []byte) ([]Repo, error) {
-	// This will be the concrete type so that JSON can unmarshal
-	var genericRepoSlice []T
-	if err := json.Unmarshal(data, &genericRepoSlice); err != nil {
-		return nil, err
-	}
-
-	// Now to make this work with the rest of the app we have to copy the concrete types into a
-	// slice of the interface type
-	repoInterfaceSlice := make([]Repo, len(genericRepoSlice))
-	for i := range genericRepoSlice {
-		repo := genericRepoSlice[i]
-		// This forces a runtime check to ensure that r always satisfies the Repo interface
-		// this will panic if we are not correct, but both concrete types of T do so we are fine.
-		repoInterfaceSlice[i] = any(&repo).(Repo)
-	}
-
-	return repoInterfaceSlice, nil
-}
-
-func parseRepos(data []byte, hostType string) ([]Repo, error) {
-	switch hostType {
-	case "github":
-		return parseTypedRepos[BaseRepo](data)
-	case "forgejo":
-		return parseTypedRepos[ForgejoRepo](data)
-	}
-	return nil, fmt.Errorf("unknown host type: %s", hostType)
-}
-
 // This function returns true if the given repoUrl is a release repo
 // Arguments:
 // - feedUrl: The URL of the RSS feed to check.
 func (g *gitHost) IsReleaseFeedForCurrentHost(feedUrl string) bool {
 	return g.isReleasePattern.MatchString(feedUrl)
+}
+
+// This method will parse repos as long as they are of the current type. All Repo objects
+// must satisfy the Repo interface.
+func parseRepos(data []byte, hostType string) ([]Repo, error) {
+	switch hostType {
+	case "github":
+		return parseTypedRepos[*BaseRepo](data)
+	case "forgejo":
+		return parseTypedRepos[*ForgejoRepo](data)
+	}
+	return nil, fmt.Errorf("unknown host type: %s", hostType)
+}
+
+// This generic method will parse any supported repo type as long as it satisfies the Repo interface
+func parseTypedRepos[T Repo](data []byte) ([]Repo, error) {
+	// This will actually be a pointer to the concrete Repo type so that JSON can unmarshal
+	var genericRepoSlice []T
+	if err := json.Unmarshal(data, &genericRepoSlice); err != nil {
+		return nil, err
+	}
+
+	// We can't return T here so we have to copy the elements to a non-generic slice of type
+	// Repo
+	repoSlice := make([]Repo, len(genericRepoSlice))
+	for i, item := range genericRepoSlice {
+		repoSlice[i] = item
+	}
+	return repoSlice, nil
 }
