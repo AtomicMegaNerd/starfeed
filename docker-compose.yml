@@ -1,10 +1,34 @@
 ---
 services:
+  freshrss:
+    image: freshrss/freshrss:latest
+    container_name: freshrss-test
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:80"
+    tmpfs:
+      - /var/www/FreshRSS/data
+    environment:
+      TZ: UTC
+      FRESHRSS_INSTALL: |
+        --api-enabled
+        --base-url http://localhost:8080
+        --default-user ${STARFEED_RSS_USER}
+      FRESHRSS_USER: |
+        --user ${STARFEED_RSS_USER}
+        --password ${STARFEED_RSS_PASS}
+        --email test@example.net
+        --api-password ${STARFEED_RSS_API_TOKEN}
+        --language en
   starfeed:
     image: localhost/starfeed:latest
     build:
       context: .
       dockerfile: Dockerfile
+    # NOTE: See https://github.com/containers/podman-compose/issues/1422
+    # This is a bug that is breaking depends_on when you have a healthcheck
+    command: ["sh", "-c", "sleep 5 && starfeed"]
     env_file:
       - .env
-    restart: unless-stopped

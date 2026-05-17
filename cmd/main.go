@@ -9,9 +9,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/atomicmeganerd/starfeed/atom"
 	"github.com/atomicmeganerd/starfeed/config"
+	"github.com/atomicmeganerd/starfeed/githost"
+	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/runner"
 	"github.com/lmittmann/tint"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -19,11 +23,14 @@ func main() {
 	slog.Info(" Welcome to Starfeed")
 	slog.Info("***********************************************")
 
+	// The configuration is loaded from the environment
 	cfg, err := config.NewConfig(config.OSEnvGetter{})
 	if err != nil {
 		slog.Error("Failed to load configuration", "error", err.Error())
 		os.Exit(1)
 	}
+
+	client := &http.Client{Timeout: cfg.HTTPTimeout}
 
 	// configure logger
 	w := os.Stderr
@@ -31,14 +38,14 @@ func main() {
 		slog.SetDefault(slog.New(
 			tint.NewHandler(w, &tint.Options{
 				Level:      slog.LevelDebug,
-				TimeFormat: time.Kitchen,
+				TimeFormat: time.RFC3339,
 			}),
 		))
 	} else {
 		slog.SetDefault(slog.New(
 			tint.NewHandler(w, &tint.Options{
 				Level:      slog.LevelInfo,
-				TimeFormat: time.Kitchen,
+				TimeFormat: time.RFC3339,
 			}),
 		))
 	}
@@ -54,14 +61,34 @@ func main() {
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 
-	releasesRunner := runner.NewPublishReleasesRunner(
-		cfg,
-		&http.Client{Timeout: cfg.HTTPTimeout},
-	)
+	runners := make([]runner.Runner, 0)
+	feedChecker := atom.NewAtomFeedChecker(client)
+
+	rssServer := rss.NewFreshRSSFeedManager(cfg.RSSServerConfig, client)
+	if rssServer.Enabled() {
+		if err := rssServer.Authenticate(ctx); err != nil {
+			slog.Error("Error Authenticating to RSS", "error", err)
+			os.Exit(1)
+		}
+		slog.Info("Successfully authenticated to RSS server...", "URL", cfg.RSSServerConfig.BaseURL)
+	}
+
+	// For each GitHost in our config let's create a new runner
+	for _, gitHostConfig := range cfg.GitHostConfigs {
+		gitHost, err := githost.NewGitHost(gitHostConfig, client)
+		slog.Info("Successfully registered git host", "name", gitHostConfig.Name)
+		if err != nil {
+			slog.Error("Cannot configure git host...", "error", err)
+			os.Exit(1)
+		}
+		releasesRunner := runner.NewPublishReleasesRunner(gitHost, rssServer, feedChecker)
+		runners = append(runners, releasesRunner)
+	}
 
 	// Always run once...
-	if err := releasesRunner.Run(ctx); err != nil {
+	if err := executeRunners(ctx, runners); err != nil {
 		slog.Error("Error executing runners", "error", err)
+		os.Exit(1)
 	}
 
 	if cfg.SingleRunMode {
@@ -85,10 +112,22 @@ func main() {
 		// already capture the timestamp when we execute. But it is good to recognize that
 		// the ticker channel is sent this data.
 		case <-ticker.C:
-			if err := releasesRunner.Run(ctx); err != nil {
+			if err := executeRunners(ctx, runners); err != nil {
 				slog.Error("Error executing runners", "error", err)
+				os.Exit(1)
 			}
 			slog.Info("Sleeping for 24 hours...")
 		}
 	}
+}
+
+// Here we execute the runners in parallel...
+func executeRunners(ctx context.Context, runners []runner.Runner) error {
+	errGroup, runnerCtx := errgroup.WithContext(ctx)
+	for _, runner := range runners {
+		errGroup.Go(func() error {
+			return runner.Run(runnerCtx)
+		})
+	}
+	return errGroup.Wait()
 }

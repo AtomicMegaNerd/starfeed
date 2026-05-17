@@ -7,6 +7,12 @@ import (
 	"sync"
 )
 
+const (
+	StatusOKString           = "200 OK"
+	StatusNotFoundString     = "404 Not Found"
+	StatusUnauthorizedString = "401 Unauthorized"
+)
+
 // This is a mock round tripper that can be used to mock http responses
 // for testing purposes. It is used to mock the http.Client's transport
 // in the http.Client.Do method. It can be used to mock multiple responses
@@ -72,17 +78,4 @@ func (erc ErrorReadCloser) Read(p []byte) (n int, err error) {
 
 func (erc ErrorReadCloser) Close() error {
 	return nil
-}
-
-// MockEnvGetter implements EnvGetter for testing
-type MockEnvGetter struct {
-	envVars map[string]string
-}
-
-func NewMockEnvGetter(envVars map[string]string) *MockEnvGetter {
-	return &MockEnvGetter{envVars: envVars}
-}
-
-func (m *MockEnvGetter) Getenv(key string) string {
-	return m.envVars[key]
 }

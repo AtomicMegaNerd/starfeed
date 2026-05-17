@@ -1,4 +1,4 @@
-package freshrss
+package rss
 
 import (
 	"context"
@@ -8,14 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/mocks"
 )
 
 const (
-	mockBaseUrl   = "http://localhost"
-	mockUser      = "user"
-	mockApiToken  = "token"
 	mockAuthToken = "1234567890"
 	mockSid       = "2345678901"
 )
@@ -27,13 +23,10 @@ type AuthenticateTestCase struct {
 	expectError        bool
 }
 
-func (tc *AuthenticateTestCase) GetTestObject() FreshRSSFeedManager {
-	mockCfg := config.Config{}
+func (tc *AuthenticateTestCase) GetTestObject() RSSServer {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewFreshRSSFeedManager(
-		&mockCfg, mockClient,
-	)
+	return MockValidRSSServer(mockClient)
 }
 
 func TestAuthenticate(t *testing.T) {
@@ -46,7 +39,7 @@ func TestAuthenticate(t *testing.T) {
 						strings.NewReader(fmt.Sprintf("Auth=%s\nSID=%s\n", mockAuthToken, mockSid)),
 					),
 					StatusCode: http.StatusOK,
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 				},
 			},
 			expxectedAuthToken: mockAuthToken,
@@ -58,7 +51,7 @@ func TestAuthenticate(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader("Invalid response")),
 					StatusCode: http.StatusOK,
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 				},
 			},
 			expxectedAuthToken: "",
@@ -70,7 +63,7 @@ func TestAuthenticate(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader("Error=BadAuthentication\n")),
 					StatusCode: http.StatusUnauthorized,
-					Status:     "401 Unauthorized",
+					Status:     mocks.StatusUnauthorizedString,
 				},
 			},
 			expxectedAuthToken: "",
@@ -182,13 +175,10 @@ type AddFeedTestCase struct {
 	expectError      bool
 }
 
-func (tc *AddFeedTestCase) GetTestObject() FreshRSSFeedManager {
-	mockCfg := config.Config{}
+func (tc *AddFeedTestCase) GetTestObject() RSSServer {
 	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegexPatterns)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewFreshRSSFeedManager(
-		&mockCfg, mockClient,
-	)
+	return MockValidRSSServer(mockClient)
 }
 
 func TestAddFeed(t *testing.T) {
@@ -206,10 +196,10 @@ func TestAddFeed(t *testing.T) {
 					}
 					`)),
 					StatusCode: http.StatusOK,
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 				},
 				{
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 					StatusCode: http.StatusOK,
 				},
 			},
@@ -225,7 +215,7 @@ func TestAddFeed(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
 					StatusCode: http.StatusUnauthorized,
-					Status:     "401 Unauthorized",
+					Status:     mocks.StatusUnauthorizedString,
 				},
 			},
 			urlRegexPatterns: []string{
@@ -245,7 +235,7 @@ func TestAddFeed(t *testing.T) {
 						"streamName": "name"
 					}`)),
 					StatusCode: http.StatusOK,
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 				},
 				{
 					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
@@ -265,7 +255,7 @@ func TestAddFeed(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader(`Invalid response`)),
 					StatusCode: http.StatusOK,
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 				},
 			},
 			urlRegexPatterns: []string{
@@ -300,13 +290,10 @@ type GetExistingFeedsTestCase struct {
 	expectError     bool
 }
 
-func (tc *GetExistingFeedsTestCase) GetTestObject() FreshRSSFeedManager {
-	mockCfg := &config.Config{}
+func (tc *GetExistingFeedsTestCase) GetTestObject() RSSServer {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewFreshRSSFeedManager(
-		mockCfg, mockClient,
-	)
+	return MockValidRSSServer(mockClient)
 }
 
 func TestGetExistingFeeds(t *testing.T) {
@@ -328,7 +315,7 @@ func TestGetExistingFeeds(t *testing.T) {
 						}`),
 					),
 					StatusCode: http.StatusOK,
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 				},
 			},
 			expectedFeedMap: map[string]struct{}{
@@ -343,7 +330,7 @@ func TestGetExistingFeeds(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
 					StatusCode: http.StatusUnauthorized,
-					Status:     "401 Unauthorized",
+					Status:     mocks.StatusUnauthorizedString,
 				},
 			},
 			expectedFeedMap: map[string]struct{}{},
@@ -355,7 +342,7 @@ func TestGetExistingFeeds(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader(`Invalid response`)),
 					StatusCode: http.StatusOK,
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 				},
 			},
 			expectedFeedMap: map[string]struct{}{},
@@ -398,13 +385,10 @@ type RemoveFeedTestCase struct {
 	expectError bool
 }
 
-func (tc *RemoveFeedTestCase) GetTestObject() FreshRSSFeedManager {
-	mockCfg := config.Config{}
+func (tc *RemoveFeedTestCase) GetTestObject() RSSServer {
 	mockTransport := mocks.NewMockRoundTripper(tc.responses)
 	mockClient := &http.Client{Transport: &mockTransport}
-	return NewFreshRSSFeedManager(
-		&mockCfg, mockClient,
-	)
+	return MockValidRSSServer(mockClient)
 }
 
 func TestRemoveFeed(t *testing.T) {
@@ -416,7 +400,7 @@ func TestRemoveFeed(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader(`{"status": "ok"}`)),
 					StatusCode: http.StatusOK,
-					Status:     "200 OK",
+					Status:     mocks.StatusOKString,
 				},
 			},
 			expectError: false,
@@ -427,7 +411,7 @@ func TestRemoveFeed(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
 					StatusCode: http.StatusUnauthorized,
-					Status:     "401 Unauthorized",
+					Status:     mocks.StatusUnauthorizedString,
 				},
 			},
 			expectError: true,

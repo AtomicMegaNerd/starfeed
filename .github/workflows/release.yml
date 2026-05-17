@@ -46,8 +46,10 @@ jobs:
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest
 
-      - name: Install dependencies
-        run: go mod tidy
+      - name: Check dependencies
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
 
       - name: Build binary
         run: task build
@@ -93,12 +95,17 @@ jobs:
             latest
             ${{ env.VERSION }}
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   tag_and_release:
     runs-on: ubuntu-latest

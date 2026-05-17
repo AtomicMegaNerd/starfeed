@@ -30,6 +30,11 @@ func (a *atomFeedChecker) CheckFeedHasEntries(
 	ctx context.Context,
 	feedUrl string,
 ) (bool, error) {
+	// A blank feedUrl means that this repo doesn't have a releases feed
+	if feedUrl == "" {
+		return false, nil
+	}
+
 	// No request will always be valid here so we can ignore the error
 	req, err := http.NewRequestWithContext(ctx, "GET", feedUrl, nil)
 	if err != nil {
@@ -43,7 +48,9 @@ func (a *atomFeedChecker) CheckFeedHasEntries(
 	defer res.Body.Close() // nolint:errcheck
 
 	if res.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("error response from ATOM feed %d", res.StatusCode)
+		return false, fmt.Errorf(
+			"error response from atom feed: %s, status: %d", feedUrl, res.StatusCode,
+		)
 	}
 
 	data, err := io.ReadAll(res.Body)

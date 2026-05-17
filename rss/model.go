@@ -1,4 +1,4 @@
-package freshrss
+package rss
 
 type FreshRSSAddFeedResponse struct {
 	NumResults int    `json:"numResults"`
