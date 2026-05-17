@@ -15,6 +15,7 @@ import (
 	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/runner"
 	"github.com/lmittmann/tint"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -62,8 +63,15 @@ func main() {
 
 	runners := make([]runner.Runner, 0)
 	feedChecker := atom.NewAtomFeedChecker(client)
+
 	rssServer := rss.NewFreshRSSFeedManager(cfg.RSSServerConfig, client)
-	slog.Info("Successfully registered RSS server...", "URL", cfg.RSSServerConfig.BaseURL)
+	if rssServer.Enabled() {
+		if err := rssServer.Authenticate(ctx); err != nil {
+			slog.Error("Error Authenticating to RSS", "error", err)
+			os.Exit(1)
+		}
+		slog.Info("Successfully authenticated to RSS server...", "URL", cfg.RSSServerConfig.BaseURL)
+	}
 
 	// For each GitHost in our config let's create a new runner
 	for _, gitHostConfig := range cfg.GitHostConfigs {
@@ -105,7 +113,7 @@ func main() {
 		// the ticker channel is sent this data.
 		case <-ticker.C:
 			if err := executeRunners(ctx, runners); err != nil {
-				slog.Error("Error executing runers", "error", err)
+				slog.Error("Error executing runners", "error", err)
 				os.Exit(1)
 			}
 			slog.Info("Sleeping for 24 hours...")
@@ -113,11 +121,13 @@ func main() {
 	}
 }
 
+// Here we execute the runners in parallel...
 func executeRunners(ctx context.Context, runners []runner.Runner) error {
+	errGroup, runnerCtx := errgroup.WithContext(ctx)
 	for _, runner := range runners {
-		if err := runner.Run(ctx); err != nil {
-			return err
-		}
+		errGroup.Go(func() error {
+			return runner.Run(runnerCtx)
+		})
 	}
-	return nil
+	return errGroup.Wait()
 }

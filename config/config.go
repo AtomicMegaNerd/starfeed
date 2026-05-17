@@ -38,7 +38,7 @@ type Config struct {
 func NewConfig(envGetter EnvGetter) (*Config, error) {
 	validate := validator.New()
 
-	// Parse optional HTTP timeout, default to 10 seconds
+	// Parse optional HTTP timeout
 	httpTimeout := defaultHttpTimeoutSeconds * time.Second
 	if timeoutStr := envGetter.Getenv(httpTimeoutKey); timeoutStr != "" {
 		if timeoutSeconds, err := strconv.Atoi(timeoutStr); err == nil && timeoutSeconds > 0 {
@@ -81,7 +81,7 @@ type GitHostConfig struct {
 	Name    string `validate:"required,min=3"`
 	BaseURL string `validate:"required,url"`
 	ApiURL  string `validate:"required,url"`
-	Token   string `validate:"required,min=24"`
+	Token   string `validate:"required,min=10"`
 	Enabled bool
 }
 
@@ -132,11 +132,11 @@ func buildGitHostConfigs(
 	return gitHostConfigs, nil
 }
 
-// This type both holds and validates the conmfig for the RSS Server
+// This type both holds and validates the config for the RSS Server
 type RSSServerConfig struct {
 	Type    string `validate:"required,oneof=freshrss"`
 	BaseURL string `validate:"required,url"`
-	User    string `validate:"required,email"`
+	User    string `validate:"required,min=3"`
 	Token   string `validate:"required,min=10"`
 	Enabled bool
 }

@@ -128,7 +128,7 @@ func (g *gitHost) GetStarredRepos(
 		}
 
 		slog.Info(
-			"Sucessfully loaded starred repos from Git host",
+			"Successfully loaded starred repos from Git host",
 			"gitHost", g.Name(),
 			"numberStarredRepos", len(repos),
 		)

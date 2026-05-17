@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-16
+
+### Added
+
+- Added support for Forgejo-based Git hosts (including Codeberg) alongside GitHub.
+- Starfeed can now sync starred repos from multiple Git Hosts simultaneously.
+- Many performance improvements including better use of go-routines.
+- Both Git Hosts and RSS Server configs now support an `enabled` flag to toggle them on/off.
+- Added `github.com/go-playground/validator/v10` for robust config validation.
+
+### Changed
+
+- Made common interfaces with much shared code for supported Git Hosts.
+- Changes to the way we define the environment variables as inputs to enable much more flexibility.
+- Added FreshRSS with `docker-compose.yml` for local development and testing.
+
 ## [0.2.0] - 2026-05-15
 
 ### Changed

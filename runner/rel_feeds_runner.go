@@ -20,8 +20,9 @@ type publishReleasesRunner struct {
 
 // NewPublishReleasesRunner creates a new RepoRSSPublisher instance.
 // Arguments:
-// - cfg: the config object that holds all of the relevant configuration.
-// - client: The http client to use for requests (used for mocking).
+// - gitHost: The git host to query for starred repos.
+// - rssServer: The RSS server to publish feeds to.
+// - atomFeedChecker: The atom feed checker to verify feed entries.
 func NewPublishReleasesRunner(
 	gitHost githost.GitHost,
 	rssServer rss.RSSServer,
@@ -67,14 +68,9 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 		// NOTE: Using map[T]struct{} is idiomatic for creating sets in Go.
 		var filteredRssFeedsSet map[string]struct{}
 		rssErrgoup.Go(func() error {
-			// Authenticate to FreshRSS
-			if err := p.rssServer.Authenticate(rssCtx); err != nil {
-				return err
-			}
-
 			// Get existing subscriptions
 			slog.Info("Querying existing RSS feeds in FreshRSS... ")
-			rawRssFeedsSet, err := p.rssServer.GetExistingFeeds(ghCtx)
+			rawRssFeedsSet, err := p.rssServer.GetExistingFeeds(rssCtx)
 			if err != nil {
 				return err
 			}
@@ -159,7 +155,7 @@ func (p *publishReleasesRunner) publishToFreshRSS(
 	return p.rssServer.AddFeed(ctx, repoFeed, repo.Name(), p.gitHost.Name())
 }
 
-// We never want to unsubscribe from non-github feeds.
+// We never want to unsubscribe from feeds that are not release feeds for the current Git host.
 func filterOutNonRepoReleaseFeeds(
 	gh githost.GitHost,
 	rssFeedSet map[string]struct{},
@@ -174,7 +170,7 @@ func filterOutNonRepoReleaseFeeds(
 			filteredSet[feedUrl] = struct{}{}
 		} else {
 			slog.Debug(
-				"Ignoring feeds that are't release feed from a git host so we don't unsubscribe",
+				"Ignoring feeds that aren't release feeds from a git host so we don't unsubscribe",
 				"feed", feedUrl,
 			)
 		}
@@ -187,7 +183,7 @@ func (p *publishReleasesRunner) removeStaleFeeds(
 	starredRepoMap map[string]githost.Repo, // The key is the release ATOM feed
 	rssFeed string,
 ) error {
-	// If a FreshRSS feed does not exist in GitHub remove it
+	// If a feed does not exist in the Git host, remove it from the RSS server.
 	if _, exists := starredRepoMap[rssFeed]; !exists {
 		slog.Info(
 			"Removing feed from RSS Server as it is no longer starred",
