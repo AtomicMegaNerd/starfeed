@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-05-17
+
+### Changed
+
+- Fixed `docker-compose.yml` to use depends_on as we are now using docker-compose instead of
+  podman-compose.
+- Added Roadmap section to `README.md` and also updated the docker-compose and environment sections.
+
 ## [0.3.0] - 2026-05-16
 
 ### Added
