@@ -70,6 +70,7 @@
               pkgs.golangci-lint
               pkgs.gotestsum
               pkgs.go-task
+              pkgs.goreleaser
 
               # Non-Go tools
               pkgs.bash-language-server
