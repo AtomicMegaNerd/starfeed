@@ -5,15 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2026-05-17
+## [v0.4.0] - 2026-05-20
+
+### Added
+
+- Multi-arch Docker images (linux/amd64, linux/arm64).
+- The app now logs version, commit hash, and build date at startup.
 
 ### Changed
 
+- CI/CD workflows overhauled to use [GoReleaser](https://github.com/goreleaser/goreleaser) and a tag
+  based release workflow.
+- Docker runner images based on Google's
+  [distroless](https://github.com/GoogleContainerTools/distroless) images for size and security.
 - Fixed `docker-compose.yml` to use depends_on as we are now using docker-compose instead of
   podman-compose.
 - Added Roadmap section to `README.md` and also updated the docker-compose and environment sections.
 
-## [0.3.0] - 2026-05-16
+## [v0.3.0] - 2026-05-16
 
 ### Added
 
@@ -29,7 +38,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Changes to the way we define the environment variables as inputs to enable much more flexibility.
 - Added FreshRSS with `docker-compose.yml` for local development and testing.
 
-## [0.2.0] - 2026-05-15
+## [v0.2.0] - 2026-05-15
 
 ### Changed
 
@@ -44,14 +53,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Taskfile cleaned up and simplified.
 - Nix flake cleaned up and changed some development tooling.
 
-## [0.1.7] - 2026-04-01
+## [v0.1.7] - 2026-04-01
 
 ### Updated
 
 - Go 1.26
 - Pipeline improvements
 
-## [0.1.6] - 2025-09-05
+## [v0.1.6] - 2025-09-05
 
 ### Updated
 
@@ -60,40 +69,40 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Refactored backend components to use interface pattern for better testability
 - Improved test coverage from ~55% to 84.4%
 
-## [0.1.5] - 2025-06-06
+## [v0.1.5] - 2025-06-06
 
 ### Updated
 
 - Go 1.24
 - Alpine 3.22
 
-## [0.1.4] - 2024-12-29
+## [v0.1.4] - 2024-12-29
 
 ### Added
 
 - More tests.
 
-## [0.1.3] - 2024-12-25
+## [v0.1.3] - 2024-12-25
 
 ### Added
 
 - Added test coverage task in the Taskfile.
 - Added new tests.
 
-## [0.1.2] - 2024-12-25
+## [v0.1.2] - 2024-12-25
 
 ### Fixed
 
 - Fixed a bug that causes Starfeed to unsubscribe from all non-GitHub release feeds.
 - Added some initial test coverage.
 
-## [0.1.1] - 2024-12-24
+## [v0.1.1] - 2024-12-24
 
 ### Fixed
 
 - Added MIT license.
 
-## [0.1.0] - 2024-12-24
+## [v0.1.0] - 2024-12-24
 
 ### Added
 
@@ -101,13 +110,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added docker-compose file for local development.
 - Updated documentation to reflect the new changes.
 
-## [0.0.6] - 2024-12-24
+## [v0.0.6] - 2024-12-24
 
 ### Added
 
 - Added a github action to build and push the docker image to docker hub.
 
-## [0.0.5] - 2024-12-24
+## [v0.0.5] - 2024-12-24
 
 ### Added
 
@@ -118,7 +127,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Migrated to log/slog for logging.
 - Many small fixes for Docker and logging.
 
-## [0.0.4] - 2024-12-23
+## [v0.0.4] - 2024-12-23
 
 ### Added
 
@@ -126,20 +135,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Prune feeds from FreshRSS that are no longer starred.
 - Run as a daemon once every 24 hours.
 
-## [0.0.3] - 2024-12-19
+## [v0.0.3] - 2024-12-19
 
 ### Added
 
 - We now only publish a feed to FreshRSS if it has entries.
 - We used a semaphore to throttle requests to FreshRSS so it does not get overwhelmed.
 
-## [0.0.2] - 2024-12-18
+## [v0.0.2] - 2024-12-18
 
 ### Added
 
 - Publishing the Atom feeds from GitHub to FreshRSS works!
 
-## [0.0.1] - 2024-12-12
+## [v0.0.1] - 2024-12-12
 
 ### Added
 
