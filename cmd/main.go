@@ -18,9 +18,15 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var (
+	version = "local"
+	commit  = ""
+	date    = ""
+)
+
 func main() {
 	slog.Info("***********************************************")
-	slog.Info(" Welcome to Starfeed")
+	slog.Info(" Welcome to Starfeed", "version", version, "commit", commit, "date", date)
 	slog.Info("***********************************************")
 
 	// The configuration is loaded from the environment

@@ -1,0 +1,15 @@
+FROM gcr.io/distroless/static-debian13:nonroot
+
+LABEL org.opencontainers.image.title="starfeed"
+LABEL org.opencontainers.image.description="Starfeed subscribes to RSS feeds for starred GitHub repos"
+LABEL org.opencontainers.image.authors="Chris Dunphy"
+LABEL org.opencontainers.image.source="https://github.com/atomicmeganerd/starfeed"
+LABEL org.opencontainers.image.licenses="MIT"
+
+ENV PATH=/app/bin:$PATH
+
+WORKDIR /app
+COPY starfeed /app/bin/starfeed
+
+USER nonroot
+CMD ["starfeed"]

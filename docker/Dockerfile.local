@@ -4,25 +4,26 @@
 
 FROM golang:1.26.2-alpine3.23 AS builder
 
-ARG GOTASK_VERSION="v3.50.0"
+ARG GIT_COMMIT
+ARG BUILD_DATE
+
+RUN test -n "$GIT_COMMIT" || (echo "GIT_COMMIT build arg is required" && exit 1)
+RUN test -n "$BUILD_DATE" || (echo "BUILD_DATE build arg is required" && exit 1)
 
 WORKDIR /app
 
-# for caching copy go mod and sum files first and download dependencies
 COPY ./go.mod ./go.sum /app/
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go mod download \
-    && go install github.com/go-task/task/v3/cmd/task@${GOTASK_VERSION}
+    go mod download
 
-# copy the rest of the files
 COPY . .
 
-# Run the build
-ENV LDFLAGS="-ldflags=-s -w"
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    task build
+    go build \
+      -ldflags "-X main.commit=${GIT_COMMIT} -X main.date=${BUILD_DATE}" \
+      -o bin/starfeed ./cmd/
 
 #########################################################################
 # Runner image                                                          #

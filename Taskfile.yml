@@ -3,13 +3,20 @@ version: "3"
 
 dotenv: [.env]
 
+vars:
+  GIT_COMMIT:
+    sh: git rev-parse --short HEAD
+  BUILD_DATE:
+    sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
+  DOCKER_CMD: podman
+  DOCKER_COMPOSE_CMD: docker-compose
+
 env:
   out: bin/starfeed
   src: ./cmd/
   cover_out: cover.out
   exclude_packages: "mocks|cmd"
   CGO_ENABLED: "0"
-  LDFLAGS: ""
 
 tasks:
   clean:
@@ -34,7 +41,10 @@ tasks:
     generates:
       - "{{.out}}"
     cmds:
-      - cmd: go build {{.LDFLAGS}} -o {{.out}} {{.src}}
+      - cmd: >
+          go build
+          -ldflags "-X main.commit={{.GIT_COMMIT}} -X main.date={{.BUILD_DATE}}"
+          -o {{.out}} {{.src}}
       - cmd: codesign -f -s "RCD Local" {{.out}} --deep
         platforms: [darwin]
 
@@ -53,6 +63,27 @@ tasks:
         -race -coverprofile={{.cover_out}}
     env:
       CGO_ENABLED: "1"
+
+  docker-up:
+    desc: Build and run with docker-compose
+    cmds:
+      - >
+        IMAGE_TAG=local-{{.GIT_COMMIT}}
+        GIT_COMMIT={{.GIT_COMMIT}}
+        BUILD_DATE={{.BUILD_DATE}}
+        {{.DOCKER_COMPOSE_CMD}} up --build
+      - task: docker-prune
+
+  docker-down:
+    desc: Stop docker-compose
+    cmds:
+      - "{{.DOCKER_COMPOSE_CMD}} down"
+      - task: docker-prune
+
+  docker-prune:
+    desc: Prune unused container images
+    cmds:
+      - "{{.DOCKER_CMD}} image prune -f"
 
   lint:
     desc: Lint and auto-fix Go code
