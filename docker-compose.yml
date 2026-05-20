@@ -3,7 +3,6 @@ services:
   freshrss:
     image: freshrss/freshrss:latest
     container_name: freshrss-test
-    restart: unless-stopped
     env_file:
       - .env
     ports:
@@ -22,13 +21,22 @@ services:
         --email test@example.net
         --api-password ${STARFEED_RSS_API_TOKEN}
         --language en
+    healthcheck:
+      test: ["CMD", "cli/health.php"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
   starfeed:
-    image: localhost/starfeed:latest
+    image: localhost/starfeed:${IMAGE_TAG:-latest}
     build:
       context: .
-      dockerfile: Dockerfile
-    # NOTE: See https://github.com/containers/podman-compose/issues/1422
-    # This is a bug that is breaking depends_on when you have a healthcheck
-    command: ["sh", "-c", "sleep 5 && starfeed"]
+      dockerfile: docker/Dockerfile.local
+      args:
+        GIT_COMMIT: ${GIT_COMMIT}
+        BUILD_DATE: ${BUILD_DATE}
+    depends_on:
+      freshrss:
+        condition: service_healthy
     env_file:
       - .env

@@ -36,6 +36,29 @@ Dockerfile
 .git
 .gitignore
 
+# CI/CD and tooling
+.github/
+.golangci.yml
+.pre-commit-config.yaml
+.markdownlint.json
+.oxfmtrc.jsonc
+Taskfile.yml
+
+# AI/editor/tool caches
+.claude/
+.crush/
+.zellij/
+.task/
+
+# Docs
+AGENTS.md
+README.md
+CHANGELOG.md
+LICENSE.md
+
+# Images
+img/
+
 # Node modules (if any)
 node_modules/
 
@@ -51,11 +74,10 @@ temp/
 *.temp
 
 # Nix
+flake.nix
+flake.lock
 result
 result-*
 
 # direnv
 .direnv/
-
-# Coverage
-cover.out
