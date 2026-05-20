@@ -43,7 +43,7 @@ jobs:
 
       - name: Create and push tag
         run: |
-          git tag ${{ github.event.inputs.version }}
+          git tag -a ${{ github.event.inputs.version }} -m ${{ github.event.inputs.version }}
           git push origin ${{ github.event.inputs.version }}
 
       - name: Run GoReleaser
