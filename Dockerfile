@@ -19,6 +19,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY . .
 
 # Run the build
+ENV LDFLAGS="-ldflags=-s -w"
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     task build
@@ -27,7 +28,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Runner image                                                          #
 #########################################################################
 
-FROM alpine:3.23 AS runner
+FROM gcr.io/distroless/static:nonroot AS runner
 
 LABEL org.opencontainers.image.title="starfeed"
 LABEL org.opencontainers.image.description="Starfeed subscribes to RSS feeds for starred GitHub repos"
@@ -35,13 +36,11 @@ LABEL org.opencontainers.image.authors="Chris Dunphy"
 LABEL org.opencontainers.image.source="https://github.com/atomicmeganerd/starfeed"
 LABEL org.opencontainers.image.licenses="MIT"
 
-ARG UID=10001
-ARG GID=10001
 ENV PATH=/app/bin:$PATH
 
 WORKDIR /app
-RUN addgroup -g ${GID} starfeed && adduser -D -u ${UID} -G starfeed starfeed
-COPY --from=builder --chown=${UID}:${GID} /app/bin/starfeed /app/bin/starfeed
+COPY --from=builder --chown=nonroot:nonroot /app/bin/starfeed /app/bin/starfeed
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-USER starfeed
+USER nonroot
 CMD ["starfeed"]

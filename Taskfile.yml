@@ -9,6 +9,7 @@ env:
   cover_out: cover.out
   exclude_packages: "mocks|cmd"
   CGO_ENABLED: "0"
+  LDFLAGS: ""
 
 tasks:
   clean:
@@ -33,7 +34,7 @@ tasks:
     generates:
       - "{{.out}}"
     cmds:
-      - cmd: go build -o {{.out}} {{.src}}
+      - cmd: go build {{.LDFLAGS}} -o {{.out}} {{.src}}
       - cmd: codesign -f -s "RCD Local" {{.out}} --deep
         platforms: [darwin]
 
