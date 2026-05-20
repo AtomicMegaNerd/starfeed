@@ -6,8 +6,6 @@ dotenv: [.env]
 vars:
   GIT_COMMIT:
     sh: git rev-parse --short HEAD
-  BUILD_DATE:
-    sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
   DOCKER_CMD: podman
   DOCKER_COMPOSE_CMD: docker-compose
 
@@ -43,7 +41,7 @@ tasks:
     cmds:
       - cmd: >
           go build
-          -ldflags "-X main.commit={{.GIT_COMMIT}} -X main.date={{.BUILD_DATE}}"
+          -ldflags "-X main.commit={{.GIT_COMMIT}}"
           -o {{.out}} {{.src}}
       - cmd: codesign -f -s "RCD Local" {{.out}} --deep
         platforms: [darwin]
@@ -70,7 +68,6 @@ tasks:
       - >
         IMAGE_TAG=local-{{.GIT_COMMIT}}
         GIT_COMMIT={{.GIT_COMMIT}}
-        BUILD_DATE={{.BUILD_DATE}}
         {{.DOCKER_COMPOSE_CMD}} up --build
       - task: docker-prune
 

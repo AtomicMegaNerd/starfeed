@@ -5,10 +5,8 @@
 FROM golang:1.26.2-alpine3.23 AS builder
 
 ARG GIT_COMMIT
-ARG BUILD_DATE
 
 RUN test -n "$GIT_COMMIT" || (echo "GIT_COMMIT build arg is required" && exit 1)
-RUN test -n "$BUILD_DATE" || (echo "BUILD_DATE build arg is required" && exit 1)
 
 WORKDIR /app
 
@@ -22,7 +20,7 @@ COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go build \
-      -ldflags "-X main.commit=${GIT_COMMIT} -X main.date=${BUILD_DATE}" \
+      -ldflags "-X main.commit=${GIT_COMMIT}" \
       -o bin/starfeed ./cmd/
 
 #########################################################################

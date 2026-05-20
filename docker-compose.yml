@@ -34,7 +34,6 @@ services:
       dockerfile: docker/Dockerfile.local
       args:
         GIT_COMMIT: ${GIT_COMMIT}
-        BUILD_DATE: ${BUILD_DATE}
     depends_on:
       freshrss:
         condition: service_healthy
