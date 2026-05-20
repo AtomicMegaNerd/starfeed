@@ -28,6 +28,33 @@ checksum:
 
 dockers:
   - image_templates:
-      - "atomicmeganerd/starfeed:latest"
-      - "atomicmeganerd/starfeed:{{.Version}}"
+      - "atomicmeganerd/starfeed:{{.Version}}-amd64"
+    goos: linux
+    goarch: amd64
+    use: buildx
     dockerfile: docker/Dockerfile.goreleaser
+    build_flag_templates:
+      - "--platform=linux/amd64"
+
+  - image_templates:
+      - "atomicmeganerd/starfeed:{{.Version}}-arm64"
+    goos: linux
+    goarch: arm64
+    use: buildx
+    dockerfile: docker/Dockerfile.goreleaser
+    build_flag_templates:
+      - "--platform=linux/arm64"
+
+docker_manifests:
+  - name_template: "atomicmeganerd/starfeed:{{.Version}}"
+    image_templates:
+      - "atomicmeganerd/starfeed:{{.Version}}-amd64"
+      - "atomicmeganerd/starfeed:{{.Version}}-arm64"
+
+  - name_template: "atomicmeganerd/starfeed:latest"
+    image_templates:
+      - "atomicmeganerd/starfeed:{{.Version}}-amd64"
+      - "atomicmeganerd/starfeed:{{.Version}}-arm64"
+
+changelog:
+  disable: true
