@@ -13,7 +13,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Removed date from build to make it determnistic.
+- Removed date from build to make it reproducible.
 
 ## [v0.4.0] - 2026-05-20
 
