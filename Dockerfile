@@ -28,7 +28,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Runner image                                                          #
 #########################################################################
 
-FROM gcr.io/distroless/static:nonroot AS runner
+FROM gcr.io/distroless/static-debian13:nonroot AS runner
 
 LABEL org.opencontainers.image.title="starfeed"
 LABEL org.opencontainers.image.description="Starfeed subscribes to RSS feeds for starred GitHub repos"
