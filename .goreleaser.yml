@@ -18,7 +18,6 @@ builds:
       - -s -w
       - -X main.version={{.Version}}
       - -X main.commit={{.Commit}}
-      - -X main.date={{.Date}}
 
 archives:
   - name_template: "{{.Binary}}_{{.Os}}_{{.Arch}}"
@@ -26,35 +25,22 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
-dockers:
-  - image_templates:
-      - "atomicmeganerd/starfeed:{{.Version}}-amd64"
-    goos: linux
-    goarch: amd64
-    use: buildx
+dockers_v2:
+  - images:
+      - "atomicmeganerd/starfeed"
+    tags:
+      - "{{.Version}}"
+      - "latest"
     dockerfile: docker/Dockerfile.goreleaser
-    build_flag_templates:
-      - "--platform=linux/amd64"
-
-  - image_templates:
-      - "atomicmeganerd/starfeed:{{.Version}}-arm64"
-    goos: linux
-    goarch: arm64
-    use: buildx
-    dockerfile: docker/Dockerfile.goreleaser
-    build_flag_templates:
-      - "--platform=linux/arm64"
-
-docker_manifests:
-  - name_template: "atomicmeganerd/starfeed:{{.Version}}"
-    image_templates:
-      - "atomicmeganerd/starfeed:{{.Version}}-amd64"
-      - "atomicmeganerd/starfeed:{{.Version}}-arm64"
-
-  - name_template: "atomicmeganerd/starfeed:latest"
-    image_templates:
-      - "atomicmeganerd/starfeed:{{.Version}}-amd64"
-      - "atomicmeganerd/starfeed:{{.Version}}-arm64"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      "org.opencontainers.image.description": "Starfeed subscribes to RSS feeds for starred GitHub repos"
+      "org.opencontainers.image.name": "{{.ProjectName}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+      "org.opencontainers.image.source": "https://github.com/atomicmeganerd/starfeed"
 
 changelog:
   disable: true

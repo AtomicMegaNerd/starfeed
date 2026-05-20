@@ -21,12 +21,11 @@ import (
 var (
 	version = "local"
 	commit  = ""
-	date    = ""
 )
 
 func main() {
 	slog.Info("***********************************************")
-	slog.Info(" Welcome to Starfeed", "version", version, "commit", commit, "date", date)
+	slog.Info(" Welcome to Starfeed", "version", version, "commit", commit)
 	slog.Info("***********************************************")
 
 	// The configuration is loaded from the environment
