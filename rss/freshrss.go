@@ -48,8 +48,9 @@ func NewFreshRSS(
 
 // Authenticate authenticates with the FreshRSS instance.
 func (f *FreshRSS) Authenticate(ctx context.Context) error {
+	logger := f.logger.With("rssServer", f.baseURL)
 	reqURL := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", f.baseURL)
-	f.logger.Debug("Authenticating with FreshRSS", "url", reqURL)
+	logger.Debug("Authenticating with FreshRSS", "url", reqURL)
 
 	formData := url.Values{
 		"Email":  {f.user},
@@ -67,7 +68,7 @@ func (f *FreshRSS) Authenticate(ctx context.Context) error {
 	}
 	f.authToken = authToken
 
-	f.logger.Debug("Authenticated with FreshRSS")
+	logger.Debug("Authenticated with FreshRSS")
 	return nil
 }
 
@@ -80,6 +81,7 @@ func (f *FreshRSS) AddFeed(
 	ctx context.Context,
 	feedURL, name, category string,
 ) error {
+	logger := f.logger.With("rssServer", f.baseURL)
 	addURL := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/quickadd", f.baseURL,
 	)
@@ -87,7 +89,7 @@ func (f *FreshRSS) AddFeed(
 		"quickadd": {feedURL},
 	}
 
-	f.logger.Debug("Adding feed to FreshRSS", "url", addURL)
+	logger.Debug("Adding feed to FreshRSS", "url", addURL)
 	res, err := f.doAPIRequest(ctx, addURL, []byte(formData.Encode()), true)
 	if err != nil {
 		return err
@@ -104,7 +106,7 @@ func (f *FreshRSS) AddFeed(
 		return err
 	}
 
-	f.logger.Debug("Successfully added feed to FreshRSS", "feed", feedURL)
+	logger.Debug("Successfully added feed to FreshRSS", "feed", feedURL)
 	return nil
 }
 
@@ -154,6 +156,10 @@ func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
 	}
 
 	return nil
+}
+
+func (f *FreshRSS) RSSServerType() string {
+	return f.rssType
 }
 
 func (f *FreshRSS) addFeedToCategory(

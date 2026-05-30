@@ -1,8 +1,6 @@
 package githost
 
 import (
-	"io"
-	"log/slog"
 	"net/http"
 	"regexp"
 
@@ -26,7 +24,7 @@ var (
 			baseURL:          mocks.GitHubURL,
 			token:            mocks.GitHubToken,
 			Enabled:          true,
-			logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+			logger:           mocks.TestLogger(),
 			client:           client,
 			getReposURL:      "https://api.github.com",
 			nextPagePattern:  nextPageLinkRegex,
@@ -48,7 +46,7 @@ var (
 			baseURL:          mocks.ForgejoURL,
 			token:            mocks.ForgejoToken,
 			Enabled:          true,
-			logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+			logger:           mocks.TestLogger(),
 			client:           client,
 			getReposURL:      "https://api.forgejo.org",
 			nextPagePattern:  nextPageLinkRegex,

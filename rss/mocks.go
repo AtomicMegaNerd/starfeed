@@ -1,8 +1,6 @@
 package rss
 
 import (
-	"io"
-	"log/slog"
 	"net/http"
 
 	"github.com/atomicmeganerd/starfeed/mocks"
@@ -15,7 +13,7 @@ var MockValidRSSServer = func(client *http.Client) *FreshRSS {
 		baseURL:   mocks.FreshRSSURL,
 		user:      mocks.FreshRSSUser,
 		token:     mocks.FreshRSSToken,
-		logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:    mocks.TestLogger(),
 		client:    client,
 	}
 }

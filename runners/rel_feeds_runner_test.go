@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
@@ -33,7 +32,7 @@ func (tc *QueryAndPublishFeedsTestCase) GetTestRunner() PublishReleasesRunner {
 		githost.MockValidGitHub(mockClient),
 		rss.MockValidRSSServer(mockClient),
 		atomFeedChecker,
-		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		mocks.TestLogger(),
 	)
 }
 
@@ -100,7 +99,7 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 	}
 }
 
-type mockFreshRSSFeedManager struct {
+type mockFreshRSS struct {
 	addFeedCalled    bool
 	addFeedError     error
 	removeFeedCalled bool
@@ -110,15 +109,19 @@ type mockFreshRSSFeedManager struct {
 	removeFeedURL    string
 }
 
-func (m *mockFreshRSSFeedManager) Enabled() bool {
+func (m *mockFreshRSS) Enabled() bool {
 	return true
 }
 
-func (m *mockFreshRSSFeedManager) Authenticate(ctx context.Context) error {
+func (m *mockFreshRSS) Authenticate(ctx context.Context) error {
 	return nil
 }
 
-func (m *mockFreshRSSFeedManager) AddFeed(
+func (m *mockFreshRSS) RSSServerType() string {
+	return mocks.FreshRSSType
+}
+
+func (m *mockFreshRSS) AddFeed(
 	ctx context.Context,
 	feedURL, name, category string,
 ) error {
@@ -128,13 +131,13 @@ func (m *mockFreshRSSFeedManager) AddFeed(
 	return m.addFeedError
 }
 
-func (m *mockFreshRSSFeedManager) GetExistingFeeds(
+func (m *mockFreshRSS) GetExistingFeeds(
 	ctx context.Context,
 ) (map[string]struct{}, error) {
 	return nil, nil
 }
 
-func (m *mockFreshRSSFeedManager) RemoveFeed(ctx context.Context, feedURL string) error {
+func (m *mockFreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
 	m.removeFeedCalled = true
 	m.removeFeedURL = feedURL
 	return m.removeFeedError
@@ -214,7 +217,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockFreshRSS := &mockFreshRSSFeedManager{
+			mockFreshRSS := &mockFreshRSS{
 				addFeedError: tc.freshRSSAddError,
 			}
 			mockAtom := &mockAtomFeedChecker{
@@ -225,7 +228,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 				gitHost:         githost.MockValidGitHub(&http.Client{}),
 				rssServer:       mockFreshRSS,
 				atomFeedChecker: mockAtom,
-				logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
+				logger:          mocks.TestLogger(),
 			}
 
 			g := &errgroup.Group{}
@@ -308,13 +311,13 @@ func TestRemoveStaleFeeds(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockFreshRSS := &mockFreshRSSFeedManager{
+			mockFreshRSS := &mockFreshRSS{
 				removeFeedError: tc.freshRSSRemoveError,
 			}
 
 			mockRunner := &PublishReleasesRunner{
 				rssServer: mockFreshRSS,
-				logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+				logger:    mocks.TestLogger(),
 			}
 
 			g := &errgroup.Group{}
