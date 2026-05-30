@@ -19,7 +19,7 @@ func (m *MockEnvGetter) Getenv(key string) string {
 
 var (
 	MockValidGitHubConfig = GitHostConfig{
-		mocks.GitHubType,
+		GitHubHostType,
 		mocks.GitHubName,
 		mocks.GitHubURL,
 		mocks.GitHubAPIURL,
@@ -28,7 +28,7 @@ var (
 	}
 
 	MockValidForgejoConfig = GitHostConfig{
-		mocks.ForgejoType,
+		ForgejoHostType,
 		mocks.ForgejoName,
 		mocks.ForgejoURL,
 		mocks.ForgejoAPIUrl,

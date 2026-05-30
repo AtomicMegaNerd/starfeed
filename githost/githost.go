@@ -142,16 +142,14 @@ func (g GitHost) IsReleaseFeedForCurrentHost(feedUrl string) bool {
 
 // This function will parse different kinds of repos based on type
 func (g GitHost) parseRepos(data []byte) ([]StarredRepo, error) {
-	if g.hostType == "github" {
+	switch g.hostType {
+	case config.GitHubHostType:
 		repoSlice := make([]StarredRepo, 0)
 		if err := json.Unmarshal(data, &repoSlice); err != nil {
 			return nil, err
 		}
 		return repoSlice, nil
-
-	}
-
-	if g.hostType == "forgejo" {
+	case config.ForgejoHostType:
 		forgejoSlice := make([]forgejoRepo, 0)
 		if err := json.Unmarshal(data, &forgejoSlice); err != nil {
 			return nil, err
@@ -164,7 +162,7 @@ func (g GitHost) parseRepos(data []byte) ([]StarredRepo, error) {
 			}
 		}
 		return repoSlice, nil
+	default:
+		return nil, fmt.Errorf("unknown hostType %s", g.hostType)
 	}
-
-	return nil, fmt.Errorf("unknown hostType %s", g.hostType)
 }

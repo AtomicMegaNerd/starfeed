@@ -2,12 +2,10 @@ package mocks
 
 // This package contains mock data that we can re-use over and over again in our tests.
 const (
-	GitHubType    = "github"
 	GitHubName    = "mygithub"
 	GitHubURL     = "https://github.com"
 	GitHubToken   = "ghp_abcdefghijklmnopqrstuvwxyz"
 	GitHubAPIURL  = "https://api.github.com"
-	ForgejoType   = "forgejo"
 	ForgejoName   = "codeberg"
 	ForgejoURL    = "https://codeberg.org"
 	ForgejoAPIUrl = "https://codeberg.org"

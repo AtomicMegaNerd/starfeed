@@ -5,17 +5,13 @@ import (
 	"strconv"
 )
 
-type EnvGetter interface {
-	Getenv(key string) string
-}
-
 type OSEnvGetter struct{}
 
 func (o OSEnvGetter) Getenv(key string) string {
 	return os.Getenv(key)
 }
 
-func parseBoolEnv(envGetter EnvGetter, key string) (bool, error) {
+func parseBoolEnv(envGetter envGetter, key string) (bool, error) {
 	v := envGetter.Getenv(key)
 	if v == "" {
 		return false, nil

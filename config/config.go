@@ -24,6 +24,9 @@ const (
 	rssServerConfigFields = 5
 
 	defaultHttpTimeoutSeconds = 60
+
+	GitHubHostType  = "github"
+	ForgejoHostType = "forgejo"
 )
 
 // The main Config struct used to hold configuration state for the app
@@ -35,27 +38,38 @@ type Config struct {
 	HTTPTimeout     time.Duration `validate:"required"`
 }
 
-func NewConfig(envGetter EnvGetter) (*Config, error) {
+type envGetter interface {
+	Getenv(key string) string
+}
+
+func NewConfig(g envGetter) (*Config, error) {
 	validate := validator.New()
 
 	// Parse optional HTTP timeout
 	httpTimeout := defaultHttpTimeoutSeconds * time.Second
-	if timeoutStr := envGetter.Getenv(httpTimeoutKey); timeoutStr != "" {
+	if timeoutStr := g.Getenv(httpTimeoutKey); timeoutStr != "" {
 		if timeoutSeconds, err := strconv.Atoi(timeoutStr); err == nil && timeoutSeconds > 0 {
 			httpTimeout = time.Duration(timeoutSeconds) * time.Second
 		}
 	}
 
-	debugMode := false
-	debugMode, _ = parseBoolEnv(envGetter, debugModeKey)
-	singleRunMode := false
-	singleRunMode, _ = parseBoolEnv(envGetter, singleRunModeKey)
-
-	gitHostConfigs, err := buildGitHostConfigs(validate, envGetter)
+	debugMode, err := parseBoolEnv(g, debugModeKey)
+	if err != nil {
+		if err != nil {
+			return nil, err
+		}
+		return nil, err
+	}
+	singleRunMode, err := parseBoolEnv(g, singleRunModeKey)
 	if err != nil {
 		return nil, err
 	}
-	rssConfig, err := buildRssServerConfig(validate, envGetter)
+
+	gitHostConfigs, err := buildGitHostConfigs(validate, g)
+	if err != nil {
+		return nil, err
+	}
+	rssConfig, err := buildRssServerConfig(validate, g)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +91,6 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 
 // This type both holds and validates the config for a GitHost
 type GitHostConfig struct {
-	// TODO: Can I use a custom string type for this? Should I?
 	Type    string `validate:"required,oneof=github forgejo"`
 	Name    string `validate:"required,min=3"`
 	BaseURL string `validate:"required,url"`
@@ -88,7 +101,7 @@ type GitHostConfig struct {
 
 func buildGitHostConfigs(
 	validate *validator.Validate,
-	envGetter EnvGetter,
+	envGetter envGetter,
 ) ([]GitHostConfig, error) {
 	gitHostConfigs := make([]GitHostConfig, 0)
 
@@ -144,7 +157,7 @@ type RSSServerConfig struct {
 
 func buildRssServerConfig(
 	validate *validator.Validate,
-	envGetter EnvGetter,
+	envGetter envGetter,
 ) (*RSSServerConfig, error) {
 	rssCsv := envGetter.Getenv(rssServerKey)
 

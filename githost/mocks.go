@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/mocks"
 )
 
@@ -18,7 +19,7 @@ var (
 
 	MockValidGitHub = func(client *http.Client) GitHost {
 		return GitHost{
-			hostType:         mocks.GitHubType,
+			hostType:         config.GitHubHostType,
 			Name:             mocks.GitHubName,
 			baseURL:          mocks.GitHubURL,
 			token:            mocks.GitHubToken,
@@ -39,7 +40,7 @@ var (
 
 	MockValidForgejo = func(client *http.Client) GitHost {
 		return GitHost{
-			hostType:         mocks.ForgejoType,
+			hostType:         config.ForgejoHostType,
 			Name:             mocks.ForgejoName,
 			baseURL:          mocks.ForgejoURL,
 			token:            mocks.ForgejoToken,
