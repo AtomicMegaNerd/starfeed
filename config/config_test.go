@@ -127,7 +127,7 @@ func validConfig() *Config {
 		RSSServerConfig: MockValidFreshRSSConfig,
 		DebugMode:       false,
 		SingleRunMode:   false,
-		HTTPTimeout:     defaultHttpTimeoutSeconds * time.Second,
+		HTTPTimeout:     defaultHTTPTimeoutSeconds * time.Second,
 	}
 }
 
@@ -180,7 +180,7 @@ func TestNewConfig(t *testing.T) {
 				RSSServerConfig: MockValidFreshRSSConfig,
 				DebugMode:       false,
 				SingleRunMode:   false,
-				HTTPTimeout:     defaultHttpTimeoutSeconds * time.Second,
+				HTTPTimeout:     defaultHTTPTimeoutSeconds * time.Second,
 			},
 		},
 		{

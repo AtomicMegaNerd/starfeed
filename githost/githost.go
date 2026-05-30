@@ -26,18 +26,20 @@ type GitHost struct {
 	headers          map[string]string
 	nextPagePattern  *regexp.Regexp
 	isReleasePattern *regexp.Regexp
+	logger           *slog.Logger
 	client           *http.Client
 }
 
 func NewGitHost(
-	hostCfg config.GitHostConfig, client *http.Client,
+	hostCfg config.GitHostConfig, logger *slog.Logger, client *http.Client,
 ) (GitHost, error) {
 	gitHost := GitHost{
-		hostType: hostCfg.Type,
 		Name:     hostCfg.Name,
+		Enabled:  hostCfg.Enabled,
+		hostType: hostCfg.Type,
 		baseURL:  hostCfg.BaseURL,
 		token:    hostCfg.Token,
-		Enabled:  hostCfg.Enabled,
+		logger:   logger,
 		client:   client,
 	}
 
@@ -92,7 +94,7 @@ func (g GitHost) GetStarredRepos(
 	ctx context.Context,
 ) (map[string]StarredRepo, error) {
 	allFeeds := make(map[string]StarredRepo)
-	slog.Debug("Querying git host for starred repos", "host", g.Name, "url", g.getReposURL)
+	g.logger.Debug("Querying git host for starred repos", "host", g.Name, "url", g.getReposURL)
 
 	nextPageURL := g.getReposURL
 	for {
@@ -113,7 +115,7 @@ func (g GitHost) GetStarredRepos(
 			return nil, err
 		}
 
-		slog.Info(
+		g.logger.Info(
 			"Successfully loaded starred repos from Git host",
 			"gitHost", g.Name,
 			"numberStarredRepos", len(repos),
@@ -133,11 +135,26 @@ func (g GitHost) GetStarredRepos(
 	}
 }
 
-// This function returns true if the given repoURL is a release repo
-// Arguments:
-// - feedURL: The URL of the RSS feed to check.
-func (g GitHost) IsReleaseFeedForCurrentHost(feedURL string) bool {
-	return g.isReleasePattern.MatchString(feedURL)
+// We never want to unsubscribe from feeds that are not release feeds for the current Git host.
+func (g GitHost) FilterOutNonRepoReleaseFeeds(
+	rssFeedSet map[string]struct{},
+) map[string]struct{} {
+	// NOTE: In Go map[T]struct{} is the idiomatic way to make a set as struct{} is 0-bytes
+	filteredSet := make(map[string]struct{})
+	for feedURL := range rssFeedSet {
+		// This will only include a feed for potential removal if it is a release feed
+		// for the current GitHost that we are working with. This is important otherwise
+		// we could remove feeds from other Git hosts which we do not want...
+		if g.isReleasePattern.MatchString(feedURL) {
+			filteredSet[feedURL] = struct{}{}
+		} else {
+			g.logger.Debug(
+				"Ignoring feeds that aren't release feeds from a git host so we don't unsubscribe",
+				"feed", feedURL,
+			)
+		}
+	}
+	return filteredSet
 }
 
 // This function will parse different kinds of repos based on type

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
@@ -32,6 +33,7 @@ func (tc *QueryAndPublishFeedsTestCase) GetTestRunner() PublishReleasesRunner {
 		githost.MockValidGitHub(mockClient),
 		rss.MockValidRSSServer(mockClient),
 		atomFeedChecker,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	)
 }
 
@@ -223,6 +225,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 				gitHost:         githost.MockValidGitHub(&http.Client{}),
 				rssServer:       mockFreshRSS,
 				atomFeedChecker: mockAtom,
+				logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 
 			g := &errgroup.Group{}
@@ -311,6 +314,7 @@ func TestRemoveStaleFeeds(t *testing.T) {
 
 			mockRunner := &PublishReleasesRunner{
 				rssServer: mockFreshRSS,
+				logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 
 			g := &errgroup.Group{}
@@ -335,98 +339,6 @@ func TestRemoveStaleFeeds(t *testing.T) {
 				if mockFreshRSS.removeFeedURL != tc.rssFeed {
 					t.Errorf("Expected RemoveFeed called with URL %s, got %s",
 						tc.rssFeed, mockFreshRSS.removeFeedURL)
-				}
-			}
-		})
-	}
-}
-
-type FilterOutNonGitHubFeedsTestCase struct {
-	name           string
-	inputFeeds     map[string]struct{}
-	expectedFeeds  map[string]struct{}
-	expectedLength int
-}
-
-func TestFilterOutNonGitHubFeeds(t *testing.T) {
-	testCases := []FilterOutNonGitHubFeedsTestCase{
-		{
-			name: "All feeds are GitHub releases",
-			inputFeeds: map[string]struct{}{
-				"https://github.com/user/repo1/releases.atom": {},
-				"https://github.com/user/repo2/releases.atom": {},
-				"https://github.com/user/repo3/releases.atom": {},
-			},
-			expectedFeeds: map[string]struct{}{
-				"https://github.com/user/repo1/releases.atom": {},
-				"https://github.com/user/repo2/releases.atom": {},
-				"https://github.com/user/repo3/releases.atom": {},
-			},
-			expectedLength: 3,
-		},
-		{
-			name: "Mixed GitHub and non-GitHub feeds",
-			inputFeeds: map[string]struct{}{
-				"https://github.com/user/repo1/releases.atom": {},
-				"https://example.com/feed.xml":                {},
-				"https://github.com/user/repo2/releases.atom": {},
-				"https://blog.example.com/rss":                {},
-			},
-			expectedFeeds: map[string]struct{}{
-				"https://github.com/user/repo1/releases.atom": {},
-				"https://github.com/user/repo2/releases.atom": {},
-			},
-			expectedLength: 2,
-		},
-		{
-			name: "No GitHub feeds",
-			inputFeeds: map[string]struct{}{
-				"https://example.com/feed.xml":  {},
-				"https://blog.example.com/rss":  {},
-				"https://news.example.com/atom": {},
-			},
-			expectedFeeds:  map[string]struct{}{},
-			expectedLength: 0,
-		},
-		{
-			name:           "Empty input map",
-			inputFeeds:     map[string]struct{}{},
-			expectedFeeds:  map[string]struct{}{},
-			expectedLength: 0,
-		},
-		{
-			name: "GitHub feeds with dots and dashes in names",
-			inputFeeds: map[string]struct{}{
-				"https://github.com/nix-community/NixOS-WSL/releases.atom": {},
-				"https://github.com/EdenEast/nightfox.nvim/releases.atom":  {},
-				"https://example.com/feed.xml":                             {},
-			},
-			expectedFeeds: map[string]struct{}{
-				"https://github.com/nix-community/NixOS-WSL/releases.atom": {},
-				"https://github.com/EdenEast/nightfox.nvim/releases.atom":  {},
-			},
-			expectedLength: 2,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			gitHost := githost.MockValidGitHub(&http.Client{})
-			result := filterOutNonRepoReleaseFeeds(gitHost, tc.inputFeeds)
-
-			if len(result) != tc.expectedLength {
-				t.Errorf("Expected %d feeds, got %d", tc.expectedLength, len(result))
-			}
-
-			for expectedFeed := range tc.expectedFeeds {
-				if _, exists := result[expectedFeed]; !exists {
-					t.Errorf("Expected feed %s to be in result, but it wasn't", expectedFeed)
-				}
-			}
-
-			for resultFeed := range result {
-				if _, exists := tc.expectedFeeds[resultFeed]; !exists {
-					t.Errorf("Unexpected feed %s found in result", resultFeed)
 				}
 			}
 		})

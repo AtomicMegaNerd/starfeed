@@ -185,57 +185,94 @@ func TestGetStarredRepos(t *testing.T) {
 	}
 }
 
-type TestIsGitHubRepoTestCase struct {
-	name        string
-	feedURL     string
-	expectMatch bool
+type FilterOutNonGitHubFeedsTestCase struct {
+	name           string
+	inputFeeds     map[string]struct{}
+	expectedFeeds  map[string]struct{}
+	expectedLength int
 }
 
-func TestIsReleaseFeed(t *testing.T) {
-	mockHost := MockValidGitHub(&http.Client{})
-
-	testCases := []TestIsGitHubRepoTestCase{
+func TestFilterOutNonGitHubFeeds(t *testing.T) {
+	testCases := []FilterOutNonGitHubFeedsTestCase{
 		{
-			name:        "Letters only",
-			feedURL:     "https://github.com/atomicmeganerd/starfeed/releases.atom",
-			expectMatch: true,
+			name: "All feeds are GitHub releases",
+			inputFeeds: map[string]struct{}{
+				"https://github.com/user/repo1/releases.atom": {},
+				"https://github.com/user/repo2/releases.atom": {},
+				"https://github.com/user/repo3/releases.atom": {},
+			},
+			expectedFeeds: map[string]struct{}{
+				"https://github.com/user/repo1/releases.atom": {},
+				"https://github.com/user/repo2/releases.atom": {},
+				"https://github.com/user/repo3/releases.atom": {},
+			},
+			expectedLength: 3,
 		},
 		{
-			name:        "Handle .",
-			feedURL:     "https://github.com/EdenEast/nightfox.nvim/releases.atom",
-			expectMatch: true,
+			name: "Mixed GitHub and non-GitHub feeds",
+			inputFeeds: map[string]struct{}{
+				"https://github.com/user/repo1/releases.atom": {},
+				"https://example.com/feed.xml":                {},
+				"https://github.com/user/repo2/releases.atom": {},
+				"https://blog.example.com/rss":                {},
+			},
+			expectedFeeds: map[string]struct{}{
+				"https://github.com/user/repo1/releases.atom": {},
+				"https://github.com/user/repo2/releases.atom": {},
+			},
+			expectedLength: 2,
 		},
 		{
-			name:        "Handle -",
-			feedURL:     "https://github.com/nix-community/NixOS-WSL/releases.atom",
-			expectMatch: true,
+			name: "No GitHub feeds",
+			inputFeeds: map[string]struct{}{
+				"https://example.com/feed.xml":  {},
+				"https://blog.example.com/rss":  {},
+				"https://news.example.com/atom": {},
+			},
+			expectedFeeds:  map[string]struct{}{},
+			expectedLength: 0,
 		},
 		{
-			name:        "Handle numbers",
-			feedURL:     "https://github.com/PyO3/pyo3/releases.atom",
-			expectMatch: true,
+			name:           "Empty input map",
+			inputFeeds:     map[string]struct{}{},
+			expectedFeeds:  map[string]struct{}{},
+			expectedLength: 0,
 		},
 		{
-			name:        "Not GitHub",
-			feedURL:     "https://rofl.com/user/repo/releases.atom",
-			expectMatch: false,
-		},
-		{
-			name:        "Not release",
-			feedURL:     "https://github.com/atomicmeganerd/starfeed/other.atom",
-			expectMatch: false,
+			name: "GitHub feeds with dots and dashes in names",
+			inputFeeds: map[string]struct{}{
+				"https://github.com/nix-community/NixOS-WSL/releases.atom": {},
+				"https://github.com/EdenEast/nightfox.nvim/releases.atom":  {},
+				"https://example.com/feed.xml":                             {},
+			},
+			expectedFeeds: map[string]struct{}{
+				"https://github.com/nix-community/NixOS-WSL/releases.atom": {},
+				"https://github.com/EdenEast/nightfox.nvim/releases.atom":  {},
+			},
+			expectedLength: 2,
 		},
 	}
 
 	for _, tc := range testCases {
-		if tc.expectMatch {
-			if !mockHost.IsReleaseFeedForCurrentHost(tc.feedURL) {
-				t.Errorf("Expected feed %s to match but it did not", tc.feedURL)
+		t.Run(tc.name, func(t *testing.T) {
+			gitHost := MockValidGitHub(&http.Client{})
+			result := gitHost.FilterOutNonRepoReleaseFeeds(tc.inputFeeds)
+
+			if len(result) != tc.expectedLength {
+				t.Errorf("Expected %d feeds, got %d", tc.expectedLength, len(result))
 			}
-		} else {
-			if mockHost.IsReleaseFeedForCurrentHost(tc.feedURL) {
-				t.Errorf("Expected feed %s to not match but it did", tc.feedURL)
+
+			for expectedFeed := range tc.expectedFeeds {
+				if _, exists := result[expectedFeed]; !exists {
+					t.Errorf("Expected feed %s to be in result, but it wasn't", expectedFeed)
+				}
 			}
-		}
+
+			for resultFeed := range result {
+				if _, exists := tc.expectedFeeds[resultFeed]; !exists {
+					t.Errorf("Unexpected feed %s found in result", resultFeed)
+				}
+			}
+		})
 	}
 }

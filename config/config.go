@@ -23,7 +23,7 @@ const (
 	gitHostConfigFields   = 6
 	rssServerConfigFields = 5
 
-	defaultHttpTimeoutSeconds = 60
+	defaultHTTPTimeoutSeconds = 60
 
 	GitHubHostType  = "github"
 	ForgejoHostType = "forgejo"
@@ -46,7 +46,7 @@ func NewConfig(g envGetter) (*Config, error) {
 	validate := validator.New()
 
 	// Parse optional HTTP timeout
-	httpTimeout := defaultHttpTimeoutSeconds * time.Second
+	httpTimeout := defaultHTTPTimeoutSeconds * time.Second
 	if timeoutStr := g.Getenv(httpTimeoutKey); timeoutStr != "" {
 		if timeoutSeconds, err := strconv.Atoi(timeoutStr); err == nil && timeoutSeconds > 0 {
 			httpTimeout = time.Duration(timeoutSeconds) * time.Second
