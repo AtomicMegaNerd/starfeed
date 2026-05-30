@@ -23,7 +23,7 @@ var (
 		ForgejoHostType,
 		mocks.ForgejoName,
 		mocks.ForgejoURL,
-		mocks.ForgejoAPIUrl,
+		mocks.ForgejoAPIURL,
 		mocks.ForgejoToken,
 		mocks.TrueBool,
 	)

@@ -87,18 +87,18 @@ func NewGitHost(
 }
 
 // This will return all starred repos including the Atom feeds for their releases
-// It returns a map of releaseFeedUrl -> Repo
+// It returns a map of releaseFeedURL -> Repo
 func (g GitHost) GetStarredRepos(
 	ctx context.Context,
 ) (map[string]StarredRepo, error) {
 	allFeeds := make(map[string]StarredRepo)
 	slog.Debug("Querying git host for starred repos", "host", g.Name, "url", g.getReposURL)
 
-	nextPageUrl := g.getReposURL
+	nextPageURL := g.getReposURL
 	for {
-		resp, err := DoApiRequest(
+		resp, err := DoAPIRequest(
 			ctx,
-			nextPageUrl,
+			nextPageURL,
 			g.headers,
 			g.nextPagePattern,
 			g.client,
@@ -129,15 +129,15 @@ func (g GitHost) GetStarredRepos(
 		}
 
 		slog.Debug("Found next page", "url", resp.NextPage)
-		nextPageUrl = resp.NextPage
+		nextPageURL = resp.NextPage
 	}
 }
 
-// This function returns true if the given repoUrl is a release repo
+// This function returns true if the given repoURL is a release repo
 // Arguments:
-// - feedUrl: The URL of the RSS feed to check.
-func (g GitHost) IsReleaseFeedForCurrentHost(feedUrl string) bool {
-	return g.isReleasePattern.MatchString(feedUrl)
+// - feedURL: The URL of the RSS feed to check.
+func (g GitHost) IsReleaseFeedForCurrentHost(feedURL string) bool {
+	return g.isReleasePattern.MatchString(feedURL)
 }
 
 // This function will parse different kinds of repos based on type

@@ -24,7 +24,7 @@ type QueryAndPublishFeedsTestCase struct {
 }
 
 func (tc *QueryAndPublishFeedsTestCase) GetTestRunner() PublishReleasesRunner {
-	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegex)
+	mockTransport := mocks.NewMockURLSelectedRoundTripper(tc.responses, tc.urlRegex)
 	mockClient := &http.Client{Transport: &mockTransport}
 	atomFeedChecker := atom.NewAtomFeedChecker(mockClient)
 
@@ -103,9 +103,9 @@ type mockFreshRSSFeedManager struct {
 	addFeedError     error
 	removeFeedCalled bool
 	removeFeedError  error
-	addFeedUrl       string
+	addFeedURL       string
 	addFeedName      string
-	removeFeedUrl    string
+	removeFeedURL    string
 }
 
 func (m *mockFreshRSSFeedManager) Enabled() bool {
@@ -118,10 +118,10 @@ func (m *mockFreshRSSFeedManager) Authenticate(ctx context.Context) error {
 
 func (m *mockFreshRSSFeedManager) AddFeed(
 	ctx context.Context,
-	feedUrl, name, category string,
+	feedURL, name, category string,
 ) error {
 	m.addFeedCalled = true
-	m.addFeedUrl = feedUrl
+	m.addFeedURL = feedURL
 	m.addFeedName = name
 	return m.addFeedError
 }
@@ -132,9 +132,9 @@ func (m *mockFreshRSSFeedManager) GetExistingFeeds(
 	return nil, nil
 }
 
-func (m *mockFreshRSSFeedManager) RemoveFeed(ctx context.Context, feedUrl string) error {
+func (m *mockFreshRSSFeedManager) RemoveFeed(ctx context.Context, feedURL string) error {
 	m.removeFeedCalled = true
-	m.removeFeedUrl = feedUrl
+	m.removeFeedURL = feedURL
 	return m.removeFeedError
 }
 
@@ -145,9 +145,9 @@ type mockAtomFeedChecker struct {
 }
 
 func (m *mockAtomFeedChecker) CheckFeedHasEntries(
-	ctx context.Context, feedUrl string,
+	ctx context.Context, feedURL string,
 ) (bool, error) {
-	m.checkedFeeds = append(m.checkedFeeds, feedUrl)
+	m.checkedFeeds = append(m.checkedFeeds, feedURL)
 	return m.hasEntries, m.err
 }
 
@@ -248,9 +248,9 @@ func TestPublishToFreshRSS(t *testing.T) {
 			}
 
 			if tc.expectedFreshRSSAdd {
-				if mockFreshRSS.addFeedUrl != tc.repo.FeedURL() {
+				if mockFreshRSS.addFeedURL != tc.repo.FeedURL() {
 					t.Errorf("Expected AddFeed called with URL %s, got %s",
-						tc.repo.FeedURL(), mockFreshRSS.addFeedUrl)
+						tc.repo.FeedURL(), mockFreshRSS.addFeedURL)
 				}
 				if mockFreshRSS.addFeedName != tc.repo.Name {
 					t.Errorf("Expected AddFeed called with name %s, got %s",
@@ -332,9 +332,9 @@ func TestRemoveStaleFeeds(t *testing.T) {
 			}
 
 			if tc.expectedFreshRSSRemove {
-				if mockFreshRSS.removeFeedUrl != tc.rssFeed {
+				if mockFreshRSS.removeFeedURL != tc.rssFeed {
 					t.Errorf("Expected RemoveFeed called with URL %s, got %s",
-						tc.rssFeed, mockFreshRSS.removeFeedUrl)
+						tc.rssFeed, mockFreshRSS.removeFeedURL)
 				}
 			}
 		})

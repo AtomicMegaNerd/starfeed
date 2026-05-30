@@ -31,7 +31,7 @@ func main() {
 	// The configuration is loaded from the environment
 	cfg, err := config.NewConfig(config.OSEnvGetter{})
 	if err != nil {
-		slog.Error("Failed to load configuration", "error", err.Error())
+		slog.Error("Failed to load configuration", "error", err)
 		os.Exit(1)
 	}
 
@@ -81,11 +81,11 @@ func main() {
 	// For each GitHost in our config let's create a new runner
 	for _, gitHostConfig := range cfg.GitHostConfigs {
 		gitHost, err := githost.NewGitHost(gitHostConfig, client)
-		slog.Info("Successfully registered git host", "name", gitHostConfig.Name)
 		if err != nil {
 			slog.Error("Cannot configure git host...", "error", err)
 			os.Exit(1)
 		}
+		slog.Info("Successfully registered git host", "name", gitHostConfig.Name)
 		releasesRunner := runners.NewPublishReleasesRunner(gitHost, rssServer, feedChecker)
 		runnerSlice = append(runnerSlice, releasesRunner)
 	}

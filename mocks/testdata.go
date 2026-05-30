@@ -8,7 +8,7 @@ const (
 	GitHubAPIURL  = "https://api.github.com"
 	ForgejoName   = "codeberg"
 	ForgejoURL    = "https://codeberg.org"
-	ForgejoAPIUrl = "https://codeberg.org"
+	ForgejoAPIURL = "https://codeberg.org"
 	ForgejoToken  = "cb_abcdefghijklmnopqrstuvwxyz"
 	FreshRSSType  = "freshrss"
 	FreshRSSURL   = "http://freshrss.example.com"

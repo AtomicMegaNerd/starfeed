@@ -9,15 +9,15 @@ import (
 	"strings"
 )
 
-func DoApiRequest(
+func DoAPIRequest(
 	ctx context.Context,
-	reqUrl string,
+	reqURL string,
 	headers map[string]string,
 	nextPageLinkRegex *regexp.Regexp,
 	client *http.Client,
 ) (*GitHostResponse, error) {
 	// No request will always be valid here so we can ignore the error
-	req, err := http.NewRequestWithContext(ctx, "GET", reqUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return nil, err
 	}

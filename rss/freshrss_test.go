@@ -17,10 +17,10 @@ const (
 )
 
 type AuthenticateTestCase struct {
-	name               string
-	responses          []http.Response
-	expxectedAuthToken string
-	expectError        bool
+	name              string
+	responses         []http.Response
+	expectedAuthToken string
+	expectError       bool
 }
 
 func (tc *AuthenticateTestCase) GetTestObject() RSSServer {
@@ -42,8 +42,8 @@ func TestAuthenticate(t *testing.T) {
 					Status:     mocks.StatusOKString,
 				},
 			},
-			expxectedAuthToken: mockAuthToken,
-			expectError:        false,
+			expectedAuthToken: mockAuthToken,
+			expectError:       false,
 		},
 		{
 			name: "Invalid text response should return error",
@@ -54,8 +54,8 @@ func TestAuthenticate(t *testing.T) {
 					Status:     mocks.StatusOKString,
 				},
 			},
-			expxectedAuthToken: "",
-			expectError:        true,
+			expectedAuthToken: "",
+			expectError:       true,
 		},
 		{
 			name: "Failed authentication",
@@ -66,8 +66,8 @@ func TestAuthenticate(t *testing.T) {
 					Status:     mocks.StatusUnauthorizedString,
 				},
 			},
-			expxectedAuthToken: "",
-			expectError:        true,
+			expectedAuthToken: "",
+			expectError:       true,
 		},
 	}
 
@@ -176,7 +176,7 @@ type AddFeedTestCase struct {
 }
 
 func (tc *AddFeedTestCase) GetTestObject() RSSServer {
-	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegexPatterns)
+	mockTransport := mocks.NewMockURLSelectedRoundTripper(tc.responses, tc.urlRegexPatterns)
 	mockClient := &http.Client{Transport: &mockTransport}
 	return MockValidRSSServer(mockClient)
 }
@@ -380,7 +380,7 @@ func TestGetExistingFeeds(t *testing.T) {
 
 type RemoveFeedTestCase struct {
 	name        string
-	feedUrl     string
+	feedURL     string
 	responses   []http.Response
 	expectError bool
 }
@@ -395,7 +395,7 @@ func TestRemoveFeed(t *testing.T) {
 	testCases := []RemoveFeedTestCase{
 		{
 			name:    "Successful feed removal",
-			feedUrl: "http://localhost/feeds/124",
+			feedURL: "http://localhost/feeds/124",
 			responses: []http.Response{
 				{
 					Body:       io.NopCloser(strings.NewReader(`{"status": "ok"}`)),
@@ -421,7 +421,7 @@ func TestRemoveFeed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testObject := tc.GetTestObject()
 			ctx := context.Background()
-			err := testObject.RemoveFeed(ctx, tc.feedUrl)
+			err := testObject.RemoveFeed(ctx, tc.feedURL)
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")

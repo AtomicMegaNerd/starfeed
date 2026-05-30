@@ -50,10 +50,10 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 
 	// Get starred repos from the Git provider, we set a limit on concurrent requests so we
 	// don't get rate limited by the Git host.
-	ghErrgoup, ghCtx := errgroup.WithContext(ctx)
-	ghErrgoup.SetLimit(5)
+	ghErrGroup, ghCtx := errgroup.WithContext(ctx)
+	ghErrGroup.SetLimit(5)
 	var repoMapFeedByURL map[string]githost.StarredRepo
-	ghErrgoup.Go(func() error {
+	ghErrGroup.Go(func() error {
 		var err error
 		repoMapFeedByURL, err = p.gitHost.GetStarredRepos(ghCtx)
 		if err != nil {
@@ -64,10 +64,10 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 
 	// Only publish to RSS if the server is enabled
 	if p.rssServer.Enabled() {
-		rssErrgoup, rssCtx := errgroup.WithContext(ctx)
+		rssErrGroup, rssCtx := errgroup.WithContext(ctx)
 		// NOTE: Using map[T]struct{} is idiomatic for creating sets in Go.
 		var filteredRssFeedsSet map[string]struct{}
-		rssErrgoup.Go(func() error {
+		rssErrGroup.Go(func() error {
 			// Get existing subscriptions
 			slog.Info("Querying existing RSS feeds in FreshRSS... ")
 			rawRssFeedsSet, err := p.rssServer.GetExistingFeeds(rssCtx)
@@ -86,28 +86,28 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 		})
 
 		// Wait for these two independent operations to finish...
-		if err := ghErrgoup.Wait(); err != nil {
+		if err := ghErrGroup.Wait(); err != nil {
 			return err
 		}
-		if err := rssErrgoup.Wait(); err != nil {
+		if err := rssErrGroup.Wait(); err != nil {
 			return err
 		}
 
 		// We can also overwhelm FreshRSS with this so we will also set a limit
-		rssErrgoup, rssCtx = errgroup.WithContext(ctx)
-		rssErrgoup.SetLimit(10)
+		rssErrGroup, rssCtx = errgroup.WithContext(ctx)
+		rssErrGroup.SetLimit(10)
 		for _, repo := range repoMapFeedByURL {
-			rssErrgoup.Go(func() error {
+			rssErrGroup.Go(func() error {
 				return p.publishToFreshRSS(rssCtx, filteredRssFeedsSet, repo)
 			})
 		}
 		for feed := range filteredRssFeedsSet {
-			rssErrgoup.Go(func() error {
+			rssErrGroup.Go(func() error {
 				return p.removeStaleFeeds(rssCtx, repoMapFeedByURL, feed)
 			})
 		}
 
-		if err := rssErrgoup.Wait(); err != nil {
+		if err := rssErrGroup.Wait(); err != nil {
 			return err
 		}
 
@@ -121,7 +121,7 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 	} else {
 		slog.Warn("Skipping publishing to rss server because it is not enabled")
 		// We also need to wait here for the github queries if the RSS server is disabled
-		if err := ghErrgoup.Wait(); err != nil {
+		if err := ghErrGroup.Wait(); err != nil {
 			return err
 		}
 	}
@@ -180,16 +180,16 @@ func filterOutNonRepoReleaseFeeds(
 ) map[string]struct{} {
 	// NOTE: In Go map[T]struct{} is the idiomatic way to make a set as struct{} is 0-bytes
 	filteredSet := make(map[string]struct{})
-	for feedUrl := range rssFeedSet {
+	for feedURL := range rssFeedSet {
 		// This will only include a feed for potential removal if it is a release feed
 		// for the current GitHost that we are working with. This is important otherwise
 		// we could remove feeds from other Git hosts which we do not want...
-		if gh.IsReleaseFeedForCurrentHost(feedUrl) {
-			filteredSet[feedUrl] = struct{}{}
+		if gh.IsReleaseFeedForCurrentHost(feedURL) {
+			filteredSet[feedURL] = struct{}{}
 		} else {
 			slog.Debug(
 				"Ignoring feeds that aren't release feeds from a git host so we don't unsubscribe",
-				"feed", feedUrl,
+				"feed", feedURL,
 			)
 		}
 	}

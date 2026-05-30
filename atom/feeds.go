@@ -10,7 +10,7 @@ import (
 
 // AtomFeedChecker is an interface for checking Atom feeds.
 type AtomFeedChecker interface {
-	CheckFeedHasEntries(ctx context.Context, feedUrl string) (bool, error)
+	CheckFeedHasEntries(ctx context.Context, feedURL string) (bool, error)
 }
 
 // atomFeedChecker is the private implementation of AtomFeedChecker.
@@ -28,15 +28,15 @@ func NewAtomFeedChecker(client *http.Client) AtomFeedChecker {
 // not empty.
 func (a *atomFeedChecker) CheckFeedHasEntries(
 	ctx context.Context,
-	feedUrl string,
+	feedURL string,
 ) (bool, error) {
-	// A blank feedUrl means that this repo doesn't have a releases feed
-	if feedUrl == "" {
+	// A blank feedURL means that this repo doesn't have a releases feed
+	if feedURL == "" {
 		return false, nil
 	}
 
 	// No request will always be valid here so we can ignore the error
-	req, err := http.NewRequestWithContext(ctx, "GET", feedUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", feedURL, nil)
 	if err != nil {
 		return false, err
 	}
@@ -49,7 +49,7 @@ func (a *atomFeedChecker) CheckFeedHasEntries(
 
 	if res.StatusCode != http.StatusOK {
 		return false, fmt.Errorf(
-			"error response from atom feed: %s, status: %d", feedUrl, res.StatusCode,
+			"error response from atom feed: %s, status: %d", feedURL, res.StatusCode,
 		)
 	}
 

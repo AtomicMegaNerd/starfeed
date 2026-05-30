@@ -12,7 +12,7 @@ import (
 
 type CheckFeedHasEntriesTestCase struct {
 	name             string
-	feedUrl          string
+	feedURL          string
 	responses        []http.Response
 	expectHasEntries bool
 	expectError      bool
@@ -28,7 +28,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 	testCases := []CheckFeedHasEntriesTestCase{
 		{
 			name:    "Feed has entries",
-			feedUrl: "http://example.com/feed",
+			feedURL: "http://example.com/feed",
 			responses: []http.Response{
 				{
 					StatusCode: http.StatusOK,
@@ -47,7 +47,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 		},
 		{
 			name:    "Feed has no entries",
-			feedUrl: "http://example.com/feed",
+			feedURL: "http://example.com/feed",
 			responses: []http.Response{
 				{
 					StatusCode: http.StatusOK,
@@ -62,7 +62,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 		},
 		{
 			name:    "Error making request",
-			feedUrl: "http://example.com/feed",
+			feedURL: "http://example.com/feed",
 			responses: []http.Response{
 				{
 					StatusCode: http.StatusInternalServerError,
@@ -74,7 +74,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 		},
 		{
 			name:    "Error reading response",
-			feedUrl: "http://example.com/feed",
+			feedURL: "http://example.com/feed",
 			responses: []http.Response{
 				{
 					Body: mocks.NewErrorReadCloser(),
@@ -85,7 +85,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 		},
 		{
 			name:    "Error parsing XML",
-			feedUrl: "http://example.com/feed",
+			feedURL: "http://example.com/feed",
 			responses: []http.Response{
 				{
 					Body: io.NopCloser(strings.NewReader(`
@@ -106,7 +106,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			fc := tc.GetTestObject()
 			ctx := context.Background()
-			hasEntries, err := fc.CheckFeedHasEntries(ctx, tc.feedUrl)
+			hasEntries, err := fc.CheckFeedHasEntries(ctx, tc.feedURL)
 
 			if err != nil && !tc.expectError {
 				t.Fatalf("Expected no error, got %v", err)

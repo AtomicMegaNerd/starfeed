@@ -168,7 +168,7 @@ func buildRssServerConfig(
 		)
 	}
 	rssType := strings.TrimSpace(parts[0])
-	baseUrl := strings.TrimSpace(parts[1])
+	baseURL := strings.TrimSpace(parts[1])
 	user := strings.TrimSpace(parts[2])
 	token := strings.TrimSpace(parts[3])
 	enabledStr := strings.TrimSpace(parts[4])
@@ -178,7 +178,7 @@ func buildRssServerConfig(
 		return nil, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
 	}
 
-	rssConfig := &RSSServerConfig{rssType, baseUrl, user, token, enabled}
+	rssConfig := &RSSServerConfig{rssType, baseURL, user, token, enabled}
 
 	if err := validate.Struct(rssConfig); err != nil {
 		return nil, err
