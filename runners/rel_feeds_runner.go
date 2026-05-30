@@ -43,7 +43,7 @@ func NewPublishReleasesRunner(
 		gitHost,
 		rssServer,
 		atomFeedChecker,
-		logger,
+		logger.With("githost", gitHost.Name, "rsshost", rssServer.RSSServerType()),
 	}
 }
 
@@ -53,13 +53,11 @@ func NewPublishReleasesRunner(
 func (p PublishReleasesRunner) Run(ctx context.Context) error {
 	// If this gitHost is not enabled there is nothing to do...
 	if !p.gitHost.Enabled {
-		p.logger.Warn("Skipping git host because it is not enabled", "githost", p.gitHost.Name)
+		p.logger.Warn("Skipping git host because it is not enabled")
 		return nil
 	}
 
-	logger := p.logger.With("githost", p.gitHost.Name, "rsshost", p.rssServer.RSSServerType())
-
-	logger.Info("Starting publish releases workflow")
+	p.logger.Info("Starting publish releases workflow")
 	start := time.Now()
 
 	// Get starred repos from the Git provider, we set a limit on concurrent requests so we
@@ -83,7 +81,7 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 		var filteredRssFeedsSet map[string]struct{}
 		rssErrGroup.Go(func() error {
 			// Get existing subscriptions
-			logger.Info("Querying existing RSS feeds in FreshRSS... ")
+			p.logger.Info("Querying existing RSS feeds in FreshRSS... ")
 			rawRssFeedsSet, err := p.rssServer.GetExistingFeeds(rssCtx)
 			if err != nil {
 				return err
@@ -91,7 +89,7 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 
 			// Filter out feeds from the list that are not from this git host
 			filteredRssFeedsSet = p.gitHost.FilterOutNonRepoReleaseFeeds(rawRssFeedsSet)
-			logger.Info(
+			p.logger.Info(
 				"Queried Git project release feeds in FreshRSS",
 				"numberFeeds", len(filteredRssFeedsSet),
 				"duration", time.Since(start),
@@ -126,14 +124,13 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 		}
 
 		// Report success
-		logger.Info(
+		p.logger.Info(
 			"FreshRSS feeds synced from the Git host successfully",
-			"Git host", p.gitHost.Name,
 			"duration", time.Since(start),
 		)
 
 	} else {
-		logger.Warn("Skipping publishing to rss server because it is not enabled")
+		p.logger.Warn("Skipping publishing to rss server because it is not enabled")
 		// We also need to wait here for the github queries if the RSS server is disabled
 		if err := ghErrGroup.Wait(); err != nil {
 			return err
@@ -150,10 +147,9 @@ func (p PublishReleasesRunner) publishToFreshRSS(
 ) error {
 	repoFeed := repo.FeedURL()
 
-	logger := p.logger.With("githost", p.gitHost.Name, "rsshost", p.rssServer.RSSServerType())
 	// If we find that a matching repo in FreshRSS we don't want to add it again...
 	if _, exists := rssFeedSet[repoFeed]; exists {
-		logger.Debug("Not adding feed as it is already in RSS", "feed", repo.Name)
+		p.logger.Debug("Not adding feed as it is already in RSS", "feed", repo.Name)
 		return nil
 	}
 
@@ -163,7 +159,7 @@ func (p PublishReleasesRunner) publishToFreshRSS(
 	}
 
 	if !hasEntries {
-		logger.Debug("Not adding feed as it has zero entries", "feed", repo.Name)
+		p.logger.Debug("Not adding feed as it has zero entries", "feed", repo.Name)
 		return nil
 	}
 
@@ -175,10 +171,9 @@ func (p PublishReleasesRunner) removeStaleFeeds(
 	starredRepoMap map[string]githost.StarredRepo, // The key is the release ATOM feed
 	rssFeed string,
 ) error {
-	logger := p.logger.With("githost", p.gitHost.Name, "rsshost", p.rssServer.RSSServerType())
 	// If a feed does not exist in the Git host, remove it from the RSS server.
 	if _, exists := starredRepoMap[rssFeed]; !exists {
-		logger.Info(
+		p.logger.Info(
 			"Removing feed from RSS Server as it is no longer starred",
 			"feed", rssFeed,
 		)

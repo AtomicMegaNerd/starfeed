@@ -39,7 +39,7 @@ func NewGitHost(
 		hostType: hostCfg.Type,
 		baseURL:  hostCfg.BaseURL,
 		token:    hostCfg.Token,
-		logger:   logger,
+		logger:   logger.With("githost", hostCfg.Name),
 		client:   client,
 	}
 
@@ -94,8 +94,7 @@ func (g GitHost) GetStarredRepos(
 	ctx context.Context,
 ) (map[string]StarredRepo, error) {
 	allFeeds := make(map[string]StarredRepo)
-	logger := g.logger.With("githost", g.Name)
-	logger.Debug("Querying git host for starred repos", "url", g.getReposURL)
+	g.logger.Debug("Querying git host for starred repos", "url", g.getReposURL)
 
 	nextPageURL := g.getReposURL
 	for {
@@ -116,7 +115,7 @@ func (g GitHost) GetStarredRepos(
 			return nil, err
 		}
 
-		logger.Info(
+		g.logger.Info(
 			"Successfully loaded starred repos from Git host", "numberStarredRepos", len(repos),
 		)
 
@@ -129,7 +128,7 @@ func (g GitHost) GetStarredRepos(
 			return allFeeds, nil
 		}
 
-		logger.Debug("Found next page", "url", resp.NextPage)
+		g.logger.Debug("Found next page", "url", resp.NextPage)
 		nextPageURL = resp.NextPage
 	}
 }
@@ -138,7 +137,6 @@ func (g GitHost) GetStarredRepos(
 func (g GitHost) FilterOutNonRepoReleaseFeeds(
 	rssFeedSet map[string]struct{},
 ) map[string]struct{} {
-	logger := g.logger.With("githost", g.Name)
 	// NOTE: In Go map[T]struct{} is the idiomatic way to make a set as struct{} is 0-bytes
 	filteredSet := make(map[string]struct{})
 	for feedURL := range rssFeedSet {
@@ -148,7 +146,7 @@ func (g GitHost) FilterOutNonRepoReleaseFeeds(
 		if g.isReleasePattern.MatchString(feedURL) {
 			filteredSet[feedURL] = struct{}{}
 		} else {
-			logger.Debug(
+			g.logger.Debug(
 				"Ignoring feeds that aren't release feeds from a git host so we don't unsubscribe",
 				"feed", feedURL,
 			)
