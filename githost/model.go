@@ -1,39 +1,21 @@
 package githost
 
-import (
-	"fmt"
-)
-
-type Repo interface {
-	Name() string
-	FeedURL() string
-}
+import "fmt"
 
 // This object represents a Git repo in a supported Git Host that is starred and that we want to
 // get the Atom feed for.
-type BaseRepo struct {
-	RepoName string `json:"name"`
-	RepoURL  string `json:"html_url"`
+type StarredRepo struct {
+	Name    string `json:"name"`
+	RepoURL string `json:"html_url"`
 }
 
-func (gr *BaseRepo) FeedURL() string {
-	return fmt.Sprintf("%s/releases.atom", gr.RepoURL)
+func (r StarredRepo) FeedURL() string {
+	return fmt.Sprintf("%s/releases.atom", r.RepoURL)
 }
 
-func (gr *BaseRepo) Name() string {
-	return gr.RepoName
-}
-
-type ForgejoRepo struct {
-	BaseRepo
+type forgejoRepo struct {
+	StarredRepo
 	HasReleases bool `json:"has_releases"`
-}
-
-func (gr *ForgejoRepo) FeedURL() string {
-	if !gr.HasReleases {
-		return ""
-	}
-	return fmt.Sprintf("%s/releases.atom", gr.RepoURL)
 }
 
 // This is the response we get from the Git Host

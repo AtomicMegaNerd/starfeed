@@ -1,4 +1,4 @@
-package runner
+package runners
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 )
 
 // RepoRSSPublisher is a struct that manages the main workflow of the application.
-type publishReleasesRunner struct {
+type PublishReleasesRunner struct {
 	gitHost         githost.GitHost
 	rssServer       rss.RSSServer
 	atomFeedChecker atom.AtomFeedChecker
@@ -27,8 +27,8 @@ func NewPublishReleasesRunner(
 	gitHost githost.GitHost,
 	rssServer rss.RSSServer,
 	atomFeedChecker atom.AtomFeedChecker,
-) Runner {
-	return &publishReleasesRunner{
+) PublishReleasesRunner {
+	return PublishReleasesRunner{
 		gitHost,
 		rssServer,
 		atomFeedChecker,
@@ -38,21 +38,21 @@ func NewPublishReleasesRunner(
 // This queries release feeds for all starred repos in the specified Git host and publishes them
 // to FreshRSS. It also removes any stale release feeds from FreshRSS if they are no longer
 // starred.
-func (p *publishReleasesRunner) Run(ctx context.Context) error {
+func (p PublishReleasesRunner) Run(ctx context.Context) error {
 	// If this gitHost is not enabled there is nothing to do...
-	if !p.gitHost.Enabled() {
-		slog.Warn("Skipping git host because it is not enabled", "githost", p.gitHost.Name())
+	if !p.gitHost.Enabled {
+		slog.Warn("Skipping git host because it is not enabled", "githost", p.gitHost.Name)
 		return nil
 	}
 
-	slog.Info("Starting publish releases workflow", "Git host", p.gitHost.Name())
+	slog.Info("Starting publish releases workflow", "Git host", p.gitHost.Name)
 	start := time.Now()
 
 	// Get starred repos from the Git provider, we set a limit on concurrent requests so we
 	// don't get rate limited by the Git host.
 	ghErrgoup, ghCtx := errgroup.WithContext(ctx)
 	ghErrgoup.SetLimit(5)
-	var repoMapFeedByURL map[string]githost.Repo
+	var repoMapFeedByURL map[string]githost.StarredRepo
 	ghErrgoup.Go(func() error {
 		var err error
 		repoMapFeedByURL, err = p.gitHost.GetStarredRepos(ghCtx)
@@ -114,7 +114,7 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 		// Report success
 		slog.Info(
 			"FreshRSS feeds synced from the Git host successfully",
-			"Git host", p.gitHost.Name(),
+			"Git host", p.gitHost.Name,
 			"duration", time.Since(start),
 		)
 
@@ -129,16 +129,16 @@ func (p *publishReleasesRunner) Run(ctx context.Context) error {
 	return nil
 }
 
-func (p *publishReleasesRunner) publishToFreshRSS(
+func (p PublishReleasesRunner) publishToFreshRSS(
 	ctx context.Context,
 	rssFeedSet map[string]struct{},
-	repo githost.Repo,
+	repo githost.StarredRepo,
 ) error {
 	repoFeed := repo.FeedURL()
 
 	// If we find that a matching repo in FreshRSS we don't want to add it again...
 	if _, exists := rssFeedSet[repoFeed]; exists {
-		slog.Info("Not adding feed as it is already in RSS", "feed", repo.Name())
+		slog.Info("Not adding feed as it is already in RSS", "feed", repo.Name)
 		return nil
 	}
 
@@ -148,11 +148,29 @@ func (p *publishReleasesRunner) publishToFreshRSS(
 	}
 
 	if !hasEntries {
-		slog.Info("Not adding feed as it has zero entries", "feed", repo.Name())
+		slog.Info("Not adding feed as it has zero entries", "feed", repo.Name)
 		return nil
 	}
 
-	return p.rssServer.AddFeed(ctx, repoFeed, repo.Name(), p.gitHost.Name())
+	return p.rssServer.AddFeed(ctx, repoFeed, repo.Name, p.gitHost.Name)
+}
+
+func (p PublishReleasesRunner) removeStaleFeeds(
+	ctx context.Context,
+	starredRepoMap map[string]githost.StarredRepo, // The key is the release ATOM feed
+	rssFeed string,
+) error {
+	// If a feed does not exist in the Git host, remove it from the RSS server.
+	if _, exists := starredRepoMap[rssFeed]; !exists {
+		slog.Info(
+			"Removing feed from RSS Server as it is no longer starred",
+			"feed", rssFeed,
+		)
+		if err := p.rssServer.RemoveFeed(ctx, rssFeed); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // We never want to unsubscribe from feeds that are not release feeds for the current Git host.
@@ -176,22 +194,4 @@ func filterOutNonRepoReleaseFeeds(
 		}
 	}
 	return filteredSet
-}
-
-func (p *publishReleasesRunner) removeStaleFeeds(
-	ctx context.Context,
-	starredRepoMap map[string]githost.Repo, // The key is the release ATOM feed
-	rssFeed string,
-) error {
-	// If a feed does not exist in the Git host, remove it from the RSS server.
-	if _, exists := starredRepoMap[rssFeed]; !exists {
-		slog.Info(
-			"Removing feed from RSS Server as it is no longer starred",
-			"feed", rssFeed,
-		)
-		if err := p.rssServer.RemoveFeed(ctx, rssFeed); err != nil {
-			return err
-		}
-	}
-	return nil
 }

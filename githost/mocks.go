@@ -17,12 +17,12 @@ var (
 	)
 
 	MockValidGitHub = func(client *http.Client) GitHost {
-		return &gitHost{
+		return GitHost{
 			hostType:         mocks.GitHubType,
-			name:             mocks.GitHubName,
+			Name:             mocks.GitHubName,
 			baseURL:          mocks.GitHubURL,
 			token:            mocks.GitHubToken,
-			enabled:          true,
+			Enabled:          true,
 			client:           client,
 			getReposURL:      "https://api.github.com",
 			nextPagePattern:  nextPageLinkRegex,
@@ -38,12 +38,12 @@ var (
 	}
 
 	MockValidForgejo = func(client *http.Client) GitHost {
-		return &gitHost{
+		return GitHost{
 			hostType:         mocks.ForgejoType,
-			name:             mocks.ForgejoName,
+			Name:             mocks.ForgejoName,
 			baseURL:          mocks.ForgejoURL,
 			token:            mocks.ForgejoToken,
-			enabled:          true,
+			Enabled:          true,
 			client:           client,
 			getReposURL:      "https://api.forgejo.org",
 			nextPagePattern:  nextPageLinkRegex,

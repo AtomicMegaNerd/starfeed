@@ -1,4 +1,4 @@
-package runner
+package runners
 
 import (
 	"context"
@@ -23,7 +23,7 @@ type QueryAndPublishFeedsTestCase struct {
 	expectError bool
 }
 
-func (tc *QueryAndPublishFeedsTestCase) GetTestRunner() Runner {
+func (tc *QueryAndPublishFeedsTestCase) GetTestRunner() PublishReleasesRunner {
 	mockTransport := mocks.NewMockUrlSelectedRoundTripper(tc.responses, tc.urlRegex)
 	mockClient := &http.Client{Transport: &mockTransport}
 	atomFeedChecker := atom.NewAtomFeedChecker(mockClient)
@@ -155,7 +155,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 	testCases := []struct {
 		name                string
 		existingFeeds       map[string]struct{}
-		repo                githost.Repo
+		repo                githost.StarredRepo
 		atomHasEntries      bool
 		freshRSSAddError    error
 		expectedFreshRSSAdd bool
@@ -166,9 +166,9 @@ func TestPublishToFreshRSS(t *testing.T) {
 			existingFeeds: map[string]struct{}{
 				"https://github.com/user/repo/releases.atom": {},
 			},
-			repo: &githost.BaseRepo{
-				RepoName: "repo",
-				RepoURL:  "https://github.com/user/repo",
+			repo: githost.StarredRepo{
+				Name:    "repo",
+				RepoURL: "https://github.com/user/repo",
 			},
 			atomHasEntries:      true,
 			expectedFreshRSSAdd: false,
@@ -177,9 +177,9 @@ func TestPublishToFreshRSS(t *testing.T) {
 		{
 			name:          "Feed has no entries - should skip",
 			existingFeeds: map[string]struct{}{},
-			repo: &githost.BaseRepo{
-				RepoName: "repo",
-				RepoURL:  "https://github.com/user/repo",
+			repo: githost.StarredRepo{
+				Name:    "repo",
+				RepoURL: "https://github.com/user/repo",
 			},
 			atomHasEntries:      false,
 			expectedFreshRSSAdd: false,
@@ -188,9 +188,9 @@ func TestPublishToFreshRSS(t *testing.T) {
 		{
 			name:          "New feed with entries - should add",
 			existingFeeds: map[string]struct{}{},
-			repo: &githost.BaseRepo{
-				RepoName: "repo",
-				RepoURL:  "https://github.com/user/repo",
+			repo: githost.StarredRepo{
+				Name:    "repo",
+				RepoURL: "https://github.com/user/repo",
 			},
 			atomHasEntries:      true,
 			expectedFreshRSSAdd: true,
@@ -199,9 +199,9 @@ func TestPublishToFreshRSS(t *testing.T) {
 		{
 			name:          "Add feed fails - should handle error gracefully",
 			existingFeeds: map[string]struct{}{},
-			repo: &githost.BaseRepo{
-				RepoName: "repo",
-				RepoURL:  "https://github.com/user/repo",
+			repo: githost.StarredRepo{
+				Name:    "repo",
+				RepoURL: "https://github.com/user/repo",
 			},
 			atomHasEntries:      true,
 			freshRSSAddError:    fmt.Errorf("failed to add feed"),
@@ -219,7 +219,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 				hasEntries: tc.atomHasEntries,
 			}
 
-			mockRunner := &publishReleasesRunner{
+			mockRunner := &PublishReleasesRunner{
 				gitHost:         githost.MockValidGitHub(&http.Client{}),
 				rssServer:       mockFreshRSS,
 				atomFeedChecker: mockAtom,
@@ -252,9 +252,9 @@ func TestPublishToFreshRSS(t *testing.T) {
 					t.Errorf("Expected AddFeed called with URL %s, got %s",
 						tc.repo.FeedURL(), mockFreshRSS.addFeedUrl)
 				}
-				if mockFreshRSS.addFeedName != tc.repo.Name() {
+				if mockFreshRSS.addFeedName != tc.repo.Name {
 					t.Errorf("Expected AddFeed called with name %s, got %s",
-						tc.repo.Name(), mockFreshRSS.addFeedName)
+						tc.repo.Name, mockFreshRSS.addFeedName)
 				}
 			}
 
@@ -272,17 +272,17 @@ func TestPublishToFreshRSS(t *testing.T) {
 func TestRemoveStaleFeeds(t *testing.T) {
 	testCases := []struct {
 		name                   string
-		starredRepoMap         map[string]githost.Repo
+		starredRepoMap         map[string]githost.StarredRepo
 		rssFeed                string
 		freshRSSRemoveError    error
 		expectedFreshRSSRemove bool
 	}{
 		{
 			name: "Feed still starred - should not remove",
-			starredRepoMap: map[string]githost.Repo{
-				"https://github.com/user/repo/releases.atom": &githost.BaseRepo{
-					RepoName: "repo",
-					RepoURL:  "https://github.com/user/repo",
+			starredRepoMap: map[string]githost.StarredRepo{
+				"https://github.com/user/repo/releases.atom": {
+					Name:    "repo",
+					RepoURL: "https://github.com/user/repo",
 				},
 			},
 			rssFeed:                "https://github.com/user/repo/releases.atom",
@@ -290,13 +290,13 @@ func TestRemoveStaleFeeds(t *testing.T) {
 		},
 		{
 			name:                   "Feed no longer starred - should remove",
-			starredRepoMap:         map[string]githost.Repo{},
+			starredRepoMap:         map[string]githost.StarredRepo{},
 			rssFeed:                "https://github.com/user/old-repo/releases.atom",
 			expectedFreshRSSRemove: true,
 		},
 		{
 			name:                   "Remove feed fails - should handle error gracefully",
-			starredRepoMap:         map[string]githost.Repo{},
+			starredRepoMap:         map[string]githost.StarredRepo{},
 			rssFeed:                "https://github.com/user/old-repo/releases.atom",
 			freshRSSRemoveError:    fmt.Errorf("failed to remove feed"),
 			expectedFreshRSSRemove: true,
@@ -309,7 +309,7 @@ func TestRemoveStaleFeeds(t *testing.T) {
 				removeFeedError: tc.freshRSSRemoveError,
 			}
 
-			mockRunner := &publishReleasesRunner{
+			mockRunner := &PublishReleasesRunner{
 				rssServer: mockFreshRSS,
 			}
 

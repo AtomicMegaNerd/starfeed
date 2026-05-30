@@ -31,7 +31,7 @@ const (
 type GetStarredReposTestCase struct {
 	name          string
 	responses     []http.Response
-	expectedRepos []BaseRepo
+	expectedRepos []StarredRepo
 	expectError   bool
 }
 
@@ -58,10 +58,10 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []BaseRepo{
+			expectedRepos: []StarredRepo{
 				{
-					RepoName: repoName1,
-					RepoURL:  repoHtmlUrl1,
+					Name:    repoName1,
+					RepoURL: repoHtmlUrl1,
 				},
 			},
 			expectError: false,
@@ -105,11 +105,11 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []BaseRepo{
-				{RepoName: repoName1, RepoURL: repoHtmlUrl1},
-				{RepoName: repoName2, RepoURL: repoHtmlUrl2},
-				{RepoName: repoName3, RepoURL: repoHtmlUrl3},
-				{RepoName: repoName4, RepoURL: repoHtmlUrl4},
+			expectedRepos: []StarredRepo{
+				{Name: repoName1, RepoURL: repoHtmlUrl1},
+				{Name: repoName2, RepoURL: repoHtmlUrl2},
+				{Name: repoName3, RepoURL: repoHtmlUrl3},
+				{Name: repoName4, RepoURL: repoHtmlUrl4},
 			},
 			expectError: false,
 		},
@@ -122,7 +122,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusNotFound,
 				},
 			},
-			expectedRepos: []BaseRepo{},
+			expectedRepos: []StarredRepo{},
 			expectError:   true,
 		},
 		{
@@ -134,7 +134,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []BaseRepo{},
+			expectedRepos: []StarredRepo{},
 			expectError:   true,
 		},
 		{
@@ -146,7 +146,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []BaseRepo{},
+			expectedRepos: []StarredRepo{},
 			expectError:   true,
 		},
 	}
@@ -177,8 +177,8 @@ func TestGetStarredRepos(t *testing.T) {
 					t.Errorf("Expected feed %s not found", expected.FeedURL())
 					continue
 				}
-				if repo.Name() != expected.Name() {
-					t.Errorf("Expected name %s, got %s", expected.Name(), repo.Name())
+				if repo.Name != expected.Name {
+					t.Errorf("Expected name %s, got %s", expected.Name, repo.Name)
 				}
 			}
 		})

@@ -12,20 +12,14 @@ import (
 	"github.com/atomicmeganerd/starfeed/config"
 )
 
-type GitHost interface {
-	Name() string
-	Enabled() bool
-	GetStarredRepos(context.Context) (map[string]Repo, error)
-	IsReleaseFeedForCurrentHost(string) bool
-}
-
 // This object represents a supported git host where we have 'starred' repos.
-type gitHost struct {
+type GitHost struct {
+	Name    string
+	Enabled bool
+
 	hostType string
-	name     string
 	baseURL  string
 	token    string
-	enabled  bool
 
 	// These are computed
 	getReposURL      string
@@ -38,12 +32,12 @@ type gitHost struct {
 func NewGitHost(
 	hostCfg config.GitHostConfig, client *http.Client,
 ) (GitHost, error) {
-	gitHost := &gitHost{
+	gitHost := GitHost{
 		hostType: hostCfg.Type,
-		name:     hostCfg.Name,
+		Name:     hostCfg.Name,
 		baseURL:  hostCfg.BaseURL,
 		token:    hostCfg.Token,
-		enabled:  hostCfg.Enabled,
+		Enabled:  hostCfg.Enabled,
 		client:   client,
 	}
 
@@ -89,24 +83,16 @@ func NewGitHost(
 		return gitHost, nil
 	}
 
-	return nil, errors.New("unable to build GitHostConfig")
-}
-
-func (g *gitHost) Name() string {
-	return g.name
-}
-
-func (g *gitHost) Enabled() bool {
-	return g.enabled
+	return GitHost{}, errors.New("unable to build GitHostConfig")
 }
 
 // This will return all starred repos including the Atom feeds for their releases
 // It returns a map of releaseFeedUrl -> Repo
-func (g *gitHost) GetStarredRepos(
+func (g GitHost) GetStarredRepos(
 	ctx context.Context,
-) (map[string]Repo, error) {
-	allFeeds := make(map[string]Repo)
-	slog.Debug("Querying git host for starred repos", "host", g.Name(), "url", g.getReposURL)
+) (map[string]StarredRepo, error) {
+	allFeeds := make(map[string]StarredRepo)
+	slog.Debug("Querying git host for starred repos", "host", g.Name, "url", g.getReposURL)
 
 	nextPageUrl := g.getReposURL
 	for {
@@ -122,37 +108,19 @@ func (g *gitHost) GetStarredRepos(
 		}
 
 		// This will get our repos based on what type they are (github, forgejo, etc.)
-		repos, err := parseRepos(resp.Data, g.hostType)
+		repos, err := g.parseRepos(resp.Data)
 		if err != nil {
 			return nil, err
 		}
 
 		slog.Info(
 			"Successfully loaded starred repos from Git host",
-			"gitHost", g.Name(),
+			"gitHost", g.Name,
 			"numberStarredRepos", len(repos),
 		)
 
 		for _, repo := range repos {
-			feedUrl := repo.FeedURL()
-			if feedUrl == "" {
-				slog.Debug(
-					"Skipping repo without releases",
-					"gitHost", g.Name(),
-					"repo", repo.Name(),
-				)
-				continue
-			}
-
-			slog.Debug(
-				"Parsed starred repo from JSON",
-				"gitHost", g.Name(),
-				"repo", repo.Name(),
-				"kind", g.hostType,
-				"feedUrl", feedUrl,
-			)
-
-			allFeeds[feedUrl] = repo
+			allFeeds[repo.FeedURL()] = repo
 		}
 
 		// If there is no next page we are done...
@@ -168,35 +136,35 @@ func (g *gitHost) GetStarredRepos(
 // This function returns true if the given repoUrl is a release repo
 // Arguments:
 // - feedUrl: The URL of the RSS feed to check.
-func (g *gitHost) IsReleaseFeedForCurrentHost(feedUrl string) bool {
+func (g GitHost) IsReleaseFeedForCurrentHost(feedUrl string) bool {
 	return g.isReleasePattern.MatchString(feedUrl)
 }
 
-// This method will parse repos as long as they are of the current type. All Repo objects
-// must satisfy the Repo interface.
-func parseRepos(data []byte, hostType string) ([]Repo, error) {
-	switch hostType {
-	case "github":
-		return parseTypedRepos[*BaseRepo](data)
-	case "forgejo":
-		return parseTypedRepos[*ForgejoRepo](data)
-	}
-	return nil, fmt.Errorf("unknown host type: %s", hostType)
-}
+// This function will parse different kinds of repos based on type
+func (g GitHost) parseRepos(data []byte) ([]StarredRepo, error) {
+	if g.hostType == "github" {
+		repoSlice := make([]StarredRepo, 0)
+		if err := json.Unmarshal(data, &repoSlice); err != nil {
+			return nil, err
+		}
+		return repoSlice, nil
 
-// This generic method will parse any supported repo type as long as it satisfies the Repo interface
-func parseTypedRepos[T Repo](data []byte) ([]Repo, error) {
-	// This will actually be a pointer to the concrete Repo type so that JSON can unmarshal
-	var genericRepoSlice []T
-	if err := json.Unmarshal(data, &genericRepoSlice); err != nil {
-		return nil, err
 	}
 
-	// We can't return T here so we have to copy the elements to a non-generic slice of type
-	// Repo
-	repoSlice := make([]Repo, len(genericRepoSlice))
-	for i, item := range genericRepoSlice {
-		repoSlice[i] = item
+	if g.hostType == "forgejo" {
+		forgejoSlice := make([]forgejoRepo, 0)
+		if err := json.Unmarshal(data, &forgejoSlice); err != nil {
+			return nil, err
+		}
+
+		repoSlice := make([]StarredRepo, 0)
+		for _, repo := range forgejoSlice {
+			if repo.HasReleases {
+				repoSlice = append(repoSlice, repo.StarredRepo)
+			}
+		}
+		return repoSlice, nil
 	}
-	return repoSlice, nil
+
+	return nil, fmt.Errorf("unknown hostType %s", g.hostType)
 }

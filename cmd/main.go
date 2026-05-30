@@ -13,7 +13,7 @@ import (
 	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/githost"
 	"github.com/atomicmeganerd/starfeed/rss"
-	"github.com/atomicmeganerd/starfeed/runner"
+	"github.com/atomicmeganerd/starfeed/runners"
 	"github.com/lmittmann/tint"
 	"golang.org/x/sync/errgroup"
 )
@@ -66,7 +66,7 @@ func main() {
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 
-	runners := make([]runner.Runner, 0)
+	runnerSlice := make([]runner, 0)
 	feedChecker := atom.NewAtomFeedChecker(client)
 
 	rssServer := rss.NewFreshRSSFeedManager(cfg.RSSServerConfig, client)
@@ -86,12 +86,12 @@ func main() {
 			slog.Error("Cannot configure git host...", "error", err)
 			os.Exit(1)
 		}
-		releasesRunner := runner.NewPublishReleasesRunner(gitHost, rssServer, feedChecker)
-		runners = append(runners, releasesRunner)
+		releasesRunner := runners.NewPublishReleasesRunner(gitHost, rssServer, feedChecker)
+		runnerSlice = append(runnerSlice, releasesRunner)
 	}
 
 	// Always run once...
-	if err := executeRunners(ctx, runners); err != nil {
+	if err := executeRunners(ctx, runnerSlice); err != nil {
 		slog.Error("Error executing runners", "error", err)
 		os.Exit(1)
 	}
@@ -117,7 +117,7 @@ func main() {
 		// already capture the timestamp when we execute. But it is good to recognize that
 		// the ticker channel is sent this data.
 		case <-ticker.C:
-			if err := executeRunners(ctx, runners); err != nil {
+			if err := executeRunners(ctx, runnerSlice); err != nil {
 				slog.Error("Error executing runners", "error", err)
 				os.Exit(1)
 			}
@@ -126,8 +126,12 @@ func main() {
 	}
 }
 
+type runner interface {
+	Run(ctx context.Context) error
+}
+
 // Here we execute the runners in parallel...
-func executeRunners(ctx context.Context, runners []runner.Runner) error {
+func executeRunners(ctx context.Context, runners []runner) error {
 	errGroup, runnerCtx := errgroup.WithContext(ctx)
 	for _, runner := range runners {
 		errGroup.Go(func() error {

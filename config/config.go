@@ -77,6 +77,7 @@ func NewConfig(envGetter EnvGetter) (*Config, error) {
 
 // This type both holds and validates the config for a GitHost
 type GitHostConfig struct {
+	// TODO: Can I use a custom string type for this? Should I?
 	Type    string `validate:"required,oneof=github forgejo"`
 	Name    string `validate:"required,min=3"`
 	BaseURL string `validate:"required,url"`
