@@ -22,7 +22,6 @@ type GitHost struct {
 	Enabled  bool
 	hostType string
 	baseURL  string
-	token    string // WARNING: This is a secret do not log
 
 	// These are computed
 	getReposURL      string
@@ -41,7 +40,6 @@ func NewGitHost(
 		Enabled:  hostCfg.Enabled,
 		hostType: hostCfg.Type,
 		baseURL:  hostCfg.BaseURL,
-		token:    hostCfg.Token,
 		logger:   logger.With("githost", hostCfg.Name),
 		client:   client,
 	}
@@ -51,7 +49,7 @@ func NewGitHost(
 	gitHost.headers.Set("Content-Type", "application/json")
 	gitHost.headers.Set("Accept", "application/json")
 	gitHost.headers.Set("User-Agent", "github.com/atomicmeganerd/starfeed")
-	gitHost.headers.Set("Authorization", fmt.Sprintf("Bearer %s", gitHost.token))
+	gitHost.headers.Set("Authorization", fmt.Sprintf("Bearer %s", hostCfg.Token))
 	gitHost.getReposURL = fmt.Sprintf("%s/user/starred?limit=100", hostCfg.ApiURL)
 
 	gitHost.isReleasePattern = regexp.MustCompile(

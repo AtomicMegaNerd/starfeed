@@ -36,6 +36,7 @@ func NewFreshRSS(
 ) (FreshRSS, error) {
 	logger = logger.With("rssServer", rssConfig.Type)
 	headers := http.Header{}
+	headers.Set("Content-type", "application/x-www-form-urlencoded")
 
 	// Only authenticate if the RSS server is enabled
 	if rssConfig.Enabled {
@@ -43,7 +44,6 @@ func NewFreshRSS(
 		if err != nil {
 			return FreshRSS{}, err
 		}
-		headers.Set("Content-type", "application/x-www-form-urlencoded")
 		headers.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", authToken))
 	}
 

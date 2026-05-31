@@ -41,7 +41,9 @@ func DoAPIRequest(
 
 	switch res.StatusCode {
 	case http.StatusOK:
+		fallthrough
 	case http.StatusAccepted:
+		fallthrough
 	case http.StatusCreated:
 		return data, res.Header, nil
 	}

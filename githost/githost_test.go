@@ -148,6 +148,7 @@ func TestGetStarredRepos(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := mocks.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
+
 			gh := MockValidGitHub(mockClient)
 			repos, err := gh.GetStarredRepos(ctx)
 
