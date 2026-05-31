@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/atom"
 	"github.com/atomicmeganerd/starfeed/githost"
 	"golang.org/x/sync/errgroup"
 )
@@ -20,28 +19,25 @@ type rssServer interface {
 }
 
 // RepoRSSPublisher is a struct that manages the main workflow of the application.
-type PublishReleasesRunner struct {
-	gitHost         githost.GitHost
-	rssServer       rssServer
-	atomFeedChecker atom.AtomFeedChecker
-	logger          *slog.Logger
+type SyncFeedsRunner struct {
+	gitHost   githost.GitHost
+	rssServer rssServer
+	logger    *slog.Logger
 }
 
-// NewPublishReleasesRunner creates a new RepoRSSPublisher instance.
+// NewSyncFeedsRunner creates a new RepoRSSPublisher instance.
 // Arguments:
 // - gitHost: The git host to query for starred repos.
 // - rssServer: The RSS server to publish feeds to.
 // - atomFeedChecker: The atom feed checker to verify feed entries.
-func NewPublishReleasesRunner(
+func NewSyncFeedsRunner(
 	gitHost githost.GitHost,
 	rssServer rssServer,
-	atomFeedChecker atom.AtomFeedChecker,
 	logger *slog.Logger,
-) PublishReleasesRunner {
-	return PublishReleasesRunner{
+) SyncFeedsRunner {
+	return SyncFeedsRunner{
 		gitHost,
 		rssServer,
-		atomFeedChecker,
 		logger.With("githost", gitHost.Name, "rsshost", rssServer.RSSServerType()),
 	}
 }
@@ -49,7 +45,7 @@ func NewPublishReleasesRunner(
 // This queries release feeds for all starred repos in the specified Git host and publishes them
 // to FreshRSS. It also removes any stale release feeds from FreshRSS if they are no longer
 // starred.
-func (p PublishReleasesRunner) Run(ctx context.Context) error {
+func (p SyncFeedsRunner) Run(ctx context.Context) error {
 	// If this gitHost is not enabled there is nothing to do...
 	if !p.gitHost.Enabled {
 		p.logger.Warn("Skipping git host because it is not enabled")
@@ -63,10 +59,10 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 	// don't get rate limited by the Git host.
 	ghErrGroup, ghCtx := errgroup.WithContext(ctx)
 	ghErrGroup.SetLimit(5)
-	var starredRelFeeds map[string]githost.StarredRepo
+	var starredRepoMap map[string]githost.StarredRepo
 	ghErrGroup.Go(func() error {
 		var err error
-		starredRelFeeds, err = p.gitHost.GetStarredRepos(ghCtx)
+		starredRepoMap, err = p.gitHost.GetStarredRepos(ghCtx)
 		if err != nil {
 			return err
 		}
@@ -105,14 +101,14 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 		// We can also overwhelm FreshRSS with this so we will also set a limit
 		rssErrGroup, rssCtx = errgroup.WithContext(ctx)
 		rssErrGroup.SetLimit(10)
-		for _, repo := range starredRelFeeds {
+		for _, repo := range starredRepoMap {
 			rssErrGroup.Go(func() error {
 				return p.publishToFreshRSS(rssCtx, existingFeeds, repo)
 			})
 		}
 		for feed := range existingFeeds {
 			rssErrGroup.Go(func() error {
-				return p.removeStaleFeeds(rssCtx, starredRelFeeds, feed)
+				return p.removeStaleFeeds(rssCtx, starredRepoMap, feed)
 			})
 		}
 
@@ -137,12 +133,12 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 	return nil
 }
 
-func (p PublishReleasesRunner) publishToFreshRSS(
+func (p SyncFeedsRunner) publishToFreshRSS(
 	ctx context.Context,
 	rssFeedSet map[string]struct{},
 	repo githost.StarredRepo,
 ) error {
-	repoFeed := repo.FeedURL()
+	repoFeed := repo.FeedURL
 
 	// If we find that a matching repo in FreshRSS we don't want to add it again...
 	if _, exists := rssFeedSet[repoFeed]; exists {
@@ -150,20 +146,10 @@ func (p PublishReleasesRunner) publishToFreshRSS(
 		return nil
 	}
 
-	hasEntries, err := p.atomFeedChecker.CheckFeedHasEntries(ctx, repoFeed)
-	if err != nil {
-		return err
-	}
-
-	if !hasEntries {
-		p.logger.Debug("Not adding feed as it has zero entries", "feed", repo.Name)
-		return nil
-	}
-
 	return p.rssServer.AddFeed(ctx, repoFeed, repo.Name, p.gitHost.Name)
 }
 
-func (p PublishReleasesRunner) removeStaleFeeds(
+func (p SyncFeedsRunner) removeStaleFeeds(
 	ctx context.Context,
 	starredRepoMap map[string]githost.StarredRepo, // The key is the release ATOM feed
 	rssFeed string,

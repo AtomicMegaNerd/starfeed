@@ -391,10 +391,6 @@ func TestNewConfig(t *testing.T) {
 				return
 			}
 
-			// NOTE: The validators in githost.GitHosts and rss.RSSServer constructor functions
-			// will validate that all of the values we pass in are valid. We'll test those
-			// factory functions in their respective packages.
-
 			if cfg.DebugMode != tc.expected.DebugMode {
 				t.Errorf("Expected DebugMode %t, got %t", tc.expected.DebugMode, cfg.DebugMode)
 			}

@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/atom"
 	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/githost"
 	"github.com/atomicmeganerd/starfeed/rss"
@@ -67,24 +66,22 @@ func main() {
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 
-	runnerSlice := make([]runner, 0)
-	feedChecker := atom.NewAtomFeedChecker(client)
-
+	// Try to authenticate to the target RSS server
 	rssServer, err := rss.NewFreshRSS(ctx, cfg.RSSServerConfig, logger, client)
 	if err != nil {
 		logger.Error("Error authenticating to FreshRSS", "error", err)
 		os.Exit(1)
 	}
+	logger.Info(
+		"Successfully authenticated to RSS Server", "rssSerer", cfg.RSSServerConfig.BaseURL,
+	)
 
 	// For each GitHost in our config let's create a new runner
+	runnerSlice := make([]starfeedRunner, 0)
 	for _, gitHostConfig := range cfg.GitHostConfigs {
-		gitHost, err := githost.NewGitHost(gitHostConfig, logger, client)
-		if err != nil {
-			logger.Error("Cannot configure git host...", "error", err)
-			os.Exit(1)
-		}
-		logger.Info("Successfully registered git host", "name", gitHostConfig.Name)
-		releasesRunner := runners.NewPublishReleasesRunner(gitHost, rssServer, feedChecker, logger)
+		gitHost := githost.NewGitHost(gitHostConfig, logger, client)
+		releasesRunner := runners.NewSyncFeedsRunner(gitHost, rssServer, logger)
+		logger.Info("Successfully registered runner for githost", "name", gitHostConfig.Name)
 		runnerSlice = append(runnerSlice, releasesRunner)
 	}
 
@@ -124,12 +121,12 @@ func main() {
 	}
 }
 
-type runner interface {
+type starfeedRunner interface {
 	Run(ctx context.Context) error
 }
 
 // Here we execute the runners in parallel...
-func executeRunners(ctx context.Context, runners []runner) error {
+func executeRunners(ctx context.Context, runners []starfeedRunner) error {
 	errGroup, runnerCtx := errgroup.WithContext(ctx)
 	for _, runner := range runners {
 		errGroup.Go(func() error {

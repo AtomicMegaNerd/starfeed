@@ -217,7 +217,7 @@ func authenticate(
 		ctx, http.MethodPost, reqURL, formData, headers, client,
 	)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error authenticating to RSS Server: %w, url: %s", err, reqURL)
 	}
 
 	var authToken string
@@ -227,9 +227,9 @@ func authenticate(
 			authToken = after
 		}
 	}
-	if authToken == "" {
-		return "", fmt.Errorf("unable to parse FreshRSS auth response")
-	}
 
+	if authToken == "" {
+		return "", fmt.Errorf("unable to parse rss auth token response")
+	}
 	return authToken, nil
 }

@@ -9,8 +9,7 @@ import (
 )
 
 var (
-	nextPageLinkRegex = regexp.MustCompile(`<([^>]+)>; rel="next"`)
-	githubRelRegex    = regexp.MustCompile(
+	githubRelRegex = regexp.MustCompile(
 		`^https://github\.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
 	)
 	forgejoRelRegex = regexp.MustCompile(
@@ -21,12 +20,10 @@ var (
 		return GitHost{
 			hostType:         config.GitHubHostType,
 			Name:             mocks.GitHubName,
-			baseURL:          mocks.GitHubURL,
 			Enabled:          true,
 			logger:           mocks.TestLogger(),
 			client:           client,
 			getReposURL:      "https://api.github.com",
-			nextPagePattern:  nextPageLinkRegex,
 			isReleasePattern: githubRelRegex,
 		}
 	}
@@ -35,12 +32,10 @@ var (
 		return GitHost{
 			hostType:         config.ForgejoHostType,
 			Name:             mocks.ForgejoName,
-			baseURL:          mocks.ForgejoURL,
 			Enabled:          true,
 			logger:           mocks.TestLogger(),
 			client:           client,
 			getReposURL:      "https://api.forgejo.org",
-			nextPagePattern:  nextPageLinkRegex,
 			isReleasePattern: forgejoRelRegex,
 		}
 	}

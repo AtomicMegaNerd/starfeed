@@ -1,4 +1,4 @@
-package atom
+package githost
 
 import (
 	"context"
@@ -10,22 +10,14 @@ import (
 	"github.com/atomicmeganerd/starfeed/mocks"
 )
 
-type CheckFeedHasEntriesTestCase struct {
-	name             string
-	feedURL          string
-	responses        []http.Response
-	expectHasEntries bool
-	expectError      bool
-}
-
-func (tc *CheckFeedHasEntriesTestCase) GetTestObject() AtomFeedChecker {
-	mockTransport := mocks.NewMockRoundTripper(tc.responses)
-	mockClient := &http.Client{Transport: &mockTransport}
-	return NewAtomFeedChecker(mockClient)
-}
-
-func TestCheckFeedHasEntries(t *testing.T) {
-	testCases := []CheckFeedHasEntriesTestCase{
+func TestAddFeedURLToRepo(t *testing.T) {
+	testCases := []struct {
+		name             string
+		feedURL          string
+		responses        []http.Response
+		expectHasEntries bool
+		expectError      bool
+	}{
 		{
 			name:    "Feed has entries",
 			feedURL: "http://example.com/feed",
@@ -42,8 +34,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 					`)),
 				},
 			},
-			expectHasEntries: true,
-			expectError:      false,
+			expectError: false,
 		},
 		{
 			name:    "Feed has no entries",
@@ -57,8 +48,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 					`)),
 				},
 			},
-			expectHasEntries: false,
-			expectError:      false,
+			expectError: false,
 		},
 		{
 			name:    "Error making request",
@@ -69,8 +59,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 					Body:       io.NopCloser(strings.NewReader("")),
 				},
 			},
-			expectHasEntries: false,
-			expectError:      true,
+			expectError: true,
 		},
 		{
 			name:    "Error reading response",
@@ -80,8 +69,7 @@ func TestCheckFeedHasEntries(t *testing.T) {
 					Body: mocks.NewErrorReadCloser(),
 				},
 			},
-			expectHasEntries: false,
-			expectError:      true,
+			expectError: true,
 		},
 		{
 			name:    "Error parsing XML",
@@ -97,16 +85,20 @@ func TestCheckFeedHasEntries(t *testing.T) {
 					`)),
 				},
 			},
-			expectHasEntries: false,
-			expectError:      true,
+			expectError: true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			fc := tc.GetTestObject()
 			ctx := context.Background()
-			hasEntries, err := fc.CheckFeedHasEntries(ctx, tc.feedURL)
+			mockTransport := mocks.NewMockRoundTripper(tc.responses)
+			mockClient := &http.Client{Transport: &mockTransport}
+			gh := MockValidGitHub(mockClient)
+
+			repo := StarredRepo{}
+
+			err := gh.addReleaseFeedToRepo(ctx, &repo)
 
 			if err != nil && !tc.expectError {
 				t.Fatalf("Expected no error, got %v", err)
@@ -115,8 +107,8 @@ func TestCheckFeedHasEntries(t *testing.T) {
 				t.Fatalf("Expected an error, got none")
 			}
 
-			if hasEntries != tc.expectHasEntries {
-				t.Errorf("Expected %t, got %t", tc.expectHasEntries, hasEntries)
+			if repo.FeedURL != tc.feedURL {
+				t.Fatalf("Expected feedURL %s, got %s", tc.feedURL, repo.FeedURL)
 			}
 		})
 	}

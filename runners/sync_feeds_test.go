@@ -5,39 +5,22 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"slices"
 	"strings"
 	"testing"
 
-	"github.com/atomicmeganerd/starfeed/atom"
 	"github.com/atomicmeganerd/starfeed/githost"
 	"github.com/atomicmeganerd/starfeed/mocks"
 	"github.com/atomicmeganerd/starfeed/rss"
 	"golang.org/x/sync/errgroup"
 )
 
-type QueryAndPublishFeedsTestCase struct {
-	name        string
-	responses   []http.Response
-	urlRegex    []string
-	expectError bool
-}
-
-func (tc *QueryAndPublishFeedsTestCase) GetTestRunner() PublishReleasesRunner {
-	mockTransport := mocks.NewMockURLSelectedRoundTripper(tc.responses, tc.urlRegex)
-	mockClient := &http.Client{Transport: &mockTransport}
-	atomFeedChecker := atom.NewAtomFeedChecker(mockClient)
-
-	return NewPublishReleasesRunner(
-		githost.MockValidGitHub(mockClient),
-		rss.MockValidRSSServer(mockClient),
-		atomFeedChecker,
-		mocks.TestLogger(),
-	)
-}
-
-func TestQueryAndPublishFeeds(t *testing.T) {
-	testCases := []QueryAndPublishFeedsTestCase{
+func TestSyncFeeds(t *testing.T) {
+	testCases := []struct {
+		name        string
+		responses   []http.Response
+		urlRegex    []string
+		expectError bool
+	}{
 		{
 			name: "Successful workflow with no repos",
 			responses: []http.Response{
@@ -85,8 +68,15 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			publisher := tc.GetTestRunner()
 			ctx := context.Background()
+			mockTransport := mocks.NewMockURLSelectedRoundTripper(tc.responses, tc.urlRegex)
+			mockClient := &http.Client{Transport: &mockTransport}
+
+			publisher := NewSyncFeedsRunner(
+				githost.MockValidGitHub(mockClient),
+				rss.MockValidRSSServer(mockClient),
+				mocks.TestLogger(),
+			)
 			err := publisher.Run(ctx)
 
 			if tc.expectError && err == nil {
@@ -97,63 +87,6 @@ func TestQueryAndPublishFeeds(t *testing.T) {
 			}
 		})
 	}
-}
-
-type mockFreshRSS struct {
-	addFeedCalled    bool
-	addFeedError     error
-	removeFeedCalled bool
-	removeFeedError  error
-	addFeedURL       string
-	addFeedName      string
-	removeFeedURL    string
-}
-
-func (m *mockFreshRSS) Enabled() bool {
-	return true
-}
-
-func (m *mockFreshRSS) Authenticate(ctx context.Context) error {
-	return nil
-}
-
-func (m *mockFreshRSS) RSSServerType() string {
-	return mocks.FreshRSSType
-}
-
-func (m *mockFreshRSS) AddFeed(
-	ctx context.Context,
-	feedURL, name, category string,
-) error {
-	m.addFeedCalled = true
-	m.addFeedURL = feedURL
-	m.addFeedName = name
-	return m.addFeedError
-}
-
-func (m *mockFreshRSS) GetExistingFeeds(
-	ctx context.Context,
-) (map[string]struct{}, error) {
-	return nil, nil
-}
-
-func (m *mockFreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
-	m.removeFeedCalled = true
-	m.removeFeedURL = feedURL
-	return m.removeFeedError
-}
-
-type mockAtomFeedChecker struct {
-	hasEntries   bool
-	err          error
-	checkedFeeds []string
-}
-
-func (m *mockAtomFeedChecker) CheckFeedHasEntries(
-	ctx context.Context, feedURL string,
-) (bool, error) {
-	m.checkedFeeds = append(m.checkedFeeds, feedURL)
-	return m.hasEntries, m.err
 }
 
 func TestPublishToFreshRSS(t *testing.T) {
@@ -220,15 +153,11 @@ func TestPublishToFreshRSS(t *testing.T) {
 			mockFreshRSS := &mockFreshRSS{
 				addFeedError: tc.freshRSSAddError,
 			}
-			mockAtom := &mockAtomFeedChecker{
-				hasEntries: tc.atomHasEntries,
-			}
 
-			mockRunner := &PublishReleasesRunner{
-				gitHost:         githost.MockValidGitHub(&http.Client{}),
-				rssServer:       mockFreshRSS,
-				atomFeedChecker: mockAtom,
-				logger:          mocks.TestLogger(),
+			mockRunner := &SyncFeedsRunner{
+				gitHost:   githost.MockValidGitHub(&http.Client{}),
+				rssServer: mockFreshRSS,
+				logger:    mocks.TestLogger(),
 			}
 
 			g := &errgroup.Group{}
@@ -254,21 +183,13 @@ func TestPublishToFreshRSS(t *testing.T) {
 			}
 
 			if tc.expectedFreshRSSAdd {
-				if mockFreshRSS.addFeedURL != tc.repo.FeedURL() {
+				if mockFreshRSS.addFeedURL != tc.repo.FeedURL {
 					t.Errorf("Expected AddFeed called with URL %s, got %s",
-						tc.repo.FeedURL(), mockFreshRSS.addFeedURL)
+						tc.repo.FeedURL, mockFreshRSS.addFeedURL)
 				}
 				if mockFreshRSS.addFeedName != tc.repo.Name {
 					t.Errorf("Expected AddFeed called with name %s, got %s",
 						tc.repo.Name, mockFreshRSS.addFeedName)
-				}
-			}
-
-			if !tc.expectedLogSkip || tc.atomHasEntries {
-				found := slices.Contains(mockAtom.checkedFeeds, tc.repo.FeedURL())
-				expectedAtomCheck := !tc.expectedLogSkip
-				if expectedAtomCheck && !found {
-					t.Errorf("Expected AtomFeedChecker to be called for %s", tc.repo.FeedURL())
 				}
 			}
 		})
@@ -315,7 +236,7 @@ func TestRemoveStaleFeeds(t *testing.T) {
 				removeFeedError: tc.freshRSSRemoveError,
 			}
 
-			mockRunner := &PublishReleasesRunner{
+			mockRunner := &SyncFeedsRunner{
 				rssServer: mockFreshRSS,
 				logger:    mocks.TestLogger(),
 			}

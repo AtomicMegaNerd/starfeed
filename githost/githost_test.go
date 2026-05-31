@@ -167,9 +167,9 @@ func TestGetStarredRepos(t *testing.T) {
 			}
 
 			for _, expected := range tc.expectedRepos {
-				repo, ok := repos[expected.FeedURL()]
+				repo, ok := repos[expected.FeedURL]
 				if !ok {
-					t.Errorf("Expected feed %s not found", expected.FeedURL())
+					t.Errorf("Expected feed %s not found", expected.FeedURL)
 					continue
 				}
 				if repo.Name != expected.Name {
