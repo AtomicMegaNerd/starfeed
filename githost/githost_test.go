@@ -28,21 +28,13 @@ const (
 	repoHtmlURL4 = "https://github.com/user/repo4"
 )
 
-type GetStarredReposTestCase struct {
-	name          string
-	responses     []http.Response
-	expectedRepos []StarredRepo
-	expectError   bool
-}
-
-func (tc *GetStarredReposTestCase) GetTestObject() GitHost {
-	mockTransport := mocks.NewMockRoundTripper(tc.responses)
-	mockClient := &http.Client{Transport: &mockTransport}
-	return MockValidGitHub(mockClient)
-}
-
 func TestGetStarredRepos(t *testing.T) {
-	testCases := []GetStarredReposTestCase{
+	testCases := []struct {
+		name          string
+		responses     []http.Response
+		expectedRepos []StarredRepo
+		expectError   bool
+	}{
 		{
 			name: "Single repo with no pages",
 			responses: []http.Response{
@@ -153,8 +145,10 @@ func TestGetStarredRepos(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gh := tc.GetTestObject()
 			ctx := context.Background()
+			mockTransport := mocks.NewMockRoundTripper(tc.responses)
+			mockClient := &http.Client{Transport: &mockTransport}
+			gh := MockValidGitHub(mockClient)
 			repos, err := gh.GetStarredRepos(ctx)
 
 			if tc.expectError {
@@ -185,23 +179,21 @@ func TestGetStarredRepos(t *testing.T) {
 	}
 }
 
-type FilterOutNonGitHubFeedsTestCase struct {
-	name           string
-	inputFeeds     map[string]struct{}
-	expectedFeeds  map[string]struct{}
-	expectedLength int
-}
-
 func TestFilterOutNonGitHubFeeds(t *testing.T) {
-	testCases := []FilterOutNonGitHubFeedsTestCase{
+	testCases := []struct {
+		name           string
+		inputFeeds     map[string]StarredRepo
+		expectedFeeds  map[string]StarredRepo
+		expectedLength int
+	}{
 		{
 			name: "All feeds are GitHub releases",
-			inputFeeds: map[string]struct{}{
+			inputFeeds: map[string]StarredRepo{
 				"https://github.com/user/repo1/releases.atom": {},
 				"https://github.com/user/repo2/releases.atom": {},
 				"https://github.com/user/repo3/releases.atom": {},
 			},
-			expectedFeeds: map[string]struct{}{
+			expectedFeeds: map[string]StarredRepo{
 				"https://github.com/user/repo1/releases.atom": {},
 				"https://github.com/user/repo2/releases.atom": {},
 				"https://github.com/user/repo3/releases.atom": {},
@@ -210,13 +202,13 @@ func TestFilterOutNonGitHubFeeds(t *testing.T) {
 		},
 		{
 			name: "Mixed GitHub and non-GitHub feeds",
-			inputFeeds: map[string]struct{}{
+			inputFeeds: map[string]StarredRepo{
 				"https://github.com/user/repo1/releases.atom": {},
 				"https://example.com/feed.xml":                {},
 				"https://github.com/user/repo2/releases.atom": {},
 				"https://blog.example.com/rss":                {},
 			},
-			expectedFeeds: map[string]struct{}{
+			expectedFeeds: map[string]StarredRepo{
 				"https://github.com/user/repo1/releases.atom": {},
 				"https://github.com/user/repo2/releases.atom": {},
 			},
@@ -224,28 +216,28 @@ func TestFilterOutNonGitHubFeeds(t *testing.T) {
 		},
 		{
 			name: "No GitHub feeds",
-			inputFeeds: map[string]struct{}{
+			inputFeeds: map[string]StarredRepo{
 				"https://example.com/feed.xml":  {},
 				"https://blog.example.com/rss":  {},
 				"https://news.example.com/atom": {},
 			},
-			expectedFeeds:  map[string]struct{}{},
+			expectedFeeds:  map[string]StarredRepo{},
 			expectedLength: 0,
 		},
 		{
 			name:           "Empty input map",
-			inputFeeds:     map[string]struct{}{},
-			expectedFeeds:  map[string]struct{}{},
+			inputFeeds:     map[string]StarredRepo{},
+			expectedFeeds:  map[string]StarredRepo{},
 			expectedLength: 0,
 		},
 		{
 			name: "GitHub feeds with dots and dashes in names",
-			inputFeeds: map[string]struct{}{
+			inputFeeds: map[string]StarredRepo{
 				"https://github.com/nix-community/NixOS-WSL/releases.atom": {},
 				"https://github.com/EdenEast/nightfox.nvim/releases.atom":  {},
 				"https://example.com/feed.xml":                             {},
 			},
-			expectedFeeds: map[string]struct{}{
+			expectedFeeds: map[string]StarredRepo{
 				"https://github.com/nix-community/NixOS-WSL/releases.atom": {},
 				"https://github.com/EdenEast/nightfox.nvim/releases.atom":  {},
 			},
@@ -255,8 +247,8 @@ func TestFilterOutNonGitHubFeeds(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gitHost := MockValidGitHub(&http.Client{})
-			result := gitHost.FilterOutNonRepoReleaseFeeds(tc.inputFeeds)
+			gh := MockValidGitHub(&http.Client{})
+			result := gh.filterOutNonRepoReleaseFeeds(tc.inputFeeds)
 
 			if len(result) != tc.expectedLength {
 				t.Errorf("Expected %d feeds, got %d", tc.expectedLength, len(result))

@@ -12,7 +12,6 @@ import (
 
 // RSSServer is an interface that manages the interaction with a FreshRSS instance.
 type rssServer interface {
-	Authenticate(context.Context) error
 	AddFeed(context.Context, string, string, string) error
 	GetExistingFeeds(context.Context) (map[string]struct{}, error)
 	RemoveFeed(context.Context, string) error
@@ -64,10 +63,10 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 	// don't get rate limited by the Git host.
 	ghErrGroup, ghCtx := errgroup.WithContext(ctx)
 	ghErrGroup.SetLimit(5)
-	var repoMapFeedByURL map[string]githost.StarredRepo
+	var starredRelFeeds map[string]githost.StarredRepo
 	ghErrGroup.Go(func() error {
 		var err error
-		repoMapFeedByURL, err = p.gitHost.GetStarredRepos(ghCtx)
+		starredRelFeeds, err = p.gitHost.GetStarredRepos(ghCtx)
 		if err != nil {
 			return err
 		}
@@ -78,20 +77,18 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 	if p.rssServer.Enabled() {
 		rssErrGroup, rssCtx := errgroup.WithContext(ctx)
 		// NOTE: Using map[T]struct{} is idiomatic for creating sets in Go.
-		var filteredRssFeedsSet map[string]struct{}
+		var existingFeeds map[string]struct{}
+		var err error
 		rssErrGroup.Go(func() error {
 			// Get existing subscriptions
 			p.logger.Info("Querying existing RSS feeds in FreshRSS... ")
-			rawRssFeedsSet, err := p.rssServer.GetExistingFeeds(rssCtx)
+			existingFeeds, err = p.rssServer.GetExistingFeeds(rssCtx)
 			if err != nil {
 				return err
 			}
-
-			// Filter out feeds from the list that are not from this git host
-			filteredRssFeedsSet = p.gitHost.FilterOutNonRepoReleaseFeeds(rawRssFeedsSet)
 			p.logger.Info(
 				"Queried Git project release feeds in FreshRSS",
-				"numberFeeds", len(filteredRssFeedsSet),
+				"numberFeeds", len(existingFeeds),
 				"duration", time.Since(start),
 			)
 			return nil
@@ -108,14 +105,14 @@ func (p PublishReleasesRunner) Run(ctx context.Context) error {
 		// We can also overwhelm FreshRSS with this so we will also set a limit
 		rssErrGroup, rssCtx = errgroup.WithContext(ctx)
 		rssErrGroup.SetLimit(10)
-		for _, repo := range repoMapFeedByURL {
+		for _, repo := range starredRelFeeds {
 			rssErrGroup.Go(func() error {
-				return p.publishToFreshRSS(rssCtx, filteredRssFeedsSet, repo)
+				return p.publishToFreshRSS(rssCtx, existingFeeds, repo)
 			})
 		}
-		for feed := range filteredRssFeedsSet {
+		for feed := range existingFeeds {
 			rssErrGroup.Go(func() error {
-				return p.removeStaleFeeds(rssCtx, repoMapFeedByURL, feed)
+				return p.removeStaleFeeds(rssCtx, starredRelFeeds, feed)
 			})
 		}
 

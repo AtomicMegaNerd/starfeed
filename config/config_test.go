@@ -131,15 +131,13 @@ func validConfig() *Config {
 	}
 }
 
-type NewConfigTestCase struct {
-	name        string
-	envVars     map[string]string
-	expectError bool
-	expected    *Config
-}
-
 func TestNewConfig(t *testing.T) {
-	testCases := []NewConfigTestCase{
+	testCases := []struct {
+		name        string
+		envVars     map[string]string
+		expectError bool
+		expected    *Config
+	}{
 		{
 			name: "All required variables present",
 			envVars: map[string]string{

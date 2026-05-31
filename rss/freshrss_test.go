@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/mocks"
 )
 
@@ -16,21 +17,13 @@ const (
 	mockSid       = "2345678901"
 )
 
-type AuthenticateTestCase struct {
-	name              string
-	responses         []http.Response
-	expectedAuthToken string
-	expectError       bool
-}
-
-func (tc *AuthenticateTestCase) GetTestObject() *FreshRSS {
-	mockTransport := mocks.NewMockRoundTripper(tc.responses)
-	mockClient := &http.Client{Transport: &mockTransport}
-	return MockValidRSSServer(mockClient)
-}
-
 func TestAuthenticate(t *testing.T) {
-	testCases := []AuthenticateTestCase{
+	testCases := []struct {
+		name              string
+		responses         []http.Response
+		expectedAuthToken string
+		expectError       bool
+	}{
 		{
 			name: "Successful authentication",
 			responses: []http.Response{
@@ -74,8 +67,13 @@ func TestAuthenticate(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.responses[0].Status, func(t *testing.T) {
 			ctx := context.Background()
-			testObject := tc.GetTestObject()
-			err := testObject.Authenticate(ctx)
+			mockTransport := mocks.NewMockRoundTripper(tc.responses)
+			authToken, err := authenticate(
+				ctx,
+				config.MockValidFreshRSSConfig,
+				mocks.TestLogger(),
+				&http.Client{Transport: &mockTransport},
+			)
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")
@@ -85,104 +83,21 @@ func TestAuthenticate(t *testing.T) {
 					t.Errorf("Expected no error but got %v", err)
 				}
 
-				// Note: We can no longer access authToken directly since it's private.
-				// Authentication success is verified by the lack of error.
-			}
-		})
-	}
-}
-
-type ParsePlainTextAuthResponseTestCase struct {
-	name          string
-	inputData     []byte
-	expectedToken string
-	expectError   bool
-}
-
-func TestParsePlainTextAuthResponse(t *testing.T) {
-	testCases := []ParsePlainTextAuthResponseTestCase{
-		{
-			name:          "Valid auth response with Auth and SID",
-			inputData:     []byte("Auth=1234567890\nSID=abcdef\n"),
-			expectedToken: "1234567890",
-			expectError:   false,
-		},
-		{
-			name:          "Valid auth response with only Auth",
-			inputData:     []byte("Auth=token123\n"),
-			expectedToken: "token123",
-			expectError:   false,
-		},
-		{
-			name:          "Valid auth response with extra whitespace",
-			inputData:     []byte("Auth=mytoken456\n\n"),
-			expectedToken: "mytoken456",
-			expectError:   false,
-		},
-		{
-			name:          "No Auth field should return error",
-			inputData:     []byte("SID=abcdef\nOther=value\n"),
-			expectedToken: "",
-			expectError:   true,
-		},
-		{
-			name:          "Empty response should return error",
-			inputData:     []byte(""),
-			expectedToken: "",
-			expectError:   true,
-		},
-		{
-			name:          "Error response should return error",
-			inputData:     []byte("Error=BadAuthentication\n"),
-			expectedToken: "",
-			expectError:   true,
-		},
-		{
-			name:          "Auth with empty value should return error",
-			inputData:     []byte("Auth=\nSID=abcdef\n"),
-			expectedToken: "",
-			expectError:   true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			token, err := parsePlainTextAuthResponse(tc.inputData)
-
-			if tc.expectError {
-				if err == nil {
-					t.Errorf("Expected an error, got none")
-				}
-				if token != "" {
-					t.Errorf("Expected empty token on error, got %s", token)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error, got %v", err)
-				}
-				if token != tc.expectedToken {
-					t.Errorf("Expected token %s, got %s", tc.expectedToken, token)
+				if authToken != tc.expectedAuthToken {
+					t.Errorf("expected authToken %s but got %s", authToken, tc.expectedAuthToken)
 				}
 			}
 		})
 	}
-}
-
-type AddFeedTestCase struct {
-	name             string
-	responses        []http.Response
-	urlRegexPatterns []string
-	expectError      bool
-}
-
-func (tc *AddFeedTestCase) GetTestObject() *FreshRSS {
-	mockTransport := mocks.NewMockURLSelectedRoundTripper(tc.responses, tc.urlRegexPatterns)
-	mockClient := &http.Client{Transport: &mockTransport}
-	return MockValidRSSServer(mockClient)
 }
 
 func TestAddFeed(t *testing.T) {
-	testCases := []AddFeedTestCase{
+	testCases := []struct {
+		name             string
+		responses        []http.Response
+		urlRegexPatterns []string
+		expectError      bool
+	}{
 		{
 			name: "Successful feed addition",
 			responses: []http.Response{
@@ -268,8 +183,10 @@ func TestAddFeed(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			testObject := tc.GetTestObject()
-			err := testObject.AddFeed(ctx, "http://localhost/feeds/123", "name", "category")
+			mockTransport := mocks.NewMockURLSelectedRoundTripper(tc.responses, tc.urlRegexPatterns)
+			mockClient := &http.Client{Transport: &mockTransport}
+			rss := MockValidRSSServer(mockClient)
+			err := rss.AddFeed(ctx, "http://localhost/feeds/123", "name", "category")
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")
@@ -283,21 +200,13 @@ func TestAddFeed(t *testing.T) {
 	}
 }
 
-type GetExistingFeedsTestCase struct {
-	name            string
-	responses       []http.Response
-	expectedFeedMap map[string]struct{}
-	expectError     bool
-}
-
-func (tc *GetExistingFeedsTestCase) GetTestObject() *FreshRSS {
-	mockTransport := mocks.NewMockRoundTripper(tc.responses)
-	mockClient := &http.Client{Transport: &mockTransport}
-	return MockValidRSSServer(mockClient)
-}
-
 func TestGetExistingFeeds(t *testing.T) {
-	testCases := []GetExistingFeedsTestCase{
+	testCases := []struct {
+		name            string
+		responses       []http.Response
+		expectedFeedMap map[string]struct{}
+		expectError     bool
+	}{
 		{
 			name: "Successful feed retrieval",
 			responses: []http.Response{
@@ -352,9 +261,11 @@ func TestGetExistingFeeds(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			testObject := tc.GetTestObject()
+			mockTransport := mocks.NewMockRoundTripper(tc.responses)
+			mockClient := &http.Client{Transport: &mockTransport}
+			rss := MockValidRSSServer(mockClient)
 			ctx := context.Background()
-			feeds, err := testObject.GetExistingFeeds(ctx)
+			feeds, err := rss.GetExistingFeeds(ctx)
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")
@@ -378,21 +289,13 @@ func TestGetExistingFeeds(t *testing.T) {
 	}
 }
 
-type RemoveFeedTestCase struct {
-	name        string
-	feedURL     string
-	responses   []http.Response
-	expectError bool
-}
-
-func (tc *RemoveFeedTestCase) GetTestObject() *FreshRSS {
-	mockTransport := mocks.NewMockRoundTripper(tc.responses)
-	mockClient := &http.Client{Transport: &mockTransport}
-	return MockValidRSSServer(mockClient)
-}
-
 func TestRemoveFeed(t *testing.T) {
-	testCases := []RemoveFeedTestCase{
+	testCases := []struct {
+		name        string
+		feedURL     string
+		responses   []http.Response
+		expectError bool
+	}{
 		{
 			name:    "Successful feed removal",
 			feedURL: "http://localhost/feeds/124",
@@ -419,9 +322,11 @@ func TestRemoveFeed(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			testObject := tc.GetTestObject()
 			ctx := context.Background()
-			err := testObject.RemoveFeed(ctx, tc.feedURL)
+			mockTransport := mocks.NewMockRoundTripper(tc.responses)
+			mockClient := &http.Client{Transport: &mockTransport}
+			rss := MockValidRSSServer(mockClient)
+			err := rss.RemoveFeed(ctx, tc.feedURL)
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")

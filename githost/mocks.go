@@ -29,13 +29,6 @@ var (
 			getReposURL:      "https://api.github.com",
 			nextPagePattern:  nextPageLinkRegex,
 			isReleasePattern: githubRelRegex,
-			headers: map[string]string{
-				"Authorization":        "Bearer " + mocks.GitHubToken,
-				"X-GitHub-Api-Version": "2022-11-28",
-				"User-Agent":           "github.com/atomicmeganerd/starfeed",
-				"Content-Type":         "application/json",
-				"Accept":               "application/json",
-			},
 		}
 	}
 
@@ -51,12 +44,6 @@ var (
 			getReposURL:      "https://api.forgejo.org",
 			nextPagePattern:  nextPageLinkRegex,
 			isReleasePattern: forgejoRelRegex,
-			headers: map[string]string{
-				"Authorization": "Bearer " + mocks.ForgejoToken,
-				"User-Agent":    "github.com/atomicmeganerd/starfeed",
-				"Content-Type":  "application/json",
-				"Accept":        "application/json",
-			},
 		}
 	}
 )

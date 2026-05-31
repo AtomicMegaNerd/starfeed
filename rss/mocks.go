@@ -8,11 +8,10 @@ import (
 
 var MockValidRSSServer = func(client *http.Client) *FreshRSS {
 	return &FreshRSS{
-		IsEnabled: true,
+		isEnabled: true,
 		rssType:   mocks.FreshRSSType,
 		baseURL:   mocks.FreshRSSURL,
 		user:      mocks.FreshRSSUser,
-		token:     mocks.FreshRSSToken,
 		logger:    mocks.TestLogger(),
 		client:    client,
 	}

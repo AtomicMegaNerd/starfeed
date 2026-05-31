@@ -31,8 +31,8 @@ const (
 
 // The main Config struct used to hold configuration state for the app
 type Config struct {
-	GitHostConfigs  []GitHostConfig  `validate:"required,min=1"`
-	RSSServerConfig *RSSServerConfig `validate:"required"`
+	GitHostConfigs  []GitHostConfig `validate:"required,min=1"`
+	RSSServerConfig RSSServerConfig `validate:"required"`
 	DebugMode       bool
 	SingleRunMode   bool
 	HTTPTimeout     time.Duration `validate:"required"`
@@ -42,7 +42,7 @@ type envGetter interface {
 	Getenv(key string) string
 }
 
-func NewConfig(g envGetter) (*Config, error) {
+func NewConfig(g envGetter) (Config, error) {
 	validate := validator.New()
 
 	// Parse optional HTTP timeout
@@ -55,26 +55,23 @@ func NewConfig(g envGetter) (*Config, error) {
 
 	debugMode, err := parseBoolEnv(g, debugModeKey)
 	if err != nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, err
+		return Config{}, err
 	}
 	singleRunMode, err := parseBoolEnv(g, singleRunModeKey)
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 
 	gitHostConfigs, err := buildGitHostConfigs(validate, g)
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 	rssConfig, err := buildRssServerConfig(validate, g)
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 
-	cfg := &Config{
+	cfg := Config{
 		GitHostConfigs:  gitHostConfigs,
 		RSSServerConfig: rssConfig,
 		DebugMode:       debugMode,
@@ -83,7 +80,7 @@ func NewConfig(g envGetter) (*Config, error) {
 	}
 
 	if err := validate.Struct(cfg); err != nil {
-		return nil, err
+		return Config{}, err
 	}
 
 	return cfg, nil
@@ -158,12 +155,12 @@ type RSSServerConfig struct {
 func buildRssServerConfig(
 	validate *validator.Validate,
 	envGetter envGetter,
-) (*RSSServerConfig, error) {
+) (RSSServerConfig, error) {
 	rssCsv := envGetter.Getenv(rssServerKey)
 
 	parts := strings.SplitN(rssCsv, ",", rssServerConfigFields)
 	if len(parts) != rssServerConfigFields {
-		return nil, fmt.Errorf(
+		return RSSServerConfig{}, fmt.Errorf(
 			"expected csv to have %d parts but it had %d", rssServerConfigFields, len(parts),
 		)
 	}
@@ -175,13 +172,13 @@ func buildRssServerConfig(
 
 	enabled, err := strconv.ParseBool(enabledStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
+		return RSSServerConfig{}, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
 	}
 
-	rssConfig := &RSSServerConfig{rssType, baseURL, user, token, enabled}
+	rssConfig := RSSServerConfig{rssType, baseURL, user, token, enabled}
 
 	if err := validate.Struct(rssConfig); err != nil {
-		return nil, err
+		return RSSServerConfig{}, err
 	}
 
 	return rssConfig, nil

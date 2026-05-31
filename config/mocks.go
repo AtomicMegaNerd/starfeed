@@ -36,7 +36,7 @@ var (
 		true,
 	}
 
-	MockValidFreshRSSConfig = &RSSServerConfig{
+	MockValidFreshRSSConfig = RSSServerConfig{
 		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser, mocks.FreshRSSToken, true,
 	}
 )

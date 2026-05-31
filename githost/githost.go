@@ -8,22 +8,25 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"strings"
 
+	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/config"
 )
 
+var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
+
 // This object represents a supported git host where we have 'starred' repos.
 type GitHost struct {
-	Name    string
-	Enabled bool
-
+	Name     string
+	Enabled  bool
 	hostType string
 	baseURL  string
-	token    string
+	token    string // WARNING: This is a secret do not log
 
 	// These are computed
 	getReposURL      string
-	headers          map[string]string
+	headers          http.Header
 	nextPagePattern  *regexp.Regexp
 	isReleasePattern *regexp.Regexp
 	logger           *slog.Logger
@@ -43,48 +46,29 @@ func NewGitHost(
 		client:   client,
 	}
 
+	// Add the common headers
+	gitHost.headers = http.Header{}
+	gitHost.headers.Set("Content-Type", "application/json")
+	gitHost.headers.Set("Accept", "application/json")
+	gitHost.headers.Set("User-Agent", "github.com/atomicmeganerd/starfeed")
+	gitHost.headers.Set("Authorization", fmt.Sprintf("Bearer %s", gitHost.token))
+	gitHost.getReposURL = fmt.Sprintf("%s/user/starred?limit=100", hostCfg.ApiURL)
+
+	gitHost.isReleasePattern = regexp.MustCompile(
+		fmt.Sprintf(
+			`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
+			regexp.QuoteMeta(gitHost.baseURL),
+		),
+	)
+
 	// Some of the fields on this object depend on what type of git host this is...
 	switch gitHost.hostType {
-	case "github":
-		gitHost.headers = map[string]string{
-			"Authorization":        fmt.Sprintf("Bearer %s", gitHost.token),
-			"X-GitHub-Api-Version": "2022-11-28",
-			"User-Agent":           "github.com/atomicmeganerd/starfeed",
-			"Content-Type":         "application/json",
-			"Accept":               "application/json",
-		}
-		gitHost.getReposURL = fmt.Sprintf("%s/user/starred?per_page=100", hostCfg.ApiURL)
-
-		gitHost.nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
-		gitHost.isReleasePattern = regexp.MustCompile(
-			fmt.Sprintf(
-				`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
-				regexp.QuoteMeta(gitHost.baseURL),
-			),
-		)
-
+	case config.GitHubHostType:
+		gitHost.headers.Set("X-GitHub-Api-Version", "2022-11-28")
 		return gitHost, nil
-
-	case "forgejo":
-		gitHost.headers = map[string]string{
-			"Authorization": fmt.Sprintf("Bearer %s", gitHost.token),
-			"User-Agent":    "github.com/atomicmeganerd/starfeed",
-			"Content-Type":  "application/json",
-			"Accept":        "application/json",
-		}
-
-		gitHost.nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
-		gitHost.isReleasePattern = regexp.MustCompile(
-			fmt.Sprintf(
-				`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
-				regexp.QuoteMeta(gitHost.baseURL),
-			),
-		)
-
-		gitHost.getReposURL = fmt.Sprintf("%s/user/starred?limit=50", hostCfg.ApiURL)
+	case config.ForgejoHostType:
 		return gitHost, nil
 	}
-
 	return GitHost{}, errors.New("unable to build GitHostConfig")
 }
 
@@ -98,13 +82,19 @@ func (g GitHost) GetStarredRepos(
 
 	nextPageURL := g.getReposURL
 	for {
-		resp, err := DoAPIRequest(
+		data, respHeaders, err := common.DoAPIRequest(
 			ctx,
+			"GET",
 			nextPageURL,
+			nil,
 			g.headers,
-			g.nextPagePattern,
 			g.client,
 		)
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := g.processGitHostResponse(data, respHeaders)
 		if err != nil {
 			return nil, err
 		}
@@ -123,31 +113,29 @@ func (g GitHost) GetStarredRepos(
 			allFeeds[repo.FeedURL()] = repo
 		}
 
-		// If there is no next page we are done...
-		if resp.NextPage == "" {
+		// If there is a next page keep going
+		nextPageURL = g.getNextPageURL(respHeaders)
+		if nextPageURL == "" {
 			return allFeeds, nil
 		}
-
 		g.logger.Debug("Found next page", "url", resp.NextPage)
-		nextPageURL = resp.NextPage
 	}
 }
 
 // We never want to unsubscribe from feeds that are not release feeds for the current Git host.
-func (g GitHost) FilterOutNonRepoReleaseFeeds(
-	rssFeedSet map[string]struct{},
-) map[string]struct{} {
-	// NOTE: In Go map[T]struct{} is the idiomatic way to make a set as struct{} is 0-bytes
-	filteredSet := make(map[string]struct{})
-	for feedURL := range rssFeedSet {
+func (g GitHost) filterOutNonRepoReleaseFeeds(
+	rssFeedSet map[string]StarredRepo,
+) map[string]StarredRepo {
+	filteredSet := make(map[string]StarredRepo)
+	for feedURL, repo := range rssFeedSet {
 		// This will only include a feed for potential removal if it is a release feed
 		// for the current GitHost that we are working with. This is important otherwise
 		// we could remove feeds from other Git hosts which we do not want...
 		if g.isReleasePattern.MatchString(feedURL) {
-			filteredSet[feedURL] = struct{}{}
+			filteredSet[feedURL] = repo
 		} else {
 			g.logger.Debug(
-				"Ignoring feeds that aren't release feeds from a git host so we don't unsubscribe",
+				"Ignoring feeds that aren't release feeds so we don't unsubscribe",
 				"feed", feedURL,
 			)
 		}
@@ -180,4 +168,31 @@ func (g GitHost) parseRepos(data []byte) ([]StarredRepo, error) {
 	default:
 		return nil, fmt.Errorf("unknown hostType %s", g.hostType)
 	}
+}
+
+func (g GitHost) processGitHostResponse(
+	data []byte,
+	respHeaders http.Header,
+) (*GitHostResponse, error) {
+	links := strings.SplitSeq(respHeaders.Get("Link"), ",")
+	for link := range links {
+		matches := nextPagePattern.FindStringSubmatch(link)
+		if len(matches) == 2 {
+			return &GitHostResponse{Data: data, NextPage: matches[1]}, nil
+		}
+	}
+
+	return &GitHostResponse{Data: data}, nil
+}
+
+func (g GitHost) getNextPageURL(respHeaders http.Header) string {
+	nextPage := ""
+	links := strings.SplitSeq(respHeaders.Get("Link"), ",")
+	for link := range links {
+		matches := g.nextPagePattern.FindStringSubmatch(link)
+		if len(matches) == 2 {
+			nextPage = matches[1]
+		}
+	}
+	return nextPage
 }

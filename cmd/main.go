@@ -70,15 +70,9 @@ func main() {
 	runnerSlice := make([]runner, 0)
 	feedChecker := atom.NewAtomFeedChecker(client)
 
-	rssServer := rss.NewFreshRSS(cfg.RSSServerConfig, logger, client)
-	if rssServer.IsEnabled {
-		if err := rssServer.Authenticate(ctx); err != nil {
-			logger.Error("Error Authenticating to RSS", "error", err)
-			os.Exit(1)
-		}
-		logger.Info(
-			"Successfully authenticated to RSS server...", "URL", cfg.RSSServerConfig.BaseURL,
-		)
+	rssServer, err := rss.NewFreshRSS(ctx, cfg.RSSServerConfig, logger, client)
+	if err != nil {
+		logger.Error("Error authenticating to FreshRSS", "error", err)
 	}
 
 	// For each GitHost in our config let's create a new runner
