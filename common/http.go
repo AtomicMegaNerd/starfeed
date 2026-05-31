@@ -28,6 +28,9 @@ func DoAPIRequest(
 		return nil, nil, err
 	}
 
+	// Set headers
+	req.Header = headers
+
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, nil, err

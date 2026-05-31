@@ -73,6 +73,7 @@ func main() {
 	rssServer, err := rss.NewFreshRSS(ctx, cfg.RSSServerConfig, logger, client)
 	if err != nil {
 		logger.Error("Error authenticating to FreshRSS", "error", err)
+		os.Exit(1)
 	}
 
 	// For each GitHost in our config let's create a new runner

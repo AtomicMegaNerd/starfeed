@@ -82,7 +82,7 @@ func (g GitHost) GetStarredRepos(
 	for {
 		data, respHeaders, err := common.DoAPIRequest(
 			ctx,
-			"GET",
+			http.MethodGet,
 			nextPageURL,
 			nil,
 			g.headers,
@@ -96,6 +96,7 @@ func (g GitHost) GetStarredRepos(
 		if err != nil {
 			return nil, err
 		}
+		nextPageURL = resp.NextPage
 
 		// This will get our repos based on what type they are (github, forgejo, etc.)
 		repos, err := g.parseRepos(resp.Data)
@@ -112,7 +113,6 @@ func (g GitHost) GetStarredRepos(
 		}
 
 		// If there is a next page keep going
-		nextPageURL = g.getNextPageURL(respHeaders)
 		if nextPageURL == "" {
 			return allFeeds, nil
 		}
@@ -179,18 +179,5 @@ func (g GitHost) processGitHostResponse(
 			return &GitHostResponse{Data: data, NextPage: matches[1]}, nil
 		}
 	}
-
 	return &GitHostResponse{Data: data}, nil
-}
-
-func (g GitHost) getNextPageURL(respHeaders http.Header) string {
-	nextPage := ""
-	links := strings.SplitSeq(respHeaders.Get("Link"), ",")
-	for link := range links {
-		matches := g.nextPagePattern.FindStringSubmatch(link)
-		if len(matches) == 2 {
-			nextPage = matches[1]
-		}
-	}
-	return nextPage
 }

@@ -15,10 +15,10 @@ import (
 
 // The FreshRSS is a private struct that implements FreshRSSFeedManager.
 type FreshRSS struct {
-	isEnabled bool
 	rssType   string
 	baseURL   string
 	user      string
+	isEnabled bool
 	logger    *slog.Logger
 	headers   http.Header
 	client    *http.Client
@@ -40,7 +40,7 @@ func NewFreshRSS(
 
 	// Only authenticate if the RSS server is enabled
 	if rssConfig.Enabled {
-		authToken, err := authenticate(ctx, rssConfig, logger, client)
+		authToken, err := authenticate(ctx, rssConfig, headers, logger, client)
 		if err != nil {
 			return FreshRSS{}, err
 		}
@@ -48,10 +48,10 @@ func NewFreshRSS(
 	}
 
 	return FreshRSS{
-		isEnabled: rssConfig.Enabled,
 		rssType:   rssConfig.Type,
 		baseURL:   rssConfig.BaseURL,
 		user:      rssConfig.User,
+		isEnabled: rssConfig.Enabled,
 		logger:    logger,
 		headers:   headers,
 		client:    client,
@@ -80,7 +80,7 @@ func (f FreshRSS) AddFeed(
 
 	f.logger.Debug("Adding feed to FreshRSS", "url", addURL)
 	res, _, err := common.DoAPIRequest(
-		ctx, "POST", addURL, []byte(formData.Encode()), f.headers, f.client,
+		ctx, http.MethodPost, addURL, []byte(formData.Encode()), f.headers, f.client,
 	)
 	if err != nil {
 		return err
@@ -112,7 +112,7 @@ func (f FreshRSS) GetExistingFeeds(ctx context.Context) (map[string]struct{}, er
 	)
 
 	// Perform the request
-	res, _, err := common.DoAPIRequest(ctx, "GET", getURL, nil, f.headers, f.client)
+	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, getURL, nil, f.headers, f.client)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (f FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
 
 	// We do not care about the response
 	_, _, err := common.DoAPIRequest(
-		ctx, "POST", rmURL, []byte(formData.Encode()), f.headers, f.client,
+		ctx, http.MethodPost, rmURL, []byte(formData.Encode()), f.headers, f.client,
 	)
 	if err != nil {
 		return err
@@ -180,7 +180,7 @@ func (f *FreshRSS) addFeedToCategory(
 	}
 
 	_, _, err := common.DoAPIRequest(
-		ctx, "POST", addURL, []byte(formData.Encode()), f.headers, f.client,
+		ctx, http.MethodPost, addURL, []byte(formData.Encode()), f.headers, f.client,
 	)
 	if err != nil {
 		return err
@@ -197,24 +197,24 @@ func (f FreshRSS) RSSServerType() string {
 	return f.rssType
 }
 
+// This function will authenticate to FreshRSS.
 func authenticate(
 	ctx context.Context,
 	rssConfig config.RSSServerConfig,
+	headers http.Header,
 	logger *slog.Logger,
 	client *http.Client,
 ) (string, error) {
-	// Authenticate
 	reqURL := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", rssConfig.BaseURL)
 	logger.Debug("Authenticating with FreshRSS", "url", reqURL)
-	formData := url.Values{
-		"Email":  {rssConfig.User},
-		"Passwd": {rssConfig.Token},
-	}
-	authHeaders := http.Header{
-		// Find them
-	}
+	formData := []byte(
+		url.Values{
+			"Email":  {rssConfig.User},
+			"Passwd": {rssConfig.Token},
+		}.Encode(),
+	)
 	data, _, err := common.DoAPIRequest(
-		ctx, "POST", reqURL, []byte(formData.Encode()), authHeaders, client,
+		ctx, http.MethodPost, reqURL, formData, headers, client,
 	)
 	if err != nil {
 		return "", err

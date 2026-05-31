@@ -68,9 +68,13 @@ func TestAuthenticate(t *testing.T) {
 		t.Run(tc.responses[0].Status, func(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := mocks.NewMockRoundTripper(tc.responses)
+
+			headers := http.Header{}
+			headers.Set("Content-type", "application/x-www-form-urlencoded")
 			authToken, err := authenticate(
 				ctx,
 				config.MockValidFreshRSSConfig,
+				headers,
 				mocks.TestLogger(),
 				&http.Client{Transport: &mockTransport},
 			)

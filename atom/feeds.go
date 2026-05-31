@@ -36,7 +36,7 @@ func (a *atomFeedChecker) CheckFeedHasEntries(
 	}
 
 	// No request will always be valid here so we can ignore the error
-	req, err := http.NewRequestWithContext(ctx, "GET", feedURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, feedURL, nil)
 	if err != nil {
 		return false, err
 	}
