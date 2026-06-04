@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
-	"slices"
 	"strings"
 
 	"github.com/atomicmeganerd/starfeed/common"
@@ -71,6 +70,9 @@ func (g GitHost) GetStarredRepos(
 	ctx context.Context,
 ) (map[string]StarredRepo, error) {
 	g.logger.Debug("Querying git host for starred repos", "url", g.getReposURL)
+
+	// A map makes everything easy to search based on feed
+	repoFeedMap := make(map[string]StarredRepo)
 	nextPageURL := g.getReposURL
 	for {
 		// Get the raw data
@@ -88,33 +90,19 @@ func (g GitHost) GetStarredRepos(
 			)
 		}
 
+		// Parse Repos
 		repos, err := g.parseRepos(data)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, repo := range repos {
-			err := g.addReleaseFeedToRepo(ctx, &repo)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"error %w adding release feeds to repo %s from githost %s",
-					err, repo.Name, g.Name,
-				)
-			}
-		}
+		g.logger.Debug("Parsed repos", "# repos", len(repos))
 
-		// Delete all feeds that do not have a feed URL
-		repos = slices.DeleteFunc(repos, func(repo StarredRepo) bool {
-			return repo.FeedURL == ""
-		})
-
-		// A map makes everything easy to search based on feed
-		repoFeedMap := make(map[string]StarredRepo, len(repos))
 		for _, repo := range repos {
+			repo.FeedURL = fmt.Sprintf("%s/releases.atom", repo.RepoURL)
 			repoFeedMap[repo.FeedURL] = repo
 		}
 
-		// If there is a next page keep going
 		nextPageURL = g.parseNextPageURL(respHeaders)
 		if nextPageURL == "" {
 			g.logger.Info(
@@ -123,8 +111,31 @@ func (g GitHost) GetStarredRepos(
 			)
 			return repoFeedMap, nil
 		}
+
 		g.logger.Debug("Found next page", "url", nextPageURL)
 	}
+}
+
+func (g GitHost) CheckReleaseFeed(
+	ctx context.Context,
+	repo *StarredRepo,
+) error {
+	data, _, err := common.DoAPIRequest(ctx, http.MethodGet, repo.FeedURL, nil, g.headers, g.client)
+	if err != nil {
+		return err
+	}
+
+	var feed AtomFeed
+	if err = xml.Unmarshal(data, &feed); err != nil {
+		return err
+	}
+
+	if len(feed.Entries) < 1 {
+		return nil
+	}
+
+	// Set the release feed
+	return nil
 }
 
 // We never want to unsubscribe from feeds that are not release feeds for the current Git host.
@@ -149,7 +160,15 @@ func (g GitHost) filterOutNonRepoReleaseFeeds(
 }
 
 func (g GitHost) parseNextPageURL(respHeaders http.Header) string {
-	links := strings.SplitSeq(respHeaders.Get("Link"), ",")
+	linkHeader := respHeaders.Get("Link")
+
+	if linkHeader != "" {
+		g.logger.Debug("linkHeader found", "linkHeader", linkHeader)
+	} else {
+		return ""
+	}
+
+	links := strings.SplitSeq(linkHeader, ",")
 	for link := range links {
 		matches := nextPagePattern.FindStringSubmatch(link)
 		if len(matches) == 2 {
@@ -167,34 +186,6 @@ func (g GitHost) parseRepos(data []byte) ([]StarredRepo, error) {
 		)
 	}
 	return repoSlice, nil
-}
-
-func (g GitHost) addReleaseFeedToRepo(
-	ctx context.Context,
-	repo *StarredRepo,
-) error {
-	feedURL := fmt.Sprintf("%s/releases.atom", repo.RepoURL)
-	if feedURL == "" {
-		return nil
-	}
-
-	data, _, err := common.DoAPIRequest(ctx, http.MethodGet, feedURL, nil, g.headers, g.client)
-	if err != nil {
-		return err
-	}
-
-	var feed AtomFeed
-	if err = xml.Unmarshal(data, &feed); err != nil {
-		return err
-	}
-
-	if len(feed.Entries) < 1 {
-		return nil
-	}
-
-	// Set the release feed
-	repo.FeedURL = feedURL
-	return nil
 }
 
 func buildCommonHeaders(token string) http.Header {

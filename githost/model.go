@@ -9,7 +9,7 @@ import (
 type StarredRepo struct {
 	Name    string `json:"name"`
 	RepoURL string `json:"html_url"`
-	FeedURL string ""
+	FeedURL string `json:"feed_url"`
 }
 
 // This is the response we get from the Git Host

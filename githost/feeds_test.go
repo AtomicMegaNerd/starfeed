@@ -3,16 +3,28 @@ package githost
 import (
 	"context"
 	"io"
+	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/atomicmeganerd/starfeed/mocks"
+	"github.com/lmittmann/tint"
 )
 
-func TestAddFeedURLToRepo(t *testing.T) {
+func TestCheckReleaseFeed(t *testing.T) {
+	logger := slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.RFC3339,
+		}),
+	)
+
 	testCases := []struct {
 		name             string
+		repoURL          string
 		feedURL          string
 		responses        []http.Response
 		expectHasEntries bool
@@ -20,7 +32,8 @@ func TestAddFeedURLToRepo(t *testing.T) {
 	}{
 		{
 			name:    "Feed has entries",
-			feedURL: "http://example.com/feed",
+			repoURL: "https://github.com/user/repo1",
+			feedURL: "https://github.com/user/repo1/releases.atom",
 			responses: []http.Response{
 				{
 					StatusCode: http.StatusOK,
@@ -38,7 +51,8 @@ func TestAddFeedURLToRepo(t *testing.T) {
 		},
 		{
 			name:    "Feed has no entries",
-			feedURL: "http://example.com/feed",
+			repoURL: "https://github.com/user/repo2",
+			feedURL: "",
 			responses: []http.Response{
 				{
 					StatusCode: http.StatusOK,
@@ -52,7 +66,8 @@ func TestAddFeedURLToRepo(t *testing.T) {
 		},
 		{
 			name:    "Error making request",
-			feedURL: "http://example.com/feed",
+			repoURL: "https://github.com/user/repo3",
+			feedURL: "https://github.com/user/repo3/releases.atom",
 			responses: []http.Response{
 				{
 					StatusCode: http.StatusInternalServerError,
@@ -63,7 +78,8 @@ func TestAddFeedURLToRepo(t *testing.T) {
 		},
 		{
 			name:    "Error reading response",
-			feedURL: "http://example.com/feed",
+			repoURL: "https://github.com/user/repo4",
+			feedURL: "https://github.com/user/repo4/releases.atom",
 			responses: []http.Response{
 				{
 					Body: mocks.NewErrorReadCloser(),
@@ -73,7 +89,8 @@ func TestAddFeedURLToRepo(t *testing.T) {
 		},
 		{
 			name:    "Error parsing XML",
-			feedURL: "http://example.com/feed",
+			repoURL: "https://github.com/user/repo5",
+			feedURL: "https://github.com/user/repo6/releases.atom",
 			responses: []http.Response{
 				{
 					Body: io.NopCloser(strings.NewReader(`
@@ -94,21 +111,19 @@ func TestAddFeedURLToRepo(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := mocks.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
-			gh := MockValidGitHub(mockClient)
+			gh := MockValidGitHub(mockClient, logger)
 
-			repo := StarredRepo{}
+			repo := StarredRepo{RepoURL: tc.repoURL}
+			err := gh.CheckReleaseFeed(ctx, &repo)
 
-			err := gh.addReleaseFeedToRepo(ctx, &repo)
+			if err == nil {
+				if tc.expectError {
+					t.Fatalf("Expected an error, got none")
+				}
+			}
 
 			if err != nil && !tc.expectError {
 				t.Fatalf("Expected no error, got %v", err)
-			}
-			if err == nil && tc.expectError {
-				t.Fatalf("Expected an error, got none")
-			}
-
-			if repo.FeedURL != tc.feedURL {
-				t.Fatalf("Expected feedURL %s, got %s", tc.feedURL, repo.FeedURL)
 			}
 		})
 	}

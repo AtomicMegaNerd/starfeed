@@ -3,32 +3,47 @@ package githost
 import (
 	"context"
 	"io"
+	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/atomicmeganerd/starfeed/mocks"
+	"github.com/lmittmann/tint"
 )
 
 const (
 	// Repo 1
 	repoName1    = "repo1"
 	repoHtmlURL1 = "https://github.com/user/repo1"
+	repoFeedURL1 = "https://github.com/user/repo1/releases.atom"
 
 	// Repo 2
 	repoName2    = "repo2"
 	repoHtmlURL2 = "https://github.com/user/repo2"
+	repoFeedURL2 = "https://github.com/user/repo2/releases.atom"
 
 	// Repo 3
 	repoName3    = "repo3"
 	repoHtmlURL3 = "https://github.com/user/repo3"
+	repoFeedURL3 = "https://github.com/user/repo3/releases.atom"
 
 	// Repo 4
 	repoName4    = "repo4"
 	repoHtmlURL4 = "https://github.com/user/repo4"
+	repoFeedURL4 = "https://github.com/user/repo4/releases.atom"
 )
 
 func TestGetStarredRepos(t *testing.T) {
+	logger := slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.RFC3339,
+		}),
+	)
+
 	testCases := []struct {
 		name          string
 		responses     []http.Response
@@ -39,12 +54,14 @@ func TestGetStarredRepos(t *testing.T) {
 			name: "Single repo with no pages",
 			responses: []http.Response{
 				{
-					Body: io.NopCloser(strings.NewReader(`[
-						{
-							"name": "` + repoName1 + `",
-							"html_url": "` + repoHtmlURL1 + `"
-						}
-						]`),
+					Body: io.NopCloser(
+						strings.NewReader(`[
+							{
+								"name": "` + repoName1 + `",
+								"html_url": "` + repoHtmlURL1 + `"
+							}
+						]`,
+						),
 					),
 					Status:     mocks.StatusOKString,
 					StatusCode: http.StatusOK,
@@ -54,6 +71,7 @@ func TestGetStarredRepos(t *testing.T) {
 				{
 					Name:    repoName1,
 					RepoURL: repoHtmlURL1,
+					FeedURL: repoFeedURL1,
 				},
 			},
 			expectError: false,
@@ -98,10 +116,10 @@ func TestGetStarredRepos(t *testing.T) {
 				},
 			},
 			expectedRepos: []StarredRepo{
-				{Name: repoName1, RepoURL: repoHtmlURL1},
-				{Name: repoName2, RepoURL: repoHtmlURL2},
-				{Name: repoName3, RepoURL: repoHtmlURL3},
-				{Name: repoName4, RepoURL: repoHtmlURL4},
+				{Name: repoName1, RepoURL: repoHtmlURL1, FeedURL: repoFeedURL1},
+				{Name: repoName2, RepoURL: repoHtmlURL2, FeedURL: repoFeedURL2},
+				{Name: repoName3, RepoURL: repoHtmlURL3, FeedURL: repoFeedURL3},
+				{Name: repoName4, RepoURL: repoHtmlURL4, FeedURL: repoFeedURL4},
 			},
 			expectError: false,
 		},
@@ -148,8 +166,8 @@ func TestGetStarredRepos(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := mocks.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
+			gh := MockValidGitHub(mockClient, logger)
 
-			gh := MockValidGitHub(mockClient)
 			repos, err := gh.GetStarredRepos(ctx)
 
 			if tc.expectError {
@@ -162,6 +180,7 @@ func TestGetStarredRepos(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Expected no error, got %v", err)
 			}
+
 			if len(repos) != len(tc.expectedRepos) {
 				t.Fatalf("Expected %d repos, got %d", len(tc.expectedRepos), len(repos))
 			}
@@ -181,6 +200,13 @@ func TestGetStarredRepos(t *testing.T) {
 }
 
 func TestFilterOutNonGitHubFeeds(t *testing.T) {
+	logger := slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.RFC3339,
+		}),
+	)
+
 	testCases := []struct {
 		name           string
 		inputFeeds     map[string]StarredRepo
@@ -248,7 +274,7 @@ func TestFilterOutNonGitHubFeeds(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gh := MockValidGitHub(&http.Client{})
+			gh := MockValidGitHub(&http.Client{}, logger)
 			result := gh.filterOutNonRepoReleaseFeeds(tc.inputFeeds)
 
 			if len(result) != tc.expectedLength {

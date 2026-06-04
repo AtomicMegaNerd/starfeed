@@ -1,6 +1,7 @@
 package githost
 
 import (
+	"log/slog"
 	"net/http"
 	"regexp"
 
@@ -16,12 +17,12 @@ var (
 		`^https://codeberg\.org/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
 	)
 
-	MockValidGitHub = func(client *http.Client) GitHost {
+	MockValidGitHub = func(client *http.Client, logger *slog.Logger) GitHost {
 		return GitHost{
 			hostType:         config.GitHubHostType,
 			Name:             mocks.GitHubName,
 			Enabled:          true,
-			logger:           mocks.TestLogger(),
+			logger:           logger,
 			client:           client,
 			getReposURL:      "https://api.github.com",
 			isReleasePattern: githubRelRegex,

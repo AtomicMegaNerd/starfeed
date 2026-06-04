@@ -2,6 +2,7 @@ package runners
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -65,6 +66,16 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 		starredRepoMap, err = p.gitHost.GetStarredRepos(ghCtx)
 		if err != nil {
 			return err
+		}
+
+		// Add Release feeds to each repo
+		for _, repo := range starredRepoMap {
+			if err = p.gitHost.CheckReleaseFeed(ctx, &repo); err != nil {
+				return fmt.Errorf(
+					"error %w adding release feeds to repo %s from githost %s",
+					err, repo.Name, p.gitHost.Name,
+				)
+			}
 		}
 		return nil
 	})

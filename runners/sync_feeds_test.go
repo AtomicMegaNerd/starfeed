@@ -4,17 +4,28 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/atomicmeganerd/starfeed/githost"
 	"github.com/atomicmeganerd/starfeed/mocks"
 	"github.com/atomicmeganerd/starfeed/rss"
+	"github.com/lmittmann/tint"
 	"golang.org/x/sync/errgroup"
 )
 
 func TestSyncFeeds(t *testing.T) {
+	logger := slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.RFC3339,
+		}),
+	)
+
 	testCases := []struct {
 		name        string
 		responses   []http.Response
@@ -73,8 +84,8 @@ func TestSyncFeeds(t *testing.T) {
 			mockClient := &http.Client{Transport: &mockTransport}
 
 			publisher := NewSyncFeedsRunner(
-				githost.MockValidGitHub(mockClient),
-				rss.MockValidRSSServer(mockClient),
+				githost.MockValidGitHub(mockClient, logger),
+				rss.MockValidRSSServer(mockClient, logger),
 				mocks.TestLogger(),
 			)
 			err := publisher.Run(ctx)
@@ -90,6 +101,13 @@ func TestSyncFeeds(t *testing.T) {
 }
 
 func TestPublishToFreshRSS(t *testing.T) {
+	logger := slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.RFC3339,
+		}),
+	)
+
 	testCases := []struct {
 		name                string
 		existingFeeds       map[string]struct{}
@@ -155,7 +173,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 			}
 
 			mockRunner := &SyncFeedsRunner{
-				gitHost:   githost.MockValidGitHub(&http.Client{}),
+				gitHost:   githost.MockValidGitHub(&http.Client{}, logger),
 				rssServer: mockFreshRSS,
 				logger:    mocks.TestLogger(),
 			}
@@ -178,17 +196,17 @@ func TestPublishToFreshRSS(t *testing.T) {
 			}
 
 			if tc.expectedFreshRSSAdd != mockFreshRSS.addFeedCalled {
-				t.Errorf("Expected AddFeed called: %t, got: %t",
+				t.Errorf("Expected call to AddFeed: %t, got: %t",
 					tc.expectedFreshRSSAdd, mockFreshRSS.addFeedCalled)
 			}
 
 			if tc.expectedFreshRSSAdd {
 				if mockFreshRSS.addFeedURL != tc.repo.FeedURL {
-					t.Errorf("Expected AddFeed called with URL %s, got %s",
+					t.Errorf("Expected call toAddFeed with URL %s, got %s",
 						tc.repo.FeedURL, mockFreshRSS.addFeedURL)
 				}
 				if mockFreshRSS.addFeedName != tc.repo.Name {
-					t.Errorf("Expected AddFeed called with name %s, got %s",
+					t.Errorf("Expected call to AddFeed with name %s, got %s",
 						tc.repo.Name, mockFreshRSS.addFeedName)
 				}
 			}

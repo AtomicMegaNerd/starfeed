@@ -4,12 +4,16 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/mocks"
+	"github.com/lmittmann/tint"
 )
 
 const (
@@ -96,6 +100,13 @@ func TestAuthenticate(t *testing.T) {
 }
 
 func TestAddFeed(t *testing.T) {
+	logger := slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.RFC3339,
+		}),
+	)
+
 	testCases := []struct {
 		name             string
 		responses        []http.Response
@@ -189,7 +200,7 @@ func TestAddFeed(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := mocks.NewMockURLSelectedRoundTripper(tc.responses, tc.urlRegexPatterns)
 			mockClient := &http.Client{Transport: &mockTransport}
-			rss := MockValidRSSServer(mockClient)
+			rss := MockValidRSSServer(mockClient, logger)
 			err := rss.AddFeed(ctx, "http://localhost/feeds/123", "name", "category")
 			if tc.expectError {
 				if err == nil {
@@ -205,6 +216,13 @@ func TestAddFeed(t *testing.T) {
 }
 
 func TestGetExistingFeeds(t *testing.T) {
+	logger := slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.RFC3339,
+		}),
+	)
+
 	testCases := []struct {
 		name            string
 		responses       []http.Response
@@ -267,7 +285,7 @@ func TestGetExistingFeeds(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockTransport := mocks.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
-			rss := MockValidRSSServer(mockClient)
+			rss := MockValidRSSServer(mockClient, logger)
 			ctx := context.Background()
 			feeds, err := rss.GetExistingFeeds(ctx)
 			if tc.expectError {
@@ -294,6 +312,13 @@ func TestGetExistingFeeds(t *testing.T) {
 }
 
 func TestRemoveFeed(t *testing.T) {
+	logger := slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.RFC3339,
+		}),
+	)
+
 	testCases := []struct {
 		name        string
 		feedURL     string
@@ -324,12 +349,13 @@ func TestRemoveFeed(t *testing.T) {
 			expectError: true,
 		},
 	}
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := mocks.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
-			rss := MockValidRSSServer(mockClient)
+			rss := MockValidRSSServer(mockClient, logger)
 			err := rss.RemoveFeed(ctx, tc.feedURL)
 			if tc.expectError {
 				if err == nil {
