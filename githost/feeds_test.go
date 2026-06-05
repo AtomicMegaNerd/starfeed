@@ -52,7 +52,7 @@ func TestCheckReleaseFeed(t *testing.T) {
 		{
 			name:    "Feed has no entries",
 			repoURL: "https://github.com/user/repo2",
-			feedURL: "",
+			feedURL: "https://github.com/user/repo2/releases.atom",
 			responses: []http.Response{
 				{
 					StatusCode: http.StatusOK,
@@ -90,7 +90,7 @@ func TestCheckReleaseFeed(t *testing.T) {
 		{
 			name:    "Error parsing XML",
 			repoURL: "https://github.com/user/repo5",
-			feedURL: "https://github.com/user/repo6/releases.atom",
+			feedURL: "https://github.com/user/repo5/releases.atom",
 			responses: []http.Response{
 				{
 					Body: io.NopCloser(strings.NewReader(`
@@ -116,14 +116,20 @@ func TestCheckReleaseFeed(t *testing.T) {
 			repo := StarredRepo{RepoURL: tc.repoURL}
 			err := gh.CheckReleaseFeed(ctx, &repo)
 
+			if err != nil && !tc.expectError {
+				t.Fatalf("Expected no error, got %v", err)
+			}
+
 			if err == nil {
 				if tc.expectError {
 					t.Fatalf("Expected an error, got none")
 				}
-			}
 
-			if err != nil && !tc.expectError {
-				t.Fatalf("Expected no error, got %v", err)
+				if tc.expectHasEntries {
+					if repo.FeedURL != tc.feedURL {
+						t.Fatalf("Expected feed %s but got %s", tc.feedURL, repo.FeedURL)
+					}
+				}
 			}
 		})
 	}

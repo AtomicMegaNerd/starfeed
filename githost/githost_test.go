@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -18,22 +19,18 @@ const (
 	// Repo 1
 	repoName1    = "repo1"
 	repoHtmlURL1 = "https://github.com/user/repo1"
-	repoFeedURL1 = "https://github.com/user/repo1/releases.atom"
 
 	// Repo 2
 	repoName2    = "repo2"
 	repoHtmlURL2 = "https://github.com/user/repo2"
-	repoFeedURL2 = "https://github.com/user/repo2/releases.atom"
 
 	// Repo 3
 	repoName3    = "repo3"
 	repoHtmlURL3 = "https://github.com/user/repo3"
-	repoFeedURL3 = "https://github.com/user/repo3/releases.atom"
 
 	// Repo 4
 	repoName4    = "repo4"
 	repoHtmlURL4 = "https://github.com/user/repo4"
-	repoFeedURL4 = "https://github.com/user/repo4/releases.atom"
 )
 
 func TestGetStarredRepos(t *testing.T) {
@@ -67,14 +64,8 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []StarredRepo{
-				{
-					Name:    repoName1,
-					RepoURL: repoHtmlURL1,
-					FeedURL: repoFeedURL1,
-				},
-			},
-			expectError: false,
+			expectedRepos: []StarredRepo{{Name: repoName1, RepoURL: repoHtmlURL1}},
+			expectError:   false,
 		},
 		{
 			name: "A few repos over multiple pages",
@@ -116,10 +107,10 @@ func TestGetStarredRepos(t *testing.T) {
 				},
 			},
 			expectedRepos: []StarredRepo{
-				{Name: repoName1, RepoURL: repoHtmlURL1, FeedURL: repoFeedURL1},
-				{Name: repoName2, RepoURL: repoHtmlURL2, FeedURL: repoFeedURL2},
-				{Name: repoName3, RepoURL: repoHtmlURL3, FeedURL: repoFeedURL3},
-				{Name: repoName4, RepoURL: repoHtmlURL4, FeedURL: repoFeedURL4},
+				{Name: repoName1, RepoURL: repoHtmlURL1},
+				{Name: repoName2, RepoURL: repoHtmlURL2},
+				{Name: repoName3, RepoURL: repoHtmlURL3},
+				{Name: repoName4, RepoURL: repoHtmlURL4},
 			},
 			expectError: false,
 		},
@@ -186,13 +177,10 @@ func TestGetStarredRepos(t *testing.T) {
 			}
 
 			for _, expected := range tc.expectedRepos {
-				repo, ok := repos[expected.FeedURL]
+				ok := slices.Contains(repos, expected)
 				if !ok {
-					t.Errorf("Expected feed %s not found", expected.FeedURL)
+					t.Errorf("Expected repo %s not found", expected.Name)
 					continue
-				}
-				if repo.Name != expected.Name {
-					t.Errorf("Expected name %s, got %s", expected.Name, repo.Name)
 				}
 			}
 		})

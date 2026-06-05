@@ -63,19 +63,21 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 	ghErrGroup.SetLimit(5)
 	var starredRepoMap map[string]githost.StarredRepo
 	ghErrGroup.Go(func() error {
-		var err error
-		starredRepoMap, err = p.gitHost.GetStarredRepos(ghCtx)
+		starredRepos, err := p.gitHost.GetStarredRepos(ghCtx)
 		if err != nil {
 			return err
 		}
 
 		// Add Release feeds to each repo
-		for _, repo := range starredRepoMap {
+		for _, repo := range starredRepos {
 			if err = p.gitHost.CheckReleaseFeed(ctx, &repo); err != nil {
 				return fmt.Errorf(
 					"error %w adding release feeds to repo %s from githost %s",
 					err, repo.Name, p.gitHost.Name,
 				)
+			}
+			if repo.FeedURL != "" {
+				starredRepoMap[repo.FeedURL] = repo
 			}
 		}
 		return nil

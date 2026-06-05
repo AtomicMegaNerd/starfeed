@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/atomicmeganerd/starfeed/common"
@@ -19,11 +20,10 @@ var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
 // This object represents a supported git host where we have 'starred' repos.
 type GitHost struct {
-	Name               string
-	Enabled            bool
-	HostType           string
-	ReleaseFeedPattern *regexp.Regexp
-
+	Name                 string
+	Enabled              bool
+	HostType             string
+	ReleaseFeedPattern   *regexp.Regexp
 	starredReposFetchURL string
 	headers              http.Header
 	logger               *slog.Logger
@@ -68,11 +68,11 @@ func NewGitHost(
 // It returns a map of releaseFeedURL -> Repo
 func (g GitHost) GetStarredRepos(
 	ctx context.Context,
-) (map[string]StarredRepo, error) {
+) ([]StarredRepo, error) {
 	g.logger.Debug("Querying git host for starred repos", "url", g.starredReposFetchURL)
 
 	// A map makes everything easy to search based on feed
-	repoFeedMap := make(map[string]StarredRepo)
+	starredRepos := make([]StarredRepo, 0)
 	nextPageURL := g.starredReposFetchURL
 	for {
 		// Get the raw data
@@ -96,45 +96,50 @@ func (g GitHost) GetStarredRepos(
 			return nil, err
 		}
 
+		starredRepos = slices.Concat(starredRepos, repos)
 		g.logger.Debug("Parsed repos", "# repos", len(repos))
-
-		for _, repo := range repos {
-			repo.FeedURL = fmt.Sprintf("%s/releases.atom", repo.RepoURL)
-			repoFeedMap[repo.FeedURL] = repo
-		}
 
 		nextPageURL = g.parseNextPageURL(respHeaders)
 		if nextPageURL == "" {
 			g.logger.Info(
 				"Successfully loaded starred repos with release feeds from Git host",
-				"numberStarredRepos", len(repoFeedMap),
+				"numberStarredRepos", len(starredRepos),
 			)
-			return repoFeedMap, nil
+			return starredRepos, nil
 		}
 
 		g.logger.Debug("Found next page", "url", nextPageURL)
 	}
 }
 
+// This method checks the atom feed for a release repo. If it finds at least one entry
+// it them sets the FeedURL on the repo.
 func (g GitHost) CheckReleaseFeed(
 	ctx context.Context,
 	repo *StarredRepo,
 ) error {
-	data, _, err := common.DoAPIRequest(ctx, http.MethodGet, repo.FeedURL, nil, g.headers, g.client)
+	if repo.RepoURL == "" {
+		return fmt.Errorf("repoURL empty for repo %s", repo.Name)
+	}
+
+	feedURL := fmt.Sprintf("%s/releases.atom", repo.RepoURL)
+
+	data, _, err := common.DoAPIRequest(ctx, http.MethodGet, feedURL, nil, g.headers, g.client)
 	if err != nil {
 		return err
 	}
 
-	var feed AtomFeed
-	if err = xml.Unmarshal(data, &feed); err != nil {
+	feed := &AtomFeed{}
+	if err = xml.Unmarshal(data, feed); err != nil {
 		return err
 	}
 
-	if len(feed.Entries) < 1 {
-		return nil
+	if len(feed.Entries) >= 1 {
+		// Set the release feed
+		repo.FeedURL = feedURL
+		g.logger.Info("repo has releases", "repo", repo.Name, "feed", repo.FeedURL)
 	}
 
-	// Set the release feed
 	return nil
 }
 
