@@ -56,7 +56,7 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 	// don't get rate limited by the Git host.
 	ghErrGroup, ghCtx := errgroup.WithContext(ctx)
 	ghErrGroup.SetLimit(5)
-	var starredRepoMap map[string]githost.StarredRepo
+	starredRepoMap := make(map[string]githost.StarredRepo)
 	ghErrGroup.Go(func() error {
 		starredRepos, err := p.gitHost.GetStarredRepos(ghCtx)
 		if err != nil {

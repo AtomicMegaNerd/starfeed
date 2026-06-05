@@ -17,6 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// This is injected by the CI/CD to tag the binary
 var (
 	version = "local"
 	commit  = ""
