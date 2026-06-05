@@ -51,8 +51,22 @@ func DoAPIRequest(
 		return data, res.Header, nil
 	}
 
-	return data, res.Header, fmt.Errorf(
-		"error with api request. URL: %s, response: %d %s",
-		reqURL, res.StatusCode, string(data),
+	return data, res.Header, HTTPError{
+		URL:        reqURL,
+		Body:       string(data),
+		StatusCode: res.StatusCode,
+	}
+}
+
+type HTTPError struct {
+	URL        string
+	Body       string
+	StatusCode int
+}
+
+func (h HTTPError) Error() string {
+	return fmt.Sprintf(
+		"http error, url: %s, body: %s, status code: %d",
+		h.URL, h.Body, h.StatusCode,
 	)
 }

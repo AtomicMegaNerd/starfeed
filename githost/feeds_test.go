@@ -104,6 +104,19 @@ func TestCheckReleaseFeed(t *testing.T) {
 			},
 			expectError: true,
 		},
+		{
+			name:    "Not found does not result in error",
+			repoURL: "https://github.com/user/repo5",
+			feedURL: "",
+			responses: []http.Response{
+				{
+					Status:     "Not found",
+					StatusCode: http.StatusNotFound,
+				},
+			},
+			expectHasEntries: false,
+			expectError:      false,
+		},
 	}
 
 	for _, tc := range testCases {
