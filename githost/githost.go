@@ -19,15 +19,15 @@ var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
 // This object represents a supported git host where we have 'starred' repos.
 type GitHost struct {
-	Name    string
-	Enabled bool
+	Name               string
+	Enabled            bool
+	HostType           string
+	ReleaseFeedPattern *regexp.Regexp
 
-	hostType         string
-	getReposURL      string
-	headers          http.Header
-	isReleasePattern *regexp.Regexp
-	logger           *slog.Logger
-	client           *http.Client
+	starredReposFetchURL string
+	headers              http.Header
+	logger               *slog.Logger
+	client               *http.Client
 }
 
 func NewGitHost(
@@ -41,18 +41,18 @@ func NewGitHost(
 	}
 
 	return GitHost{
-		Name:        hostCfg.Name,
-		Enabled:     hostCfg.Enabled,
-		hostType:    hostCfg.Type,
-		getReposURL: fmt.Sprintf("%s/user/starred?limit=50", hostCfg.ApiURL),
-		headers:     headers,
+		Name:     hostCfg.Name,
+		Enabled:  hostCfg.Enabled,
+		HostType: hostCfg.Type,
 		// This pattern does have to match for each instance
-		isReleasePattern: regexp.MustCompile(
+		ReleaseFeedPattern: regexp.MustCompile(
 			fmt.Sprintf(
 				`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
 				regexp.QuoteMeta(hostCfg.BaseURL),
 			),
 		),
+		starredReposFetchURL: fmt.Sprintf("%s/user/starred?limit=50", hostCfg.ApiURL),
+		headers:              headers,
 		logger: logger.With(
 			slog.Group("githost",
 				"name", hostCfg.Name,
@@ -69,11 +69,11 @@ func NewGitHost(
 func (g GitHost) GetStarredRepos(
 	ctx context.Context,
 ) (map[string]StarredRepo, error) {
-	g.logger.Debug("Querying git host for starred repos", "url", g.getReposURL)
+	g.logger.Debug("Querying git host for starred repos", "url", g.starredReposFetchURL)
 
 	// A map makes everything easy to search based on feed
 	repoFeedMap := make(map[string]StarredRepo)
-	nextPageURL := g.getReposURL
+	nextPageURL := g.starredReposFetchURL
 	for {
 		// Get the raw data
 		data, respHeaders, err := common.DoAPIRequest(
@@ -136,27 +136,6 @@ func (g GitHost) CheckReleaseFeed(
 
 	// Set the release feed
 	return nil
-}
-
-// We never want to unsubscribe from feeds that are not release feeds for the current Git host.
-func (g GitHost) filterOutNonRepoReleaseFeeds(
-	rssFeedSet map[string]StarredRepo,
-) map[string]StarredRepo {
-	filteredSet := make(map[string]StarredRepo)
-	for feedURL, repo := range rssFeedSet {
-		// This will only include a feed for potential removal if it is a release feed
-		// for the current GitHost that we are working with. This is important otherwise
-		// we could remove feeds from other Git hosts which we do not want...
-		if g.isReleasePattern.MatchString(feedURL) {
-			filteredSet[feedURL] = repo
-		} else {
-			g.logger.Debug(
-				"Ignoring feeds that aren't release feeds so we don't unsubscribe",
-				"feed", feedURL,
-			)
-		}
-	}
-	return filteredSet
 }
 
 func (g GitHost) parseNextPageURL(respHeaders http.Header) string {

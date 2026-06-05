@@ -10,34 +10,34 @@ import (
 )
 
 var (
-	githubRelRegex = regexp.MustCompile(
+	GithubRelRegex = regexp.MustCompile(
 		`^https://github\.com/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
 	)
-	forgejoRelRegex = regexp.MustCompile(
+	CodebergRelRegex = regexp.MustCompile(
 		`^https://codeberg\.org/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
 	)
 
 	MockValidGitHub = func(client *http.Client, logger *slog.Logger) GitHost {
 		return GitHost{
-			hostType:         config.GitHubHostType,
-			Name:             mocks.GitHubName,
-			Enabled:          true,
-			logger:           logger,
-			client:           client,
-			getReposURL:      "https://api.github.com",
-			isReleasePattern: githubRelRegex,
+			Name:                 mocks.GitHubName,
+			Enabled:              true,
+			HostType:             config.GitHubHostType,
+			ReleaseFeedPattern:   GithubRelRegex,
+			logger:               logger,
+			client:               client,
+			starredReposFetchURL: "https://api.github.com",
 		}
 	}
 
-	MockValidForgejo = func(client *http.Client) GitHost {
+	MockValidCodeberg = func(client *http.Client, logger *slog.Logger) GitHost {
 		return GitHost{
-			hostType:         config.ForgejoHostType,
-			Name:             mocks.ForgejoName,
-			Enabled:          true,
-			logger:           mocks.TestLogger(),
-			client:           client,
-			getReposURL:      "https://api.forgejo.org",
-			isReleasePattern: forgejoRelRegex,
+			Name:                 mocks.ForgejoName,
+			Enabled:              true,
+			HostType:             config.ForgejoHostType,
+			ReleaseFeedPattern:   CodebergRelRegex,
+			logger:               logger,
+			client:               client,
+			starredReposFetchURL: "https://api.forgejo.org",
 		}
 	}
 )

@@ -119,7 +119,9 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 		}
 		for feed := range existingFeeds {
 			rssErrGroup.Go(func() error {
-				return p.removeStaleFeeds(rssCtx, starredRepoMap, feed)
+				return p.removeStaleFeed(
+					rssCtx, starredRepoMap, feed,
+				)
 			})
 		}
 
@@ -150,6 +152,7 @@ func (p SyncFeedsRunner) publishToFreshRSS(
 	repo githost.StarredRepo,
 ) error {
 	repoFeed := repo.FeedURL
+	p.logger.Debug("Checking feed", "repoFeed", repoFeed)
 
 	// If we find that a matching repo in FreshRSS we don't want to add it again...
 	if _, exists := rssFeedSet[repoFeed]; exists {
@@ -160,11 +163,16 @@ func (p SyncFeedsRunner) publishToFreshRSS(
 	return p.rssServer.AddFeed(ctx, repoFeed, repo.Name, p.gitHost.Name)
 }
 
-func (p SyncFeedsRunner) removeStaleFeeds(
+func (p SyncFeedsRunner) removeStaleFeed(
 	ctx context.Context,
 	starredRepoMap map[string]githost.StarredRepo, // The key is the release ATOM feed
 	rssFeed string,
 ) error {
+	if !p.gitHost.ReleaseFeedPattern.MatchString(rssFeed) {
+		p.logger.Debug("Not removing RSS Feed as it is not a release feed for the current githost")
+		return nil
+	}
+
 	// If a feed does not exist in the Git host, remove it from the RSS server.
 	if _, exists := starredRepoMap[rssFeed]; !exists {
 		p.logger.Info(

@@ -125,17 +125,21 @@ func TestPublishToFreshRSS(t *testing.T) {
 			repo: githost.StarredRepo{
 				Name:    "repo",
 				RepoURL: "https://github.com/user/repo",
+				FeedURL: "https://github.com/user/repo/releases.atom",
 			},
 			atomHasEntries:      true,
 			expectedFreshRSSAdd: false,
 			expectedLogSkip:     true,
 		},
 		{
-			name:          "Feed has no entries - should skip",
-			existingFeeds: map[string]struct{}{},
+			name: "Feed has no entries - should skip",
+			existingFeeds: map[string]struct{}{
+				"https://github.com/user/repo/releases.atom": {},
+			},
 			repo: githost.StarredRepo{
 				Name:    "repo",
 				RepoURL: "https://github.com/user/repo",
+				FeedURL: "https://github.com/user/repo/releases.atom",
 			},
 			atomHasEntries:      false,
 			expectedFreshRSSAdd: false,
@@ -147,6 +151,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 			repo: githost.StarredRepo{
 				Name:    "repo",
 				RepoURL: "https://github.com/user/repo",
+				FeedURL: "https://github.com/user/repo/releases.atom",
 			},
 			atomHasEntries:      true,
 			expectedFreshRSSAdd: true,
@@ -158,6 +163,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 			repo: githost.StarredRepo{
 				Name:    "repo",
 				RepoURL: "https://github.com/user/repo",
+				FeedURL: "https://github.com/user/repo/releases.atom",
 			},
 			atomHasEntries:      true,
 			freshRSSAddError:    fmt.Errorf("failed to add feed"),
@@ -175,7 +181,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 			mockRunner := &SyncFeedsRunner{
 				gitHost:   githost.MockValidGitHub(&http.Client{}, logger),
 				rssServer: mockFreshRSS,
-				logger:    mocks.TestLogger(),
+				logger:    logger,
 			}
 
 			g := &errgroup.Group{}
@@ -214,10 +220,18 @@ func TestPublishToFreshRSS(t *testing.T) {
 	}
 }
 
-func TestRemoveStaleFeeds(t *testing.T) {
+func TestRemoveStaleFeed(t *testing.T) {
+	logger := slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.RFC3339,
+		}),
+	)
+
 	testCases := []struct {
 		name                   string
 		starredRepoMap         map[string]githost.StarredRepo
+		mockGitHost            githost.GitHost
 		rssFeed                string
 		freshRSSRemoveError    error
 		expectedFreshRSSRemove bool
@@ -228,20 +242,45 @@ func TestRemoveStaleFeeds(t *testing.T) {
 				"https://github.com/user/repo/releases.atom": {
 					Name:    "repo",
 					RepoURL: "https://github.com/user/repo",
+					FeedURL: "https://github.com/user/repo/releases.atom",
 				},
 			},
+			mockGitHost:            githost.MockValidGitHub(&http.Client{}, logger),
 			rssFeed:                "https://github.com/user/repo/releases.atom",
+			expectedFreshRSSRemove: false,
+		},
+		{
+			name:                   "Github unstarred - should not remove codeberg repo",
+			starredRepoMap:         map[string]githost.StarredRepo{},
+			mockGitHost:            githost.MockValidGitHub(&http.Client{}, logger),
+			rssFeed:                "https://codeberg.org/user/repo/releases.atom",
+			expectedFreshRSSRemove: false,
+		},
+		{
+			name:                   "Codeberg unstarred - should not remove Github repo",
+			starredRepoMap:         map[string]githost.StarredRepo{},
+			mockGitHost:            githost.MockValidCodeberg(&http.Client{}, logger),
+			rssFeed:                "https://github.com/user/repo/releases.atom",
+			expectedFreshRSSRemove: false,
+		},
+		{
+			name:                   "Not a release feed - should no remove",
+			starredRepoMap:         map[string]githost.StarredRepo{},
+			mockGitHost:            githost.MockValidGitHub(&http.Client{}, logger),
+			rssFeed:                "https://roflstar.com/feed/feed.xml",
 			expectedFreshRSSRemove: false,
 		},
 		{
 			name:                   "Feed no longer starred - should remove",
 			starredRepoMap:         map[string]githost.StarredRepo{},
+			mockGitHost:            githost.MockValidGitHub(&http.Client{}, logger),
 			rssFeed:                "https://github.com/user/old-repo/releases.atom",
 			expectedFreshRSSRemove: true,
 		},
 		{
 			name:                   "Remove feed fails - should handle error gracefully",
 			starredRepoMap:         map[string]githost.StarredRepo{},
+			mockGitHost:            githost.MockValidGitHub(&http.Client{}, logger),
 			rssFeed:                "https://github.com/user/old-repo/releases.atom",
 			freshRSSRemoveError:    fmt.Errorf("failed to remove feed"),
 			expectedFreshRSSRemove: true,
@@ -255,6 +294,7 @@ func TestRemoveStaleFeeds(t *testing.T) {
 			}
 
 			mockRunner := &SyncFeedsRunner{
+				gitHost:   tc.mockGitHost,
 				rssServer: mockFreshRSS,
 				logger:    mocks.TestLogger(),
 			}
@@ -263,7 +303,9 @@ func TestRemoveStaleFeeds(t *testing.T) {
 			ctx := context.Background()
 
 			g.Go(func() error {
-				return mockRunner.removeStaleFeeds(ctx, tc.starredRepoMap, tc.rssFeed)
+				return mockRunner.removeStaleFeed(
+					ctx, tc.starredRepoMap, tc.rssFeed,
+				)
 			})
 
 			if err := g.Wait(); err != nil {
