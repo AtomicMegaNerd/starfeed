@@ -11,6 +11,7 @@ import (
 )
 
 // RSSServer is an interface that manages the interaction with a FreshRSS instance.
+// This allows us to create a mock for testing.
 type rssServer interface {
 	AddFeed(context.Context, string, string, string) error
 	GetExistingFeeds(context.Context) (map[string]struct{}, error)
