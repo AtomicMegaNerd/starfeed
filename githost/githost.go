@@ -24,7 +24,7 @@ type GitHost struct {
 	Name                 string
 	Enabled              bool
 	HostType             string
-	ReleaseFeedPattern   *regexp.Regexp
+	releaseFeedPattern   *regexp.Regexp
 	starredReposFetchURL string
 	headers              http.Header
 	logger               *slog.Logger
@@ -37,12 +37,13 @@ func NewGitHost(
 	client *http.Client,
 ) GitHost {
 	headers := buildCommonHeaders(hostCfg.Token)
+
+	// The URL to fetch starred repos does differ slightly
 	starredReposFetchURL := ""
 	if hostCfg.Type == config.GitHubHostType {
 		headers.Set("X-GitHub-Api-Version", "2022-11-28")
 		starredReposFetchURL = fmt.Sprintf("%s/user/starred?per_page=100", hostCfg.ApiURL)
 	}
-
 	if hostCfg.Type == config.ForgejoHostType {
 		starredReposFetchURL = fmt.Sprintf("%s/user/starred?limit=100", hostCfg.ApiURL)
 	}
@@ -51,8 +52,8 @@ func NewGitHost(
 		Name:     hostCfg.Name,
 		Enabled:  hostCfg.Enabled,
 		HostType: hostCfg.Type,
-		// This pattern does have to match for each instance
-		ReleaseFeedPattern: regexp.MustCompile(
+		// This pattern has to match for each instance
+		releaseFeedPattern: regexp.MustCompile(
 			fmt.Sprintf(
 				`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
 				regexp.QuoteMeta(hostCfg.BaseURL),
@@ -121,7 +122,7 @@ func (g GitHost) GetStarredRepos(
 
 // This method checks the atom feed for a release repo. If it finds at least one entry
 // it them sets the FeedURL on the repo.
-func (g GitHost) CheckReleaseFeed(
+func (g GitHost) CheckReleaseFeedExistsAndHasEntries(
 	ctx context.Context,
 	repo *StarredRepo,
 ) error {
@@ -155,6 +156,10 @@ func (g GitHost) CheckReleaseFeed(
 	}
 
 	return nil
+}
+
+func (g GitHost) IsReleaseeFeedForThisHost(rssFeed string) bool {
+	return g.releaseFeedPattern.MatchString(rssFeed)
 }
 
 func (g GitHost) parseNextPageURL(respHeaders http.Header) string {

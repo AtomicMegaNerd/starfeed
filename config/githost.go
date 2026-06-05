@@ -9,6 +9,11 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+const (
+	GitHubHostType  = "github"
+	ForgejoHostType = "forgejo"
+)
+
 // This type both holds and validates the config for a GitHost
 type GitHostConfig struct {
 	Type    string `validate:"required,oneof=github forgejo"`

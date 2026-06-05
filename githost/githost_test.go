@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/mocks"
+	"github.com/atomicmeganerd/starfeed/testutils"
 	"github.com/lmittmann/tint"
 )
 
@@ -60,7 +60,7 @@ func TestGetStarredRepos(t *testing.T) {
 						]`,
 						),
 					),
-					Status:     mocks.StatusOKString,
+					Status:     testutils.StatusOKString,
 					StatusCode: http.StatusOK,
 				},
 			},
@@ -82,7 +82,7 @@ func TestGetStarredRepos(t *testing.T) {
 						}
 						]`),
 					),
-					Status:     mocks.StatusOKString,
+					Status:     testutils.StatusOKString,
 					StatusCode: http.StatusOK,
 					Header: http.Header{
 						"Link": []string{
@@ -102,7 +102,7 @@ func TestGetStarredRepos(t *testing.T) {
 						}
 						]`),
 					),
-					Status:     mocks.StatusOKString,
+					Status:     testutils.StatusOKString,
 					StatusCode: http.StatusOK,
 				},
 			},
@@ -119,7 +119,7 @@ func TestGetStarredRepos(t *testing.T) {
 			responses: []http.Response{
 				{
 					Body:       io.NopCloser(strings.NewReader(``)),
-					Status:     mocks.StatusNotFoundString,
+					Status:     testutils.StatusNotFoundString,
 					StatusCode: http.StatusNotFound,
 				},
 			},
@@ -130,8 +130,8 @@ func TestGetStarredRepos(t *testing.T) {
 			name: "Reading response body should trigger an error",
 			responses: []http.Response{
 				{
-					Body:       mocks.NewErrorReadCloser(),
-					Status:     mocks.StatusOKString,
+					Body:       testutils.NewErrorReadCloser(),
+					Status:     testutils.StatusOKString,
 					StatusCode: http.StatusOK,
 				},
 			},
@@ -142,8 +142,8 @@ func TestGetStarredRepos(t *testing.T) {
 			name: "Invalid json should trigger an error",
 			responses: []http.Response{
 				{
-					Body:       io.NopCloser(strings.NewReader(mocks.Invalid)),
-					Status:     mocks.StatusOKString,
+					Body:       io.NopCloser(strings.NewReader(testutils.Invalid)),
+					Status:     testutils.StatusOKString,
 					StatusCode: http.StatusOK,
 				},
 			},
@@ -155,7 +155,7 @@ func TestGetStarredRepos(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			mockTransport := mocks.NewMockRoundTripper(tc.responses)
+			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 			gh := MockValidGitHub(mockClient, logger)
 
@@ -181,6 +181,140 @@ func TestGetStarredRepos(t *testing.T) {
 				if !ok {
 					t.Errorf("Expected repo %s not found", expected.Name)
 					continue
+				}
+			}
+		})
+	}
+}
+
+func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
+	logger := slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.RFC3339,
+		}),
+	)
+
+	testCases := []struct {
+		name             string
+		repoURL          string
+		feedURL          string
+		responses        []http.Response
+		expectHasEntries bool
+		expectError      bool
+	}{
+		{
+			name:    "Feed has entries",
+			repoURL: "https://github.com/user/repo1",
+			feedURL: "https://github.com/user/repo1/releases.atom",
+			responses: []http.Response{
+				{
+					StatusCode: http.StatusOK,
+					Body: io.NopCloser(strings.NewReader(`
+						<feed xmlns="http://www.w3.org/2005/Atom">
+							<entry>
+								<title>Entry 1</title>
+								<id>1</id>
+							</entry>
+						</feed>
+					`)),
+				},
+			},
+			expectError: false,
+		},
+		{
+			name:    "Feed has no entries",
+			repoURL: "https://github.com/user/repo2",
+			feedURL: "https://github.com/user/repo2/releases.atom",
+			responses: []http.Response{
+				{
+					StatusCode: http.StatusOK,
+					Body: io.NopCloser(strings.NewReader(`
+						<feed xmlns="http://www.w3.org/2005/Atom">
+						</feed>
+					`)),
+				},
+			},
+			expectError: false,
+		},
+		{
+			name:    "Error making request",
+			repoURL: "https://github.com/user/repo3",
+			feedURL: "https://github.com/user/repo3/releases.atom",
+			responses: []http.Response{
+				{
+					StatusCode: http.StatusInternalServerError,
+					Body:       io.NopCloser(strings.NewReader("")),
+				},
+			},
+			expectError: true,
+		},
+		{
+			name:    "Error reading response",
+			repoURL: "https://github.com/user/repo4",
+			feedURL: "https://github.com/user/repo4/releases.atom",
+			responses: []http.Response{
+				{
+					Body: testutils.NewErrorReadCloser(),
+				},
+			},
+			expectError: true,
+		},
+		{
+			name:    "Error parsing XML",
+			repoURL: "https://github.com/user/repo5",
+			feedURL: "https://github.com/user/repo5/releases.atom",
+			responses: []http.Response{
+				{
+					Body: io.NopCloser(strings.NewReader(`
+						<feed xmlns="http://www.w3.org/2005/Atom">
+							<entry>
+								<title>Entry 1</title>
+								<id>1</id>
+						</feed>
+					`)),
+				},
+			},
+			expectError: true,
+		},
+		{
+			name:    "Not found does not result in error",
+			repoURL: "https://github.com/user/repo5",
+			feedURL: "",
+			responses: []http.Response{
+				{
+					Status:     "Not found",
+					StatusCode: http.StatusNotFound,
+				},
+			},
+			expectHasEntries: false,
+			expectError:      false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			mockTransport := testutils.NewMockRoundTripper(tc.responses)
+			mockClient := &http.Client{Transport: &mockTransport}
+			gh := MockValidGitHub(mockClient, logger)
+
+			repo := StarredRepo{RepoURL: tc.repoURL}
+			err := gh.CheckReleaseFeedExistsAndHasEntries(ctx, &repo)
+
+			if err != nil && !tc.expectError {
+				t.Fatalf("Expected no error, got %v", err)
+			}
+
+			if err == nil {
+				if tc.expectError {
+					t.Fatalf("Expected an error, got none")
+				}
+
+				if tc.expectHasEntries {
+					if repo.FeedURL != tc.feedURL {
+						t.Fatalf("Expected feed %s but got %s", tc.feedURL, repo.FeedURL)
+					}
 				}
 			}
 		})

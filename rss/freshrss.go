@@ -15,13 +15,13 @@ import (
 
 // The FreshRSS is a private struct that implements FreshRSSFeedManager.
 type FreshRSS struct {
-	rssType   string
-	baseURL   string
-	user      string
-	isEnabled bool
-	logger    *slog.Logger
-	headers   http.Header
-	client    *http.Client
+	RSSType string
+	Enabled bool
+	baseURL string
+	user    string
+	logger  *slog.Logger
+	headers http.Header
+	client  *http.Client
 }
 
 // NewFreshRSS creates a new FreshRSSFeedManager instance.
@@ -48,13 +48,13 @@ func NewFreshRSS(
 	}
 
 	return FreshRSS{
-		rssType:   rssConfig.Type,
-		baseURL:   rssConfig.BaseURL,
-		user:      rssConfig.User,
-		isEnabled: rssConfig.Enabled,
-		logger:    logger,
-		headers:   headers,
-		client:    client,
+		RSSType: rssConfig.Type,
+		Enabled: rssConfig.Enabled,
+		baseURL: rssConfig.BaseURL,
+		user:    rssConfig.User,
+		logger:  logger,
+		headers: headers,
+		client:  client,
 	}, nil
 }
 
@@ -67,10 +67,6 @@ func (f FreshRSS) AddFeed(
 	ctx context.Context,
 	feedURL, name, category string,
 ) error {
-	if !f.isEnabled {
-		return nil
-	}
-
 	addURL := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/quickadd", f.baseURL,
 	)
@@ -103,10 +99,6 @@ func (f FreshRSS) AddFeed(
 
 // GetExistingFeeds gets the existing feeds from the FreshRSS instance.
 func (f FreshRSS) GetExistingFeeds(ctx context.Context) (map[string]struct{}, error) {
-	if !f.isEnabled {
-		return nil, nil
-	}
-
 	getURL := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.baseURL,
 	)
@@ -136,10 +128,6 @@ func (f FreshRSS) GetExistingFeeds(ctx context.Context) (map[string]struct{}, er
 // - context
 // - feedURL: The URL of the feed to remove.
 func (f FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
-	if !f.isEnabled {
-		return nil
-	}
-
 	rmURL := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit", f.baseURL,
 	)
@@ -164,10 +152,6 @@ func (f FreshRSS) addFeedToCategory(
 	ctx context.Context,
 	streamId, name, category string,
 ) error {
-	if !f.isEnabled {
-		return nil
-	}
-
 	addURL := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit", f.baseURL,
 	)
@@ -187,14 +171,6 @@ func (f FreshRSS) addFeedToCategory(
 	}
 
 	return nil
-}
-
-func (f FreshRSS) Enabled() bool {
-	return f.isEnabled
-}
-
-func (f FreshRSS) RSSServerType() string {
-	return f.rssType
 }
 
 // This function will authenticate to FreshRSS.

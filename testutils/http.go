@@ -1,4 +1,4 @@
-package mocks
+package testutils
 
 import (
 	"errors"
@@ -39,6 +39,10 @@ func (mrt *MockMultiResponseRoundTripper) RoundTrip(req *http.Request) (*http.Re
 	}
 	defer mrt.Increment()
 	return &mrt.responses[mrt.calls], nil
+}
+
+func (mtr *MockMultiResponseRoundTripper) GetNumCalls() int {
+	return mtr.calls
 }
 
 // This is a mock round tripper that can be used to mock http responses based on the URL

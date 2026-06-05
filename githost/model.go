@@ -12,6 +12,8 @@ type StarredRepo struct {
 	FeedURL string `json:"feed_url"`
 }
 
+// This object represents an ATOM feed. We check to make sure that release feeds exist and
+// do contain entries.
 type AtomFeed struct {
 	XMLName xml.Name `xml:"feed"`
 	Title   string   `xml:"title"`

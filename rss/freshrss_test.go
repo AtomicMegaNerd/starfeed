@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/config"
-	"github.com/atomicmeganerd/starfeed/mocks"
+	"github.com/atomicmeganerd/starfeed/testutils"
 	"github.com/lmittmann/tint"
 )
 
@@ -36,7 +36,7 @@ func TestAuthenticate(t *testing.T) {
 						strings.NewReader(fmt.Sprintf("Auth=%s\nSID=%s\n", mockAuthToken, mockSid)),
 					),
 					StatusCode: http.StatusOK,
-					Status:     mocks.StatusOKString,
+					Status:     testutils.StatusOKString,
 				},
 			},
 			expectedAuthToken: mockAuthToken,
@@ -48,7 +48,7 @@ func TestAuthenticate(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader("Invalid response")),
 					StatusCode: http.StatusOK,
-					Status:     mocks.StatusOKString,
+					Status:     testutils.StatusOKString,
 				},
 			},
 			expectedAuthToken: "",
@@ -60,7 +60,7 @@ func TestAuthenticate(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader("Error=BadAuthentication\n")),
 					StatusCode: http.StatusUnauthorized,
-					Status:     mocks.StatusUnauthorizedString,
+					Status:     testutils.StatusUnauthorizedString,
 				},
 			},
 			expectedAuthToken: "",
@@ -71,7 +71,7 @@ func TestAuthenticate(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.responses[0].Status, func(t *testing.T) {
 			ctx := context.Background()
-			mockTransport := mocks.NewMockRoundTripper(tc.responses)
+			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 
 			headers := http.Header{}
 			headers.Set("Content-type", "application/x-www-form-urlencoded")
@@ -79,7 +79,7 @@ func TestAuthenticate(t *testing.T) {
 				ctx,
 				config.MockValidFreshRSSConfig,
 				headers,
-				mocks.TestLogger(),
+				testutils.TestLogger(),
 				&http.Client{Transport: &mockTransport},
 			)
 			if tc.expectError {
@@ -126,10 +126,10 @@ func TestAddFeed(t *testing.T) {
 					}
 					`)),
 					StatusCode: http.StatusOK,
-					Status:     mocks.StatusOKString,
+					Status:     testutils.StatusOKString,
 				},
 				{
-					Status:     mocks.StatusOKString,
+					Status:     testutils.StatusOKString,
 					StatusCode: http.StatusOK,
 				},
 			},
@@ -145,7 +145,7 @@ func TestAddFeed(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
 					StatusCode: http.StatusUnauthorized,
-					Status:     mocks.StatusUnauthorizedString,
+					Status:     testutils.StatusUnauthorizedString,
 				},
 			},
 			urlRegexPatterns: []string{
@@ -165,7 +165,7 @@ func TestAddFeed(t *testing.T) {
 						"streamName": "name"
 					}`)),
 					StatusCode: http.StatusOK,
-					Status:     mocks.StatusOKString,
+					Status:     testutils.StatusOKString,
 				},
 				{
 					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
@@ -185,7 +185,7 @@ func TestAddFeed(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader(`Invalid response`)),
 					StatusCode: http.StatusOK,
-					Status:     mocks.StatusOKString,
+					Status:     testutils.StatusOKString,
 				},
 			},
 			urlRegexPatterns: []string{
@@ -198,9 +198,12 @@ func TestAddFeed(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			mockTransport := mocks.NewMockURLSelectedRoundTripper(tc.responses, tc.urlRegexPatterns)
+			mockTransport := testutils.NewMockURLSelectedRoundTripper(
+				tc.responses,
+				tc.urlRegexPatterns,
+			)
 			mockClient := &http.Client{Transport: &mockTransport}
-			rss := MockValidRSSServer(mockClient, logger)
+			rss := MockValidRSSServer(ctx, mockClient, logger)
 			err := rss.AddFeed(ctx, "http://localhost/feeds/123", "name", "category")
 			if tc.expectError {
 				if err == nil {
@@ -246,7 +249,7 @@ func TestGetExistingFeeds(t *testing.T) {
 						}`),
 					),
 					StatusCode: http.StatusOK,
-					Status:     mocks.StatusOKString,
+					Status:     testutils.StatusOKString,
 				},
 			},
 			expectedFeedMap: map[string]struct{}{
@@ -261,7 +264,7 @@ func TestGetExistingFeeds(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
 					StatusCode: http.StatusUnauthorized,
-					Status:     mocks.StatusUnauthorizedString,
+					Status:     testutils.StatusUnauthorizedString,
 				},
 			},
 			expectedFeedMap: map[string]struct{}{},
@@ -273,7 +276,7 @@ func TestGetExistingFeeds(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader(`Invalid response`)),
 					StatusCode: http.StatusOK,
-					Status:     mocks.StatusOKString,
+					Status:     testutils.StatusOKString,
 				},
 			},
 			expectedFeedMap: map[string]struct{}{},
@@ -283,10 +286,10 @@ func TestGetExistingFeeds(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockTransport := mocks.NewMockRoundTripper(tc.responses)
-			mockClient := &http.Client{Transport: &mockTransport}
-			rss := MockValidRSSServer(mockClient, logger)
 			ctx := context.Background()
+			mockTransport := testutils.NewMockRoundTripper(tc.responses)
+			mockClient := &http.Client{Transport: &mockTransport}
+			rss := MockValidRSSServer(ctx, mockClient, logger)
 			feeds, err := rss.GetExistingFeeds(ctx)
 			if tc.expectError {
 				if err == nil {
@@ -332,7 +335,7 @@ func TestRemoveFeed(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader(`{"status": "ok"}`)),
 					StatusCode: http.StatusOK,
-					Status:     mocks.StatusOKString,
+					Status:     testutils.StatusOKString,
 				},
 			},
 			expectError: false,
@@ -343,7 +346,7 @@ func TestRemoveFeed(t *testing.T) {
 				{
 					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
 					StatusCode: http.StatusUnauthorized,
-					Status:     mocks.StatusUnauthorizedString,
+					Status:     testutils.StatusUnauthorizedString,
 				},
 			},
 			expectError: true,
@@ -353,9 +356,9 @@ func TestRemoveFeed(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			mockTransport := mocks.NewMockRoundTripper(tc.responses)
+			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
-			rss := MockValidRSSServer(mockClient, logger)
+			rss := MockValidRSSServer(ctx, mockClient, logger)
 			err := rss.RemoveFeed(ctx, tc.feedURL)
 			if tc.expectError {
 				if err == nil {

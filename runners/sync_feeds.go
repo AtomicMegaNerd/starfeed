@@ -7,35 +7,26 @@ import (
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/githost"
+	"github.com/atomicmeganerd/starfeed/rss"
 	"golang.org/x/sync/errgroup"
 )
-
-// RSSServer is an interface that manages the interaction with a FreshRSS instance.
-// This allows us to create a mock for testing.
-type rssServer interface {
-	AddFeed(context.Context, string, string, string) error
-	GetExistingFeeds(context.Context) (map[string]struct{}, error)
-	RemoveFeed(context.Context, string) error
-	Enabled() bool
-	RSSServerType() string
-}
 
 // RepoRSSPublisher is a struct that manages the main workflow of the application.
 type SyncFeedsRunner struct {
 	gitHost   githost.GitHost
-	rssServer rssServer
+	rssServer rss.FreshRSS
 	logger    *slog.Logger
 }
 
 func NewSyncFeedsRunner(
 	gitHost githost.GitHost,
-	rssServer rssServer,
+	rssServer rss.FreshRSS,
 	logger *slog.Logger,
 ) SyncFeedsRunner {
 	return SyncFeedsRunner{
 		gitHost,
 		rssServer,
-		logger.With("githost", gitHost.Name, "rsshost", rssServer.RSSServerType()),
+		logger.With("githost", gitHost.Name, "rsshost", rssServer.RSSType),
 	}
 }
 
@@ -65,7 +56,7 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 
 		// Add Release feeds to each repo
 		for _, repo := range starredRepos {
-			if err = p.gitHost.CheckReleaseFeed(ctx, &repo); err != nil {
+			if err = p.gitHost.CheckReleaseFeedExistsAndHasEntries(ctx, &repo); err != nil {
 				return fmt.Errorf(
 					"error %w adding release feeds to repo %s from githost %s",
 					err, repo.Name, p.gitHost.Name,
@@ -79,7 +70,7 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 	})
 
 	// Only publish to RSS if the server is enabled
-	if p.rssServer.Enabled() {
+	if p.rssServer.Enabled {
 		rssErrGroup, rssCtx := errgroup.WithContext(ctx)
 		// NOTE: Using map[T]struct{} is idiomatic for creating sets in Go.
 		var existingFeeds map[string]struct{}
@@ -166,7 +157,7 @@ func (p SyncFeedsRunner) removeStaleFeed(
 	starredRepoMap map[string]githost.StarredRepo, // The key is the release ATOM feed
 	rssFeed string,
 ) error {
-	if !p.gitHost.ReleaseFeedPattern.MatchString(rssFeed) {
+	if !p.gitHost.IsReleaseeFeedForThisHost(rssFeed) {
 		p.logger.Debug("Not removing RSS Feed as it is not a release feed for the current githost")
 		return nil
 	}

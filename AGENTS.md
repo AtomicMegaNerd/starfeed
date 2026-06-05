@@ -54,7 +54,7 @@ Optional:
 - `runner/`: Orchestration layer which executes workflows against the RSS server and the Git Hosts.
 - `githost/`: Implementation code for all supported git hosts.
 - `rss/`: Code that handles publishing the release feeds to RSS.
-- `mocks/`: Test doubles related data and shared mocks/functions.
+- `testutils/`: Test doubles related data and shared mocks/functions.
 
 ## Patterns and Conventions
 
@@ -64,7 +64,7 @@ Optional:
 - Use slog for structured logging; level toggled by `STARFEED_DEBUG_MODE`.
 - Line length limit 100 chars.
 - Ignore lints on resp.Body.Close() calls as that method never returns an error.
-- For tests used shared mocks and data consts from `mocks/` package when possible.
+- For tests used shared mocks and data consts from `testutils/` package when possible.
 
 ## Testing
 

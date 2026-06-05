@@ -9,7 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/atomicmeganerd/starfeed/mocks"
+	"github.com/atomicmeganerd/starfeed/testutils"
+)
+
+const (
+	MockURL1  = "https://api.github.com"
+	MockToken = "token_token_token"
 )
 
 func TestDoAPIRequest(t *testing.T) {
@@ -27,9 +32,9 @@ func TestDoAPIRequest(t *testing.T) {
 		{
 			name:        "GET 200 OK with no payload",
 			method:      http.MethodGet,
-			reqURL:      mocks.GitHubAPIURL + "/repos",
+			reqURL:      MockURL1 + "/repos",
 			payload:     nil,
-			headers:     http.Header{"Authorization": {"token " + mocks.GitHubToken}},
+			headers:     http.Header{"Authorization": {"token " + MockToken}},
 			statusCode:  http.StatusOK,
 			body:        io.NopCloser(strings.NewReader(`{"ok":true}`)),
 			respHeaders: http.Header{"Content-Type": {"application/json"}},
@@ -37,7 +42,7 @@ func TestDoAPIRequest(t *testing.T) {
 		{
 			name:        "POST 201 Created with payload",
 			method:      http.MethodPost,
-			reqURL:      mocks.GitHubAPIURL + "/repos",
+			reqURL:      MockURL1 + "/repos",
 			payload:     []byte(`{"name":"test"}`),
 			headers:     http.Header{"Content-Type": {"application/json"}},
 			statusCode:  http.StatusCreated,
@@ -47,7 +52,7 @@ func TestDoAPIRequest(t *testing.T) {
 		{
 			name:        "PUT 202 Accepted",
 			method:      http.MethodPut,
-			reqURL:      mocks.GitHubAPIURL + "/repos/1",
+			reqURL:      MockURL1 + "/repos/1",
 			payload:     []byte(`{"name":"updated"}`),
 			headers:     http.Header{},
 			statusCode:  http.StatusAccepted,
@@ -57,7 +62,7 @@ func TestDoAPIRequest(t *testing.T) {
 		{
 			name:        "404 Not Found returns error",
 			method:      http.MethodGet,
-			reqURL:      mocks.GitHubAPIURL + "/missing",
+			reqURL:      MockURL1 + "/missing",
 			payload:     nil,
 			headers:     http.Header{},
 			statusCode:  http.StatusNotFound,
@@ -68,7 +73,7 @@ func TestDoAPIRequest(t *testing.T) {
 		{
 			name:        "500 Internal Server Error returns error",
 			method:      http.MethodGet,
-			reqURL:      mocks.GitHubAPIURL + "/broken",
+			reqURL:      MockURL1 + "/broken",
 			payload:     nil,
 			headers:     http.Header{},
 			statusCode:  http.StatusInternalServerError,
@@ -79,7 +84,7 @@ func TestDoAPIRequest(t *testing.T) {
 		{
 			name:        "401 Unauthorized returns error",
 			method:      http.MethodGet,
-			reqURL:      mocks.GitHubAPIURL + "/private",
+			reqURL:      MockURL1 + "/private",
 			payload:     nil,
 			headers:     http.Header{},
 			statusCode:  http.StatusUnauthorized,
@@ -101,11 +106,11 @@ func TestDoAPIRequest(t *testing.T) {
 		{
 			name:        "body read error returns error",
 			method:      http.MethodGet,
-			reqURL:      mocks.GitHubAPIURL + "/repos",
+			reqURL:      MockURL1 + "/repos",
 			payload:     nil,
 			headers:     http.Header{},
 			statusCode:  http.StatusOK,
-			body:        mocks.NewErrorReadCloser(),
+			body:        testutils.NewErrorReadCloser(),
 			respHeaders: http.Header{},
 			expectError: true,
 		},
@@ -121,7 +126,7 @@ func TestDoAPIRequest(t *testing.T) {
 					Header:     tc.respHeaders,
 				},
 			}
-			mockTransport := mocks.NewMockRoundTripper(responses)
+			mockTransport := testutils.NewMockRoundTripper(responses)
 			client := &http.Client{Transport: &mockTransport}
 
 			body, respHeaders, err := DoAPIRequest(

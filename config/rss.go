@@ -8,6 +8,10 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+const (
+	FreshRSSType = "freshrss"
+)
+
 // This type both holds and validates the config for the RSS Server
 type RSSServerConfig struct {
 	Type    string `validate:"required,oneof=freshrss"`

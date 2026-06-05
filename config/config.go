@@ -21,9 +21,6 @@ const (
 	rssServerConfigFields = 5
 
 	defaultHTTPTimeoutSeconds = 60
-
-	GitHubHostType  = "github"
-	ForgejoHostType = "forgejo"
 )
 
 // The main Config struct used to hold configuration state for the app

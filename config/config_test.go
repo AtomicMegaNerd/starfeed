@@ -5,120 +5,126 @@ import (
 	"testing"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/mocks"
+	"github.com/atomicmeganerd/starfeed/testutils"
 )
 
 var (
 	validGitHostCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s,%s",
 		GitHubHostType,
-		mocks.GitHubName,
-		mocks.GitHubURL,
-		mocks.GitHubAPIURL,
-		mocks.GitHubToken,
-		mocks.TrueBool,
+		testutils.GitHubName,
+		testutils.GitHubURL,
+		testutils.GitHubAPIURL,
+		testutils.GitHubToken,
+		testutils.TrueBool,
 	)
 	validForgejoCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s,%s",
 		ForgejoHostType,
-		mocks.ForgejoName,
-		mocks.ForgejoURL,
-		mocks.ForgejoAPIURL,
-		mocks.ForgejoToken,
-		mocks.TrueBool,
+		testutils.CodebergName,
+		testutils.CodebergURL,
+		testutils.CodebergAPIURL,
+		testutils.CodebergToken,
+		testutils.TrueBool,
 	)
 	validRSSCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s",
-		mocks.FreshRSSType,
-		mocks.FreshRSSURL,
-		mocks.FreshRSSUser,
-		mocks.FreshRSSToken,
-		mocks.TrueBool,
+		FreshRSSType,
+		testutils.FreshRSSURL,
+		testutils.FreshRSSUser,
+		testutils.FreshRSSToken,
+		testutils.TrueBool,
 	)
 	invalidTypeCSV = fmt.Sprintf(
 		"gitlab,mygitlab,https://gitlab.com,https://api.gitlab.com,%s,%s",
-		mocks.GitHubToken, mocks.TrueBool,
+		testutils.GitHubToken, testutils.TrueBool,
 	)
-	missingPartsCSV = fmt.Sprintf("%s,%s", GitHubHostType, mocks.GitHubURL)
+	missingPartsCSV = fmt.Sprintf("%s,%s", GitHubHostType, testutils.GitHubURL)
 	emptyURLCSV     = fmt.Sprintf(
 		"%s,%s,,%s,%s,%s",
 		GitHubHostType,
-		mocks.GitHubName,
-		mocks.GitHubAPIURL,
-		mocks.GitHubToken,
-		mocks.TrueBool,
+		testutils.GitHubName,
+		testutils.GitHubAPIURL,
+		testutils.GitHubToken,
+		testutils.TrueBool,
 	)
 
 	emptyTokenCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,,%s",
 		GitHubHostType,
-		mocks.GitHubName,
-		mocks.GitHubURL,
-		mocks.GitHubAPIURL,
-		mocks.TrueBool,
+		testutils.GitHubName,
+		testutils.GitHubURL,
+		testutils.GitHubAPIURL,
+		testutils.TrueBool,
 	)
-	missingRSSCSV = fmt.Sprintf("%s,%s", mocks.FreshRSSType, mocks.FreshRSSURL)
+	missingRSSCSV = fmt.Sprintf("%s,%s", FreshRSSType, testutils.FreshRSSURL)
 
 	emptyBaseURLCSV = fmt.Sprintf(
 		"%s,%s,,%s,%s,%s",
 		GitHubHostType,
-		mocks.GitHubName,
-		mocks.GitHubAPIURL,
-		mocks.GitHubToken,
-		mocks.TrueBool,
+		testutils.GitHubName,
+		testutils.GitHubAPIURL,
+		testutils.GitHubToken,
+		testutils.TrueBool,
 	)
 	emptyAPIURLCSV = fmt.Sprintf(
 		"%s,%s,%s,,%s,%s",
 		GitHubHostType,
-		mocks.GitHubName,
-		mocks.GitHubURL,
-		mocks.GitHubToken,
-		mocks.TrueBool,
+		testutils.GitHubName,
+		testutils.GitHubURL,
+		testutils.GitHubToken,
+		testutils.TrueBool,
 	)
 
 	validGitHostCSVWithSpaces = fmt.Sprintf(
 		" %s , %s , %s , %s , %s , %s ",
 		GitHubHostType,
-		mocks.GitHubName,
-		mocks.GitHubURL,
-		mocks.GitHubAPIURL,
-		mocks.GitHubToken,
-		mocks.TrueBool,
+		testutils.GitHubName,
+		testutils.GitHubURL,
+		testutils.GitHubAPIURL,
+		testutils.GitHubToken,
+		testutils.TrueBool,
 	)
 	validRSSCSVWithSpaces = fmt.Sprintf(
 		" %s , %s , %s , %s , %s ",
-		mocks.FreshRSSType,
-		mocks.FreshRSSURL,
-		mocks.FreshRSSUser,
-		mocks.FreshRSSToken,
-		mocks.TrueBool,
+		FreshRSSType,
+		testutils.FreshRSSURL,
+		testutils.FreshRSSUser,
+		testutils.FreshRSSToken,
+		testutils.TrueBool,
 	)
 
 	emptyURLRSSCSV = fmt.Sprintf("%s,,%s,%s,%s",
-		mocks.FreshRSSType, mocks.FreshRSSUser, mocks.FreshRSSToken, mocks.TrueBool)
+		FreshRSSType, testutils.FreshRSSUser, testutils.FreshRSSToken, testutils.TrueBool)
 	emptyTokenRSSCSV = fmt.Sprintf("%s,%s,%s,,%s",
-		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser, mocks.TrueBool)
+		FreshRSSType, testutils.FreshRSSURL, testutils.FreshRSSUser, testutils.TrueBool)
 	invalidEnabledGitHostCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s,%s",
 		GitHubHostType,
-		mocks.GitHubName,
-		mocks.GitHubURL,
-		mocks.GitHubAPIURL,
-		mocks.GitHubToken,
-		mocks.Invalid,
+		testutils.GitHubName,
+		testutils.GitHubURL,
+		testutils.GitHubAPIURL,
+		testutils.GitHubToken,
+		testutils.Invalid,
 	)
 	invalidEnabledRSSCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s",
-		mocks.FreshRSSType,
-		mocks.FreshRSSURL,
-		mocks.FreshRSSUser,
-		mocks.FreshRSSToken,
-		mocks.Invalid,
+		FreshRSSType,
+		testutils.FreshRSSURL,
+		testutils.FreshRSSUser,
+		testutils.FreshRSSToken,
+		testutils.Invalid,
 	)
-	missingEnabledGitHostCSV = fmt.Sprintf("%s,%s,%s,%s,%s",
-		GitHubHostType, mocks.GitHubName, mocks.GitHubURL, mocks.GitHubAPIURL, mocks.GitHubToken)
+	missingEnabledGitHostCSV = fmt.Sprintf(
+		"%s,%s,%s,%s,%s",
+		GitHubHostType,
+		testutils.GitHubName,
+		testutils.GitHubURL,
+		testutils.GitHubAPIURL,
+		testutils.GitHubToken,
+	)
 	missingEnabledRSSCSV = fmt.Sprintf("%s,%s,%s,%s",
-		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser, mocks.FreshRSSToken)
+		FreshRSSType, testutils.FreshRSSURL, testutils.FreshRSSUser, testutils.FreshRSSToken)
 )
 
 func validConfig() *Config {
@@ -152,9 +158,9 @@ func TestNewConfig(t *testing.T) {
 			envVars: map[string]string{
 				"STARFEED_GIT_HOST_0":      validGitHostCSV,
 				"STARFEED_RSS_SERVER":      validRSSCSV,
-				"STARFEED_DEBUG_MODE":      mocks.TrueBool,
-				"STARFEED_SINGLE_RUN_MODE": mocks.TrueBool,
-				"STARFEED_HTTP_TIMEOUT":    mocks.ValidTimeout,
+				"STARFEED_DEBUG_MODE":      testutils.TrueBool,
+				"STARFEED_SINGLE_RUN_MODE": testutils.TrueBool,
+				"STARFEED_HTTP_TIMEOUT":    testutils.ValidTimeout,
 			},
 			expectError: false,
 			expected: &Config{
@@ -174,7 +180,7 @@ func TestNewConfig(t *testing.T) {
 			},
 			expectError: false,
 			expected: &Config{
-				GitHostConfigs:  []GitHostConfig{MockValidGitHubConfig, MockValidForgejoConfig},
+				GitHostConfigs:  []GitHostConfig{MockValidGitHubConfig, MockValidCodebergConfig},
 				RSSServerConfig: MockValidFreshRSSConfig,
 				DebugMode:       false,
 				SingleRunMode:   false,
@@ -211,7 +217,7 @@ func TestNewConfig(t *testing.T) {
 			envVars: map[string]string{
 				"STARFEED_GIT_HOST_0":   validGitHostCSV,
 				"STARFEED_RSS_SERVER":   validRSSCSV,
-				"STARFEED_HTTP_TIMEOUT": mocks.Invalid,
+				"STARFEED_HTTP_TIMEOUT": testutils.Invalid,
 			},
 			expectError: false,
 			expected:    validConfig(),
@@ -221,7 +227,7 @@ func TestNewConfig(t *testing.T) {
 			envVars: map[string]string{
 				"STARFEED_GIT_HOST_0":   validGitHostCSV,
 				"STARFEED_RSS_SERVER":   validRSSCSV,
-				"STARFEED_HTTP_TIMEOUT": mocks.ZeroTimeout,
+				"STARFEED_HTTP_TIMEOUT": testutils.ZeroTimeout,
 			},
 			expectError: false,
 			expected:    validConfig(),
@@ -231,7 +237,7 @@ func TestNewConfig(t *testing.T) {
 			envVars: map[string]string{
 				"STARFEED_GIT_HOST_0": validGitHostCSV,
 				"STARFEED_RSS_SERVER": validRSSCSV,
-				"STARFEED_DEBUG_MODE": mocks.Invalid,
+				"STARFEED_DEBUG_MODE": testutils.Invalid,
 			},
 			expectError: true,
 			expected:    nil,
@@ -241,7 +247,7 @@ func TestNewConfig(t *testing.T) {
 			envVars: map[string]string{
 				"STARFEED_GIT_HOST_0":      validGitHostCSV,
 				"STARFEED_RSS_SERVER":      validRSSCSV,
-				"STARFEED_SINGLE_RUN_MODE": mocks.Invalid,
+				"STARFEED_SINGLE_RUN_MODE": testutils.Invalid,
 			},
 			expectError: true,
 			expected:    nil,
@@ -367,7 +373,7 @@ func TestNewConfig(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockEnvGetter := NewMockEnvGetter(tc.envVars)
+			mockEnvGetter := testutils.NewMockEnvGetter(tc.envVars)
 			cfg, err := NewConfig(mockEnvGetter)
 
 			if tc.expectError {
