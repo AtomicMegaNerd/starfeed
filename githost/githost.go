@@ -151,7 +151,7 @@ func (g GitHost) CheckReleaseFeed(
 	if len(feed.Entries) >= 1 {
 		// Set the release feed
 		repo.FeedURL = feedURL
-		g.logger.Info("repo has releases", "repo", repo.Name, "feed", repo.FeedURL)
+		g.logger.Debug("repo has releases", "repo", repo.Name, "feed", repo.FeedURL)
 	}
 
 	return nil
