@@ -27,11 +27,6 @@ type SyncFeedsRunner struct {
 	logger    *slog.Logger
 }
 
-// NewSyncFeedsRunner creates a new RepoRSSPublisher instance.
-// Arguments:
-// - gitHost: The git host to query for starred repos.
-// - rssServer: The RSS server to publish feeds to.
-// - atomFeedChecker: The atom feed checker to verify feed entries.
 func NewSyncFeedsRunner(
 	gitHost githost.GitHost,
 	rssServer rssServer,

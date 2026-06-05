@@ -29,7 +29,7 @@ func DoAPIRequest(
 	}
 
 	// Set headers
-	req.Header = headers
+	req.Header = headers.Clone()
 
 	res, err := client.Do(req)
 	if err != nil {

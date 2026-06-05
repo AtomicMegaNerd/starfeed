@@ -36,8 +36,14 @@ func NewGitHost(
 	client *http.Client,
 ) GitHost {
 	headers := buildCommonHeaders(hostCfg.Token)
+	starredReposFetchURL := ""
 	if hostCfg.Type == config.GitHubHostType {
 		headers.Set("X-GitHub-Api-Version", "2022-11-28")
+		starredReposFetchURL = fmt.Sprintf("%s/user/starred?per_page=100", hostCfg.ApiURL)
+	}
+
+	if hostCfg.Type == config.ForgejoHostType {
+		starredReposFetchURL = fmt.Sprintf("%s/user/starred?limit=100", hostCfg.ApiURL)
 	}
 
 	return GitHost{
@@ -51,7 +57,7 @@ func NewGitHost(
 				regexp.QuoteMeta(hostCfg.BaseURL),
 			),
 		),
-		starredReposFetchURL: fmt.Sprintf("%s/user/starred?limit=50", hostCfg.ApiURL),
+		starredReposFetchURL: starredReposFetchURL,
 		headers:              headers,
 		logger: logger.With(
 			slog.Group("githost",

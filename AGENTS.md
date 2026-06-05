@@ -54,7 +54,6 @@ Optional:
 - `runner/`: Orchestration layer which executes workflows against the RSS server and the Git Hosts.
 - `githost/`: Implementation code for all supported git hosts.
 - `rss/`: Code that handles publishing the release feeds to RSS.
-- `atom/`: Atom feed checker to ensure feeds have entries before adding.
 - `mocks/`: Test doubles related data and shared mocks/functions.
 
 ## Patterns and Conventions

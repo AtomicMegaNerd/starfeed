@@ -160,7 +160,7 @@ func (f FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
 	return nil
 }
 
-func (f *FreshRSS) addFeedToCategory(
+func (f FreshRSS) addFeedToCategory(
 	ctx context.Context,
 	streamId, name, category string,
 ) error {

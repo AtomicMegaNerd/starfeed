@@ -12,14 +12,7 @@ type StarredRepo struct {
 	FeedURL string `json:"feed_url"`
 }
 
-// This is the response we get from the Git Host
-type GitHostResponse struct {
-	Data     []byte
-	NextPage string
-}
-
 type AtomFeed struct {
-	FeedURL string
 	XMLName xml.Name `xml:"feed"`
 	Title   string   `xml:"title"`
 	Entries []Entry  `xml:"entry"`
