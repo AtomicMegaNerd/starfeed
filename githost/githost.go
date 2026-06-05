@@ -134,8 +134,8 @@ func (g GitHost) CheckReleaseFeed(
 	data, _, err := common.DoAPIRequest(ctx, http.MethodGet, feedURL, nil, g.headers, g.client)
 	if err != nil {
 		// If the release feed is simply not found don't return an error
-		httpErr := &common.HTTPError{}
-		if errors.As(err, httpErr) && httpErr.StatusCode == http.StatusNotFound {
+		var httpErr common.HTTPError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
 			g.logger.Debug("repo does not have release feed, skipping without error")
 			return nil
 		}

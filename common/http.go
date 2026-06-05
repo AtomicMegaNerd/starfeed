@@ -58,6 +58,7 @@ func DoAPIRequest(
 	}
 }
 
+// Sometimes we need to know if the error is 404 or something else...
 type HTTPError struct {
 	URL        string
 	Body       string
