@@ -8,6 +8,7 @@ import (
 	"net/http"
 )
 
+// This is a common HTTP method that can be used by any of our client objects.
 func DoAPIRequest(
 	ctx context.Context,
 	method string,
@@ -42,32 +43,28 @@ func DoAPIRequest(
 		return nil, nil, err
 	}
 
-	switch res.StatusCode {
-	case http.StatusOK:
-		fallthrough
-	case http.StatusAccepted:
-		fallthrough
-	case http.StatusCreated:
+	// If the status code is OK we can return no error
+	if res.StatusCode >= 200 && res.StatusCode < 300 {
 		return data, res.Header, nil
 	}
 
 	return data, res.Header, HTTPError{
 		URL:        reqURL,
-		Body:       string(data),
 		StatusCode: res.StatusCode,
+		Status:     res.Status,
 	}
 }
 
 // Sometimes we need to know if the error is 404 or something else...
 type HTTPError struct {
 	URL        string
-	Body       string
 	StatusCode int
+	Status     string
 }
 
 func (h HTTPError) Error() string {
 	return fmt.Sprintf(
-		"http error, url: %s, body: %s, status code: %d",
-		h.URL, h.Body, h.StatusCode,
+		"http error, url: %s, status code: %d, status: %s",
+		h.URL, h.StatusCode, h.Status,
 	)
 }
