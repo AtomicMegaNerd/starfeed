@@ -71,6 +71,7 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 
 	// Only publish to RSS if the server is enabled
 	if p.rssServer.Enabled {
+
 		rssErrGroup, rssCtx := errgroup.WithContext(ctx)
 		// NOTE: Using map[T]struct{} is idiomatic for creating sets in Go.
 		var existingFeeds map[string]struct{}
@@ -123,13 +124,13 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 			"FreshRSS feeds synced from the Git host successfully",
 			"duration", time.Since(start),
 		)
+		return nil
+	}
 
-	} else {
-		p.logger.Warn("Skipping publishing to rss server because it is not enabled")
-		// We also need to wait here for the github queries if the RSS server is disabled
-		if err := ghErrGroup.Wait(); err != nil {
-			return err
-		}
+	p.logger.Warn("Skipping publishing to rss server because it is not enabled")
+	// We also need to wait here for the github queries if the RSS server is disabled
+	if err := ghErrGroup.Wait(); err != nil {
+		return err
 	}
 
 	return nil

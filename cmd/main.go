@@ -33,24 +33,7 @@ func main() {
 
 	client := &http.Client{Timeout: cfg.HTTPTimeout}
 
-	// configure logger
-	var logger *slog.Logger
-	w := os.Stderr
-	if cfg.DebugMode {
-		logger = slog.New(
-			tint.NewHandler(w, &tint.Options{
-				Level:      slog.LevelDebug,
-				TimeFormat: time.RFC3339,
-			}),
-		)
-	} else {
-		logger = slog.New(
-			tint.NewHandler(w, &tint.Options{
-				Level:      slog.LevelInfo,
-				TimeFormat: time.RFC3339,
-			}),
-		)
-	}
+	logger := getLogger(cfg.DebugMode)
 
 	logger.Info("***********************************************")
 	logger.Info(" Welcome to Starfeed", "version", version, "commit", commit)
@@ -135,4 +118,21 @@ func executeRunners(ctx context.Context, runners []starfeedRunner) error {
 		})
 	}
 	return errGroup.Wait()
+}
+
+func getLogger(debug bool) *slog.Logger {
+	if debug {
+		return slog.New(
+			tint.NewHandler(os.Stderr, &tint.Options{
+				Level:      slog.LevelDebug,
+				TimeFormat: time.RFC3339,
+			}),
+		)
+	}
+	return slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      slog.LevelInfo,
+			TimeFormat: time.RFC3339,
+		}),
+	)
 }

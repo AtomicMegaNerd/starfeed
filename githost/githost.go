@@ -164,13 +164,11 @@ func (g GitHost) IsReleaseeFeedForThisHost(rssFeed string) bool {
 
 func (g GitHost) parseNextPageURL(respHeaders http.Header) string {
 	linkHeader := respHeaders.Get("Link")
-
-	if linkHeader != "" {
-		g.logger.Debug("linkHeader found", "linkHeader", linkHeader)
-	} else {
+	if linkHeader == "" {
 		return ""
 	}
 
+	g.logger.Debug("linkHeader found", "linkHeader", linkHeader)
 	links := strings.SplitSeq(linkHeader, ",")
 	for link := range links {
 		matches := nextPagePattern.FindStringSubmatch(link)
