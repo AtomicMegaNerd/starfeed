@@ -118,6 +118,7 @@ func TestDoAPIRequest(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var readBuf bytes.Buffer
 			responses := []http.Response{
 				{

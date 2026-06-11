@@ -373,6 +373,7 @@ func TestNewConfig(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			mockEnvGetter := testutils.NewMockEnvGetter(tc.envVars)
 			cfg, err := NewConfig(mockEnvGetter)
 

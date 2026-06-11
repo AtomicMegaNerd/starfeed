@@ -70,6 +70,7 @@ func TestAuthenticate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.responses[0].Status, func(t *testing.T) {
+			t.Parallel()
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 
@@ -197,6 +198,7 @@ func TestAddFeed(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := context.Background()
 			mockTransport := testutils.NewMockURLSelectedRoundTripper(
 				tc.responses,
@@ -286,6 +288,7 @@ func TestGetExistingFeeds(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
@@ -355,6 +358,7 @@ func TestRemoveFeed(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}

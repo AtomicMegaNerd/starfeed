@@ -154,6 +154,7 @@ func TestGetStarredRepos(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
@@ -294,6 +295,7 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
