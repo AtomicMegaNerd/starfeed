@@ -1,4 +1,4 @@
-package githost
+package gitforge
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
 // This object represents a supported git host where we have 'starred' repos.
-type GitHost struct {
+type GitForge struct {
 	Name                 string
 	Enabled              bool
 	HostType             string
@@ -31,24 +31,24 @@ type GitHost struct {
 	client               *http.Client
 }
 
-func NewGitHost(
-	hostCfg config.GitHostConfig,
+func NewGitForge(
+	hostCfg config.GitForgeConfig,
 	logger *slog.Logger,
 	client *http.Client,
-) GitHost {
+) GitForge {
 	headers := buildCommonHeaders(hostCfg.Token)
 
 	// The URL to fetch starred repos does differ slightly
 	starredReposFetchURL := ""
-	if hostCfg.Type == config.GitHubHostType {
+	if hostCfg.Type == config.GitHubForgeType {
 		headers.Set("X-GitHub-Api-Version", "2022-11-28")
 		starredReposFetchURL = fmt.Sprintf("%s/user/starred?per_page=100", hostCfg.ApiURL)
 	}
-	if hostCfg.Type == config.ForgejoHostType {
+	if hostCfg.Type == config.ForgejoForgeType {
 		starredReposFetchURL = fmt.Sprintf("%s/user/starred?limit=100", hostCfg.ApiURL)
 	}
 
-	return GitHost{
+	return GitForge{
 		Name:     hostCfg.Name,
 		Enabled:  hostCfg.Enabled,
 		HostType: hostCfg.Type,
@@ -62,7 +62,7 @@ func NewGitHost(
 		starredReposFetchURL: starredReposFetchURL,
 		headers:              headers,
 		logger: logger.With(
-			slog.Group("githost",
+			slog.Group("gitforge",
 				"name", hostCfg.Name,
 				"type", hostCfg.Type,
 				"baseURL", hostCfg.BaseURL,
@@ -74,7 +74,7 @@ func NewGitHost(
 
 // This will return all starred repos including the Atom feeds for their releases
 // It returns a map of releaseFeedURL -> Repo
-func (g GitHost) GetStarredRepos(
+func (g GitForge) GetStarredRepos(
 	ctx context.Context,
 ) ([]StarredRepo, error) {
 	g.logger.Debug("Querying git host for starred repos", "url", g.starredReposFetchURL)
@@ -94,7 +94,7 @@ func (g GitHost) GetStarredRepos(
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error %w getting raw data from githost: %s url: %s", err, g.Name, nextPageURL,
+				"error %w getting raw data from gitforge: %s url: %s", err, g.Name, nextPageURL,
 			)
 		}
 
@@ -122,7 +122,7 @@ func (g GitHost) GetStarredRepos(
 
 // This method checks the atom feed for a release repo. If it finds at least one entry
 // it them sets the FeedURL on the repo.
-func (g GitHost) CheckReleaseFeedExistsAndHasEntries(
+func (g GitForge) CheckReleaseFeedExistsAndHasEntries(
 	ctx context.Context,
 	repo *StarredRepo,
 ) error {
@@ -158,11 +158,11 @@ func (g GitHost) CheckReleaseFeedExistsAndHasEntries(
 	return nil
 }
 
-func (g GitHost) IsReleaseeFeedForThisHost(rssFeed string) bool {
+func (g GitForge) IsReleaseeFeedForThisHost(rssFeed string) bool {
 	return g.releaseFeedPattern.MatchString(rssFeed)
 }
 
-func (g GitHost) parseNextPageURL(respHeaders http.Header) string {
+func (g GitForge) parseNextPageURL(respHeaders http.Header) string {
 	linkHeader := respHeaders.Get("Link")
 	if linkHeader == "" {
 		return ""
@@ -179,11 +179,11 @@ func (g GitHost) parseNextPageURL(respHeaders http.Header) string {
 	return ""
 }
 
-func (g GitHost) parseRepos(data []byte) ([]StarredRepo, error) {
+func (g GitForge) parseRepos(data []byte) ([]StarredRepo, error) {
 	repoSlice := make([]StarredRepo, 0)
 	if err := json.Unmarshal(data, &repoSlice); err != nil {
 		return nil, fmt.Errorf(
-			"error %w parsing JSON response from githost %s", err, g.Name,
+			"error %w parsing JSON response from gitforge %s", err, g.Name,
 		)
 	}
 	return repoSlice, nil

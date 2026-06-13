@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	GitHubHostType  = "github"
-	ForgejoHostType = "forgejo"
+	GitHubForgeType  = "github"
+	ForgejoForgeType = "forgejo"
 )
 
-// This type both holds and validates the config for a GitHost
-type GitHostConfig struct {
+// This type both holds and validates the config for a GitForge
+type GitForgeConfig struct {
 	Type    string `validate:"required,oneof=github forgejo"`
 	Name    string `validate:"required,min=3"`
 	BaseURL string `validate:"required,url"`
@@ -24,26 +24,26 @@ type GitHostConfig struct {
 	Enabled bool
 }
 
-func buildGitHostConfigs(
+func buildGitForgeConfigs(
 	validate *validator.Validate,
 	envGetter envGetter,
-) ([]GitHostConfig, error) {
-	gitHostConfigs := make([]GitHostConfig, 0)
+) ([]GitForgeConfig, error) {
+	gitForgeConfigs := make([]GitForgeConfig, 0)
 
 	for ix := 0; ; ix++ {
-		gitHostCsv := envGetter.Getenv(fmt.Sprintf("%s%d", gitHostKey, ix))
-		if gitHostCsv == "" {
+		gitForgeCsv := envGetter.Getenv(fmt.Sprintf("%s%d", gitForgeKey, ix))
+		if gitForgeCsv == "" {
 			if ix == 0 {
 				return nil, errors.New("must define at least 1 git host")
 			}
 			break
 		}
 
-		parts := strings.SplitN(gitHostCsv, ",", gitHostConfigFields)
-		if len(parts) != gitHostConfigFields {
+		parts := strings.SplitN(gitForgeCsv, ",", gitForgeConfigFields)
+		if len(parts) != gitForgeConfigFields {
 			return nil, fmt.Errorf(
 				"expected csv to have %d parts but it had %d",
-				gitHostConfigFields,
+				gitForgeConfigFields,
 				len(parts),
 			)
 		}
@@ -60,13 +60,13 @@ func buildGitHostConfigs(
 			return nil, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
 		}
 
-		gitHostConfig := GitHostConfig{hostType, name, baseURL, apiURL, token, enabled}
+		gitForgeConfig := GitForgeConfig{hostType, name, baseURL, apiURL, token, enabled}
 
-		if err := validate.Struct(gitHostConfig); err != nil {
+		if err := validate.Struct(gitForgeConfig); err != nil {
 			return nil, err
 		}
-		gitHostConfigs = append(gitHostConfigs, gitHostConfig)
+		gitForgeConfigs = append(gitForgeConfigs, gitForgeConfig)
 	}
 
-	return gitHostConfigs, nil
+	return gitForgeConfigs, nil
 }

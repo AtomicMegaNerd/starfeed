@@ -1,4 +1,4 @@
-package githost
+package gitforge
 
 import (
 	"context"

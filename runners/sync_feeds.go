@@ -6,27 +6,27 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/githost"
+	"github.com/atomicmeganerd/starfeed/gitforge"
 	"github.com/atomicmeganerd/starfeed/rss"
 	"golang.org/x/sync/errgroup"
 )
 
 // RepoRSSPublisher is a struct that manages the main workflow of the application.
 type SyncFeedsRunner struct {
-	gitHost   githost.GitHost
+	gitForge  gitforge.GitForge
 	rssServer rss.FreshRSS
 	logger    *slog.Logger
 }
 
 func NewSyncFeedsRunner(
-	gitHost githost.GitHost,
+	gitForge gitforge.GitForge,
 	rssServer rss.FreshRSS,
 	logger *slog.Logger,
 ) SyncFeedsRunner {
 	return SyncFeedsRunner{
-		gitHost,
+		gitForge,
 		rssServer,
-		logger.With("githost", gitHost.Name, "rsshost", rssServer.RSSType),
+		logger.With("gitForge", gitForge.Name, "rsshost", rssServer.RSSType),
 	}
 }
 
@@ -34,8 +34,8 @@ func NewSyncFeedsRunner(
 // to FreshRSS. It also removes any stale release feeds from FreshRSS if they are no longer
 // starred.
 func (p SyncFeedsRunner) Run(ctx context.Context) error {
-	// If this gitHost is not enabled there is nothing to do...
-	if !p.gitHost.Enabled {
+	// If this gitForge is not enabled there is nothing to do...
+	if !p.gitForge.Enabled {
 		p.logger.Warn("Skipping git host because it is not enabled")
 		return nil
 	}
@@ -47,19 +47,19 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 	// don't get rate limited by the Git host.
 	ghErrGroup, ghCtx := errgroup.WithContext(ctx)
 	ghErrGroup.SetLimit(5)
-	starredRepoMap := make(map[string]githost.StarredRepo)
+	starredRepoMap := make(map[string]gitforge.StarredRepo)
 	ghErrGroup.Go(func() error {
-		starredRepos, err := p.gitHost.GetStarredRepos(ghCtx)
+		starredRepos, err := p.gitForge.GetStarredRepos(ghCtx)
 		if err != nil {
 			return err
 		}
 
 		// Add Release feeds to each repo
 		for _, repo := range starredRepos {
-			if err = p.gitHost.CheckReleaseFeedExistsAndHasEntries(ctx, &repo); err != nil {
+			if err = p.gitForge.CheckReleaseFeedExistsAndHasEntries(ctx, &repo); err != nil {
 				return fmt.Errorf(
-					"error %w adding release feeds to repo %s from githost %s",
-					err, repo.Name, p.gitHost.Name,
+					"error %w adding release feeds to repo %s from gitForge %s",
+					err, repo.Name, p.gitForge.Name,
 				)
 			}
 			if repo.FeedURL != "" {
@@ -139,7 +139,7 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 func (p SyncFeedsRunner) publishToFreshRSS(
 	ctx context.Context,
 	rssFeedSet map[string]struct{},
-	repo githost.StarredRepo,
+	repo gitforge.StarredRepo,
 ) error {
 	repoFeed := repo.FeedURL
 	p.logger.Debug("Checking feed", "repoFeed", repoFeed)
@@ -150,16 +150,18 @@ func (p SyncFeedsRunner) publishToFreshRSS(
 		return nil
 	}
 
-	return p.rssServer.AddFeed(ctx, repoFeed, repo.Name, p.gitHost.Name)
+	return p.rssServer.AddFeed(ctx, repoFeed, repo.Name, p.gitForge.Name)
 }
 
 func (p SyncFeedsRunner) removeStaleFeed(
 	ctx context.Context,
-	starredRepoMap map[string]githost.StarredRepo, // The key is the release ATOM feed
+	starredRepoMap map[string]gitforge.StarredRepo, // The key is the release ATOM feed
 	rssFeed string,
 ) error {
-	if !p.gitHost.IsReleaseeFeedForThisHost(rssFeed) {
-		p.logger.Debug("Not removing RSS Feed as it is not a release feed for the current githost")
+	if !p.gitForge.IsReleaseeFeedForThisHost(rssFeed) {
+		p.logger.Debug(
+			"Not removing RSS Feed as it is not a release feed for the current gitForge",
+		)
 		return nil
 	}
 

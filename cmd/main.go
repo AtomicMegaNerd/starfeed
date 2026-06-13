@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/config"
-	"github.com/atomicmeganerd/starfeed/githost"
+	"github.com/atomicmeganerd/starfeed/gitforge"
 	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/runners"
 	"github.com/lmittmann/tint"
@@ -60,12 +60,12 @@ func main() {
 		"Successfully authenticated to RSS Server", "rssSerer", cfg.RSSServerConfig.BaseURL,
 	)
 
-	// For each GitHost in our config let's create a new runner
+	// For each GitForge in our config let's create a new runner
 	runnerSlice := make([]starfeedRunner, 0)
-	for _, gitHostConfig := range cfg.GitHostConfigs {
-		gitHost := githost.NewGitHost(gitHostConfig, logger, client)
-		releasesRunner := runners.NewSyncFeedsRunner(gitHost, rssServer, logger)
-		logger.Info("Successfully registered runner for githost", "name", gitHostConfig.Name)
+	for _, gitForgeConfig := range cfg.GitForgeConfigs {
+		gitForge := gitforge.NewGitForge(gitForgeConfig, logger, client)
+		releasesRunner := runners.NewSyncFeedsRunner(gitForge, rssServer, logger)
+		logger.Info("Successfully registered runner for gitForge", "name", gitForgeConfig.Name)
 		runnerSlice = append(runnerSlice, releasesRunner)
 	}
 

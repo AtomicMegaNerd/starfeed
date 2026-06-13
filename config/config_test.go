@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	validGitHostCSV = fmt.Sprintf(
+	validGitForgetCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s,%s",
-		GitHubHostType,
+		GitHubForgeType,
 		testutils.GitHubName,
 		testutils.GitHubURL,
 		testutils.GitHubAPIURL,
@@ -20,7 +20,7 @@ var (
 	)
 	validForgejoCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s,%s",
-		ForgejoHostType,
+		ForgejoForgeType,
 		testutils.CodebergName,
 		testutils.CodebergURL,
 		testutils.CodebergAPIURL,
@@ -39,10 +39,10 @@ var (
 		"gitlab,mygitlab,https://gitlab.com,https://api.gitlab.com,%s,%s",
 		testutils.GitHubToken, testutils.TrueBool,
 	)
-	missingPartsCSV = fmt.Sprintf("%s,%s", GitHubHostType, testutils.GitHubURL)
+	missingPartsCSV = fmt.Sprintf("%s,%s", GitHubForgeType, testutils.GitHubURL)
 	emptyURLCSV     = fmt.Sprintf(
 		"%s,%s,,%s,%s,%s",
-		GitHubHostType,
+		GitHubForgeType,
 		testutils.GitHubName,
 		testutils.GitHubAPIURL,
 		testutils.GitHubToken,
@@ -51,7 +51,7 @@ var (
 
 	emptyTokenCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,,%s",
-		GitHubHostType,
+		GitHubForgeType,
 		testutils.GitHubName,
 		testutils.GitHubURL,
 		testutils.GitHubAPIURL,
@@ -61,7 +61,7 @@ var (
 
 	emptyBaseURLCSV = fmt.Sprintf(
 		"%s,%s,,%s,%s,%s",
-		GitHubHostType,
+		GitHubForgeType,
 		testutils.GitHubName,
 		testutils.GitHubAPIURL,
 		testutils.GitHubToken,
@@ -69,16 +69,16 @@ var (
 	)
 	emptyAPIURLCSV = fmt.Sprintf(
 		"%s,%s,%s,,%s,%s",
-		GitHubHostType,
+		GitHubForgeType,
 		testutils.GitHubName,
 		testutils.GitHubURL,
 		testutils.GitHubToken,
 		testutils.TrueBool,
 	)
 
-	validGitHostCSVWithSpaces = fmt.Sprintf(
+	validGitForgeCSVWithSpaces = fmt.Sprintf(
 		" %s , %s , %s , %s , %s , %s ",
-		GitHubHostType,
+		GitHubForgeType,
 		testutils.GitHubName,
 		testutils.GitHubURL,
 		testutils.GitHubAPIURL,
@@ -98,9 +98,9 @@ var (
 		FreshRSSType, testutils.FreshRSSUser, testutils.FreshRSSToken, testutils.TrueBool)
 	emptyTokenRSSCSV = fmt.Sprintf("%s,%s,%s,,%s",
 		FreshRSSType, testutils.FreshRSSURL, testutils.FreshRSSUser, testutils.TrueBool)
-	invalidEnabledGitHostCSV = fmt.Sprintf(
+	invalidEnabledGitForgeCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s,%s",
-		GitHubHostType,
+		GitHubForgeType,
 		testutils.GitHubName,
 		testutils.GitHubURL,
 		testutils.GitHubAPIURL,
@@ -115,9 +115,9 @@ var (
 		testutils.FreshRSSToken,
 		testutils.Invalid,
 	)
-	missingEnabledGitHostCSV = fmt.Sprintf(
+	missingEnabledGitForgeCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s",
-		GitHubHostType,
+		GitHubForgeType,
 		testutils.GitHubName,
 		testutils.GitHubURL,
 		testutils.GitHubAPIURL,
@@ -129,7 +129,7 @@ var (
 
 func validConfig() *Config {
 	return &Config{
-		GitHostConfigs:  []GitHostConfig{MockValidGitHubConfig},
+		GitForgeConfigs: []GitForgeConfig{MockValidGitHubConfig},
 		RSSServerConfig: MockValidFreshRSSConfig,
 		DebugMode:       false,
 		SingleRunMode:   false,
@@ -147,7 +147,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "All required variables present",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
+				"STARFEED_GIT_HOST_0": validGitForgetCSV,
 				"STARFEED_RSS_SERVER": validRSSCSV,
 			},
 			expectError: false,
@@ -156,7 +156,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "All variables present with debug and single run mode",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0":      validGitHostCSV,
+				"STARFEED_GIT_HOST_0":      validGitForgetCSV,
 				"STARFEED_RSS_SERVER":      validRSSCSV,
 				"STARFEED_DEBUG_MODE":      testutils.TrueBool,
 				"STARFEED_SINGLE_RUN_MODE": testutils.TrueBool,
@@ -164,7 +164,7 @@ func TestNewConfig(t *testing.T) {
 			},
 			expectError: false,
 			expected: &Config{
-				GitHostConfigs:  []GitHostConfig{MockValidGitHubConfig},
+				GitForgeConfigs: []GitForgeConfig{MockValidGitHubConfig},
 				RSSServerConfig: MockValidFreshRSSConfig,
 				DebugMode:       true,
 				SingleRunMode:   true,
@@ -174,13 +174,13 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Multiple Git hosts",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
+				"STARFEED_GIT_HOST_0": validGitForgetCSV,
 				"STARFEED_GIT_HOST_1": validForgejoCSV,
 				"STARFEED_RSS_SERVER": validRSSCSV,
 			},
 			expectError: false,
 			expected: &Config{
-				GitHostConfigs:  []GitHostConfig{MockValidGitHubConfig, MockValidCodebergConfig},
+				GitForgeConfigs: []GitForgeConfig{MockValidGitHubConfig, MockValidCodebergConfig},
 				RSSServerConfig: MockValidFreshRSSConfig,
 				DebugMode:       false,
 				SingleRunMode:   false,
@@ -190,7 +190,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Spaces in CSV are trimmed",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSVWithSpaces,
+				"STARFEED_GIT_HOST_0": validGitForgeCSVWithSpaces,
 				"STARFEED_RSS_SERVER": validRSSCSVWithSpaces,
 			},
 			expectError: false,
@@ -207,7 +207,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Missing RSS server should error",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
+				"STARFEED_GIT_HOST_0": validGitForgetCSV,
 			},
 			expectError: true,
 			expected:    nil,
@@ -215,7 +215,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Invalid HTTP timeout defaults to 10 seconds",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0":   validGitHostCSV,
+				"STARFEED_GIT_HOST_0":   validGitForgetCSV,
 				"STARFEED_RSS_SERVER":   validRSSCSV,
 				"STARFEED_HTTP_TIMEOUT": testutils.Invalid,
 			},
@@ -225,7 +225,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Zero HTTP timeout defaults to 10 seconds",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0":   validGitHostCSV,
+				"STARFEED_GIT_HOST_0":   validGitForgetCSV,
 				"STARFEED_RSS_SERVER":   validRSSCSV,
 				"STARFEED_HTTP_TIMEOUT": testutils.ZeroTimeout,
 			},
@@ -235,7 +235,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Invalid bool for debug mode should error",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
+				"STARFEED_GIT_HOST_0": validGitForgetCSV,
 				"STARFEED_RSS_SERVER": validRSSCSV,
 				"STARFEED_DEBUG_MODE": testutils.Invalid,
 			},
@@ -245,7 +245,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Invalid bool for single run mode should error",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0":      validGitHostCSV,
+				"STARFEED_GIT_HOST_0":      validGitForgetCSV,
 				"STARFEED_RSS_SERVER":      validRSSCSV,
 				"STARFEED_SINGLE_RUN_MODE": testutils.Invalid,
 			},
@@ -291,7 +291,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Missing CSV parts for RSS server should error",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
+				"STARFEED_GIT_HOST_0": validGitForgetCSV,
 				"STARFEED_RSS_SERVER": missingRSSCSV,
 			},
 			expectError: true,
@@ -300,7 +300,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Empty URL in RSS server CSV should error",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
+				"STARFEED_GIT_HOST_0": validGitForgetCSV,
 				"STARFEED_RSS_SERVER": emptyURLRSSCSV,
 			},
 			expectError: true,
@@ -309,7 +309,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Empty token in RSS server CSV should error",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
+				"STARFEED_GIT_HOST_0": validGitForgetCSV,
 				"STARFEED_RSS_SERVER": emptyTokenRSSCSV,
 			},
 			expectError: true,
@@ -336,7 +336,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Invalid Enabled in git host CSV should error",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": invalidEnabledGitHostCSV,
+				"STARFEED_GIT_HOST_0": invalidEnabledGitForgeCSV,
 				"STARFEED_RSS_SERVER": validRSSCSV,
 			},
 			expectError: true,
@@ -345,7 +345,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Invalid Enabled in RSS server CSV should error",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
+				"STARFEED_GIT_HOST_0": validGitForgetCSV,
 				"STARFEED_RSS_SERVER": invalidEnabledRSSCSV,
 			},
 			expectError: true,
@@ -354,7 +354,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Missing Enabled in git host CSV should error",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": missingEnabledGitHostCSV,
+				"STARFEED_GIT_HOST_0": missingEnabledGitForgeCSV,
 				"STARFEED_RSS_SERVER": validRSSCSV,
 			},
 			expectError: true,
@@ -363,7 +363,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "Missing Enabled in RSS server CSV should error",
 			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
+				"STARFEED_GIT_HOST_0": validGitForgetCSV,
 				"STARFEED_RSS_SERVER": missingEnabledRSSCSV,
 			},
 			expectError: true,
@@ -389,11 +389,11 @@ func TestNewConfig(t *testing.T) {
 				return
 			}
 
-			if len(cfg.GitHostConfigs) != len(tc.expected.GitHostConfigs) {
+			if len(cfg.GitForgeConfigs) != len(tc.expected.GitForgeConfigs) {
 				t.Errorf(
-					"Expected %d GitHosts, got %d",
-					len(tc.expected.GitHostConfigs),
-					len(cfg.GitHostConfigs),
+					"Expected %d GitForges, got %d",
+					len(tc.expected.GitForgeConfigs),
+					len(cfg.GitForgeConfigs),
 				)
 				return
 			}

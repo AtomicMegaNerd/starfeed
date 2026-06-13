@@ -3,16 +3,16 @@ package config
 import "github.com/atomicmeganerd/starfeed/testutils"
 
 var (
-	MockValidCodebergConfig = GitHostConfig{
-		Type:    ForgejoHostType,
+	MockValidCodebergConfig = GitForgeConfig{
+		Type:    ForgejoForgeType,
 		Name:    testutils.CodebergName,
 		BaseURL: testutils.CodebergURL,
 		ApiURL:  testutils.CodebergAPIURL,
 		Token:   testutils.GitHubToken,
 	}
 
-	MockValidGitHubConfig = GitHostConfig{
-		Type:    GitHubHostType,
+	MockValidGitHubConfig = GitForgeConfig{
+		Type:    GitHubForgeType,
 		Name:    testutils.GitHubName,
 		BaseURL: testutils.GitHubURL,
 		ApiURL:  testutils.GitHubAPIURL,

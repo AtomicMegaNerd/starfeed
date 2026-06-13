@@ -9,7 +9,7 @@ import (
 
 const (
 	// required
-	gitHostKey   = "STARFEED_GIT_HOST_"
+	gitForgeKey  = "STARFEED_GIT_FORGE"
 	rssServerKey = "STARFEED_RSS_SERVER"
 
 	// optional
@@ -17,7 +17,7 @@ const (
 	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
 	httpTimeoutKey   = "STARFEED_HTTP_TIMEOUT"
 
-	gitHostConfigFields   = 6
+	gitForgeConfigFields  = 6
 	rssServerConfigFields = 5
 
 	defaultHTTPTimeoutSeconds = 60
@@ -25,8 +25,8 @@ const (
 
 // The main Config struct used to hold configuration state for the app
 type Config struct {
-	GitHostConfigs  []GitHostConfig `validate:"required,min=1"`
-	RSSServerConfig RSSServerConfig `validate:"required"`
+	GitForgeConfigs []GitForgeConfig `validate:"required,min=1"`
+	RSSServerConfig RSSServerConfig  `validate:"required"`
 	DebugMode       bool
 	SingleRunMode   bool
 	HTTPTimeout     time.Duration `validate:"required"`
@@ -56,7 +56,7 @@ func NewConfig(g envGetter) (Config, error) {
 		return Config{}, err
 	}
 
-	gitHostConfigs, err := buildGitHostConfigs(validate, g)
+	gitForgeConfigs, err := buildGitForgeConfigs(validate, g)
 	if err != nil {
 		return Config{}, err
 	}
@@ -66,7 +66,7 @@ func NewConfig(g envGetter) (Config, error) {
 	}
 
 	cfg := Config{
-		GitHostConfigs:  gitHostConfigs,
+		GitForgeConfigs: gitForgeConfigs,
 		RSSServerConfig: rssConfig,
 		DebugMode:       debugMode,
 		SingleRunMode:   singleRunMode,

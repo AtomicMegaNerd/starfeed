@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/githost"
+	"github.com/atomicmeganerd/starfeed/gitforge"
 	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/testutils"
 	"github.com/lmittmann/tint"
@@ -84,7 +84,7 @@ func TestSyncFeeds(t *testing.T) {
 			// Otherwise test teh rest of the flows
 			if err == nil {
 				runner := NewSyncFeedsRunner(
-					githost.MockValidGitHub(&http.Client{}, logger),
+					gitforge.MockValidGitHub(&http.Client{}, logger),
 					rssServer,
 					logger,
 				)
@@ -110,7 +110,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 		}),
 	)
 
-	exampleRepo := githost.StarredRepo{
+	exampleRepo := gitforge.StarredRepo{
 		Name:    "repo",
 		RepoURL: "https://github.com/user/repo",
 		FeedURL: "https://github.com/user/repo/releases.atom",
@@ -122,7 +122,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 	testCases := []struct {
 		name             string
 		existingFeeds    map[string]struct{}
-		repo             githost.StarredRepo
+		repo             gitforge.StarredRepo
 		responses        []http.Response
 		atomHasEntries   bool
 		expectErr        bool
@@ -167,7 +167,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 		{
 			name:          "Add feed fails - should handle error gracefully",
 			existingFeeds: map[string]struct{}{},
-			repo: githost.StarredRepo{
+			repo: gitforge.StarredRepo{
 				Name:    "repo",
 				RepoURL: "https://github.com/user/repo",
 				FeedURL: "https://github.com/user/repo/releases.atom",
@@ -192,7 +192,7 @@ func TestPublishToFreshRSS(t *testing.T) {
 			mockClient := &http.Client{Transport: &mockTransport}
 
 			mockRunner := &SyncFeedsRunner{
-				gitHost:   githost.MockValidGitHub(&http.Client{}, logger),
+				gitForge:  gitforge.MockValidGitHub(&http.Client{}, logger),
 				rssServer: rss.MockValidRSSServer(ctx, mockClient, logger),
 				logger:    logger,
 			}
@@ -241,8 +241,8 @@ func TestRemoveStaleFeed(t *testing.T) {
 
 	testCases := []struct {
 		name             string
-		starredRepoMap   map[string]githost.StarredRepo
-		gitHost          githost.GitHost
+		starredRepoMap   map[string]gitforge.StarredRepo
+		gitForge         gitforge.GitForge
 		rssFeed          string
 		responses        []http.Response
 		expectError      bool
@@ -250,38 +250,38 @@ func TestRemoveStaleFeed(t *testing.T) {
 	}{
 		{
 			name: "Feed still starred - should not remove",
-			starredRepoMap: map[string]githost.StarredRepo{
+			starredRepoMap: map[string]gitforge.StarredRepo{
 				"https://github.com/user/repo/releases.atom": {
 					Name:    "repo",
 					RepoURL: "https://github.com/user/repo",
 					FeedURL: "https://github.com/user/repo/releases.atom",
 				},
 			},
-			gitHost: githost.MockValidGitHub(&http.Client{}, logger),
-			rssFeed: "https://github.com/user/repo/releases.atom",
+			gitForge: gitforge.MockValidGitHub(&http.Client{}, logger),
+			rssFeed:  "https://github.com/user/repo/releases.atom",
 		},
 		{
 			name:           "Github unstarred - should not remove codeberg repo",
-			starredRepoMap: map[string]githost.StarredRepo{},
-			gitHost:        githost.MockValidGitHub(&http.Client{}, logger),
+			starredRepoMap: map[string]gitforge.StarredRepo{},
+			gitForge:       gitforge.MockValidGitHub(&http.Client{}, logger),
 			rssFeed:        "https://codeberg.org/user/repo/releases.atom",
 		},
 		{
 			name:           "Codeberg unstarred - should not remove Github repo",
-			starredRepoMap: map[string]githost.StarredRepo{},
-			gitHost:        githost.MockValidCodeberg(&http.Client{}, logger),
+			starredRepoMap: map[string]gitforge.StarredRepo{},
+			gitForge:       gitforge.MockValidCodeberg(&http.Client{}, logger),
 			rssFeed:        "https://github.com/user/repo/releases.atom",
 		},
 		{
 			name:           "Not a release feed - should not remove",
-			starredRepoMap: map[string]githost.StarredRepo{},
-			gitHost:        githost.MockValidCodeberg(&http.Client{}, logger),
+			starredRepoMap: map[string]gitforge.StarredRepo{},
+			gitForge:       gitforge.MockValidCodeberg(&http.Client{}, logger),
 			rssFeed:        "https://roflstar.com/feed/feed.xml",
 		},
 		{
 			name:           "Feed no longer starred - should remove",
-			starredRepoMap: map[string]githost.StarredRepo{},
-			gitHost:        githost.MockValidGitHub(&http.Client{}, logger),
+			starredRepoMap: map[string]gitforge.StarredRepo{},
+			gitForge:       gitforge.MockValidGitHub(&http.Client{}, logger),
 			rssFeed:        "https://github.com/user/old-repo/releases.atom",
 			responses: []http.Response{
 				{
@@ -292,9 +292,9 @@ func TestRemoveStaleFeed(t *testing.T) {
 		},
 		{
 			name:           "Remove feed fails - should handle error gracefully",
-			starredRepoMap: map[string]githost.StarredRepo{},
+			starredRepoMap: map[string]gitforge.StarredRepo{},
 			rssFeed:        "https://github.com/user/old-repo/releases.atom",
-			gitHost:        githost.MockValidGitHub(&http.Client{}, logger),
+			gitForge:       gitforge.MockValidGitHub(&http.Client{}, logger),
 			responses: []http.Response{
 				{
 					StatusCode: http.StatusBadRequest,
@@ -314,7 +314,7 @@ func TestRemoveStaleFeed(t *testing.T) {
 
 			runner := &SyncFeedsRunner{
 				rssServer: rss.MockValidRSSServer(ctx, mockClient, logger),
-				gitHost:   tc.gitHost,
+				gitForge:  tc.gitForge,
 				logger:    logger,
 			}
 
