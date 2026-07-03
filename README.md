@@ -2,7 +2,7 @@
 
 ![Starfeed](./img/starfeed.png)
 
-Starfeed scans the current list of your starred repos from any supported Git Host on the Internet,
+Starfeed scans the current list of your starred repos from any supported Git Forge on the Internet,
 grabs the Releases RSS feed for each repo it finds, and publishes them to your own self-hosted
 [FreshRSS](https://www.freshrss.org/) RSS aggregator. Then by hooking up an RSS client to your
 FreshRSS server you can easily follow the releases for any of the repos that you have starred.
@@ -10,7 +10,7 @@ FreshRSS server you can easily follow the releases for any of the repos that you
 Starfeed will omit any RSS feeds that do not contain releases. It will also remove any feeds for
 repos that you are no longer starring.
 
-Currently supported Git Hosts:
+Currently supported Git Forges:
 
 - GitHub
 - Forgejo based (including Codeberg)
@@ -24,7 +24,7 @@ Currently supported Git Hosts:
 - You must have [FreshRSS](https://www.freshrss.org) deployed in your local network. It must be
   reachable from the Starfeed Docker container.
 - You must have an API token generated in FreshRSS that has permissions to create/edit/delete feeds.
-- You must have an API token for each Git Host with permission to read starred repos.
+- You must have an API token for each Git Forge with permission to read starred repos.
 - You must have [Docker](https://docker.com) or [Podman](https://podman.io) set up to run the
   container.
 - To build and run the app locally you need to install [Go](https://go.dev),
@@ -34,7 +34,7 @@ Currently supported Git Hosts:
 
 ## Environment Variables
 
-- `STARFEED_GIT_HOST_*n*` where _n_ is a number from 0..n. This is a CSV value with the following
+- `STARFEED_GIT_FORGE_*n*` where _n_ is a number from 0..n. This is a CSV value with the following
   format: `type,name,url,api_url,token,enabled`.
 - `STARFEED_RSS_SERVER` which again uses CSV to configure our RSS server. Format:
   `type,url,user,token,enabled`.
@@ -77,9 +77,9 @@ source .env
 Below is an example file that shows how to configure the environment variables.
 
 ```bash
-# Git Hosts
-export STARFEED_GIT_HOST_0=forgejo,Codeberg,https://codeberg.org,https://codeberg.org/api/v1,*****************,true
-export STARFEED_GIT_HOST_1=github,GitHub,https://github.com,https://api.github.com,***************,true
+# Git Forges
+export STARFEED_GIT_FORGE_0=forgejo,Codeberg,https://codeberg.org,https://codeberg.org/api/v1,*****************,true
+export STARFEED_GIT_FORGE_1=github,GitHub,https://github.com,https://api.github.com,***************,true
 
 # RSS Server
 export STARFEED_RSS_SERVER=freshrss,http://freshrss:80,chris@megaparsec.ca,*****************,true
@@ -172,6 +172,6 @@ These are less important and may or may not happen.
 
 - [ ] Migrate to [codeberg](https://codeberg.org) or another host?
 - [ ] Support other RSS backends?
-- [ ] Support other Git Hosts (Gitea, Bitbucket, Gitlab)?
+- [ ] Support other Git Forges (Gitea, Bitbucket, Gitlab)?
 - [ ] Create RSS feeds for notifications that we can serve up from this daemon.
 - [ ] Specify watched instead of starred repos?

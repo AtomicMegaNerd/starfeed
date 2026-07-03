@@ -138,10 +138,9 @@ func (f FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
 	}
 
 	// We do not care about the response
-	_, _, err := common.DoAPIRequest(
+	if _, _, err := common.DoAPIRequest(
 		ctx, http.MethodPost, rmURL, []byte(formData.Encode()), f.headers, f.client,
-	)
-	if err != nil {
+	); err != nil {
 		return err
 	}
 
@@ -163,10 +162,9 @@ func (f FreshRSS) addFeedToCategory(
 		"a":  {fmt.Sprintf("user/%s/label/%s", f.user, category)},
 	}
 
-	_, _, err := common.DoAPIRequest(
+	if _, _, err := common.DoAPIRequest(
 		ctx, http.MethodPost, addURL, []byte(formData.Encode()), f.headers, f.client,
-	)
-	if err != nil {
+	); err != nil {
 		return err
 	}
 

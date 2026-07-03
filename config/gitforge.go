@@ -31,7 +31,7 @@ func buildGitForgeConfigs(
 	gitForgeConfigs := make([]GitForgeConfig, 0)
 
 	for ix := 0; ; ix++ {
-		gitForgeCsv := envGetter.Getenv(fmt.Sprintf("%s%d", gitForgeKey, ix))
+		gitForgeCsv := envGetter.Getenv(fmt.Sprintf("%s_%d", gitForgeKey, ix))
 		if gitForgeCsv == "" {
 			if ix == 0 {
 				return nil, errors.New("must define at least 1 git host")

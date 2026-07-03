@@ -77,6 +77,7 @@ func NewGitForge(
 func (g GitForge) GetStarredRepos(
 	ctx context.Context,
 ) ([]StarredRepo, error) {
+
 	g.logger.Debug("Querying git host for starred repos", "url", g.starredReposFetchURL)
 
 	// A map makes everything easy to search based on feed
@@ -126,6 +127,10 @@ func (g GitForge) CheckReleaseFeedExistsAndHasEntries(
 	ctx context.Context,
 	repo *StarredRepo,
 ) error {
+	if repo == nil {
+		return errors.New("cannot check release feeds as repo argument is nil")
+	}
+
 	if repo.RepoURL == "" {
 		return fmt.Errorf("repoURL empty for repo %s", repo.Name)
 	}
@@ -180,6 +185,10 @@ func (g GitForge) parseNextPageURL(respHeaders http.Header) string {
 }
 
 func (g GitForge) parseRepos(data []byte) ([]StarredRepo, error) {
+	if data == nil {
+		return nil, errors.New("cannot parse a nil slice")
+	}
+
 	repoSlice := make([]StarredRepo, 0)
 	if err := json.Unmarshal(data, &repoSlice); err != nil {
 		return nil, fmt.Errorf(

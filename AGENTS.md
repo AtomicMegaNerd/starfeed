@@ -2,8 +2,8 @@
 
 ## Overview
 
-Starfeed is a Go application that syncs release RSS feeds from support Git Hosts on the Internet. It
-adds feeds for new releases for starred repos to a specified FreshRSS instance. It uses very few
+Starfeed is a Go application that syncs release RSS feeds from support Git Forges on the Internet.
+It adds feeds for new releases for starred repos to a specified FreshRSS instance. It uses very few
 dependencies and is containerized via a multi-stage Dockerfile. CI builds, tests, lints, and
 publishes images via GitHub Actions.
 
@@ -51,8 +51,10 @@ Optional:
 - `cmd/main.go`: Application entrypoint; sets up logging, reads config, handles signals, schedules
   24h ticker, and invokes the runners.
 - `config/`: Loads configuration from the environment into our Go objects.
-- `runner/`: Orchestration layer which executes workflows against the RSS server and the Git Hosts.
-- `gitforge/`: Implementation code for all supported git hosts.
+- `common/`: Common code like http handling, etc.
+- `runners/`: Orchestration layer which executes workflows against the RSS server and the Git
+  Forges.
+- `gitforge/`: Implementation code for all supported git forges.
 - `rss/`: Code that handles publishing the release feeds to RSS.
 - `testutils/`: Test doubles related data and shared mocks/functions.
 
