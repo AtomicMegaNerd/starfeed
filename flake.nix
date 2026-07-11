@@ -68,6 +68,7 @@
               pkgs.go-tools
               pkgs.gopls
               pkgs.golangci-lint
+              pkgs.golines
               pkgs.gotestsum
               pkgs.go-task
               pkgs.goreleaser
