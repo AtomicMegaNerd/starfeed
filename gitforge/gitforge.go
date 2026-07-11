@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/atomicmeganerd/starfeed/common"
-	"github.com/atomicmeganerd/starfeed/config"
 )
 
 // This regex will match if there is a next page in the response headers
@@ -32,7 +31,7 @@ type GitForge struct {
 }
 
 func NewGitForge(
-	hostCfg config.GitForgeConfig,
+	hostCfg GitForgeConfig,
 	logger *slog.Logger,
 	client *http.Client,
 ) GitForge {
@@ -40,11 +39,11 @@ func NewGitForge(
 
 	// The URL to fetch starred repos does differ slightly
 	starredReposFetchURL := ""
-	if hostCfg.Type == config.GitHubForgeType {
+	if hostCfg.Type == GitHubForgeType {
 		headers.Set("X-GitHub-Api-Version", "2022-11-28")
 		starredReposFetchURL = fmt.Sprintf("%s/user/starred?per_page=100", hostCfg.ApiURL)
 	}
-	if hostCfg.Type == config.ForgejoForgeType {
+	if hostCfg.Type == ForgejoForgeType {
 		starredReposFetchURL = fmt.Sprintf("%s/user/starred?limit=100", hostCfg.ApiURL)
 	}
 

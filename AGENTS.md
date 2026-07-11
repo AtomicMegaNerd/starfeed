@@ -22,7 +22,7 @@ Currently supported:
 
 ## Environment Variables
 
-- `STARFEED_GIT_HOST_*n*` where _n_ is a number from 0..n. This is a CSV value with the following
+- `STARFEED_GIT_FORGE_*n*` where _n_ is a number from 0..n. This is a CSV value with the following
   format: `type,name,url,api_url,token,enabled`.
 - `STARFEED_RSS_SERVER` which again uses CSV to configure our RSS server. Format:
   `type,url,user,token,enabled`.
@@ -39,7 +39,6 @@ Optional:
 
 - Build binary: `task build`
 - Run locally: `task run`
-- Test with coverage gate (>=80%): `task test`
 - Lint: `task lint`
 - Clean artifacts: `task clean`
 - Update deps: `task update-deps`

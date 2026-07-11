@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/testutils"
 	"github.com/lmittmann/tint"
 )
@@ -78,7 +77,7 @@ func TestAuthenticate(t *testing.T) {
 			headers.Set("Content-type", "application/x-www-form-urlencoded")
 			authToken, err := authenticate(
 				ctx,
-				config.MockValidFreshRSSConfig,
+				MockValidFreshRSSConfig,
 				headers,
 				testutils.TestLogger(),
 				&http.Client{Transport: &mockTransport},

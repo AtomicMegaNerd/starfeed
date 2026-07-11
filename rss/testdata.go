@@ -5,27 +5,43 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/atomicmeganerd/starfeed/config"
+	"github.com/atomicmeganerd/starfeed/testutils"
 )
 
-var MockValidRSSServer = func(
+var (
+	MockValidFreshRSSConfig = RSSServerConfig{
+		Type:    FreshRSSType,
+		BaseURL: testutils.FreshRSSURL,
+		User:    testutils.FreshRSSUser,
+		Enabled: false,
+	}
+
+	MockValidFreshRSSEnabledConfig = RSSServerConfig{
+		Type:    FreshRSSType,
+		BaseURL: testutils.FreshRSSURL,
+		User:    testutils.FreshRSSUser,
+		Enabled: true,
+	}
+)
+
+func MockValidRSSServer(
 	ctx context.Context, client *http.Client, logger *slog.Logger,
 ) FreshRSS {
 	rss, _ := NewFreshRSS(
 		ctx,
-		config.MockValidFreshRSSConfig,
+		MockValidFreshRSSConfig,
 		logger,
 		client,
 	)
 	return rss
 }
 
-var MockValidRSSEnabledServer = func(
+func MockValidRSSEnabledServer(
 	ctx context.Context, client *http.Client, logger *slog.Logger,
 ) (FreshRSS, error) {
 	rss, err := NewFreshRSS(
 		ctx,
-		config.MockValidFreshRSSEnabledConfig,
+		MockValidFreshRSSEnabledConfig,
 		logger,
 		client,
 	)

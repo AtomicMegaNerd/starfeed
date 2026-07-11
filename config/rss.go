@@ -5,31 +5,19 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/go-playground/validator/v10"
 )
-
-const (
-	FreshRSSType = "freshrss"
-)
-
-// This type both holds and validates the config for the RSS Server
-type RSSServerConfig struct {
-	Type    string `validate:"required,oneof=freshrss"`
-	BaseURL string `validate:"required,url"`
-	User    string `validate:"required,min=3"`
-	Token   string `validate:"required,min=10"`
-	Enabled bool
-}
 
 func buildRssServerConfig(
 	validate *validator.Validate,
 	envGetter envGetter,
-) (RSSServerConfig, error) {
+) (rss.RSSServerConfig, error) {
 	rssCsv := envGetter.Getenv(rssServerKey)
 
 	parts := strings.SplitN(rssCsv, ",", rssServerConfigFields)
 	if len(parts) != rssServerConfigFields {
-		return RSSServerConfig{}, fmt.Errorf(
+		return rss.RSSServerConfig{}, fmt.Errorf(
 			"expected csv to have %d parts but it had %d", rssServerConfigFields, len(parts),
 		)
 	}
@@ -41,13 +29,19 @@ func buildRssServerConfig(
 
 	enabled, err := strconv.ParseBool(enabledStr)
 	if err != nil {
-		return RSSServerConfig{}, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
+		return rss.RSSServerConfig{}, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
 	}
 
-	rssConfig := RSSServerConfig{rssType, baseURL, user, token, enabled}
+	rssConfig := rss.RSSServerConfig{
+		Type:    rssType,
+		BaseURL: baseURL,
+		User:    user,
+		Token:   token,
+		Enabled: enabled,
+	}
 
 	if err := validate.Struct(rssConfig); err != nil {
-		return RSSServerConfig{}, err
+		return rss.RSSServerConfig{}, err
 	}
 
 	return rssConfig, nil

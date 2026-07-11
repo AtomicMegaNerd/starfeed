@@ -56,7 +56,7 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 
 		// Add Release feeds to each repo
 		for _, repo := range starredRepos {
-			if err = p.gitForge.CheckReleaseFeedExistsAndHasEntries(ctx, &repo); err != nil {
+			if err = p.gitForge.CheckReleaseFeedExistsAndHasEntries(ghCtx, &repo); err != nil {
 				return fmt.Errorf(
 					"error %w adding release feeds to repo %s from gitForge %s",
 					err, repo.Name, p.gitForge.Name,

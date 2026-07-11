@@ -4,6 +4,11 @@ import (
 	"encoding/xml"
 )
 
+const (
+	GitHubForgeType  = "github"
+	ForgejoForgeType = "forgejo"
+)
+
 // This object represents a Git repo in a supported Git Host that is starred and that we want to
 // get the Atom feed for.
 type StarredRepo struct {
@@ -22,4 +27,14 @@ type AtomFeed struct {
 
 type Entry struct {
 	Title string `xml:"title"`
+}
+
+// This type both holds and validates the config for a GitForge
+type GitForgeConfig struct {
+	Type    string `validate:"required,oneof=github forgejo"`
+	Name    string `validate:"required,min=3"`
+	BaseURL string `validate:"required,url"`
+	ApiURL  string `validate:"required,url"`
+	Token   string `validate:"required,min=10"`
+	Enabled bool
 }

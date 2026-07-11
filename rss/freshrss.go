@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/atomicmeganerd/starfeed/common"
-	"github.com/atomicmeganerd/starfeed/config"
 )
 
 // The FreshRSS is a private struct that implements FreshRSSFeedManager.
@@ -30,7 +29,7 @@ type FreshRSS struct {
 // - client: The http client to use for requests (used for mocking).
 func NewFreshRSS(
 	ctx context.Context,
-	rssConfig config.RSSServerConfig,
+	rssConfig RSSServerConfig,
 	logger *slog.Logger,
 	client *http.Client,
 ) (FreshRSS, error) {
@@ -174,7 +173,7 @@ func (f FreshRSS) addFeedToCategory(
 // This function will authenticate to FreshRSS.
 func authenticate(
 	ctx context.Context,
-	rssConfig config.RSSServerConfig,
+	rssConfig RSSServerConfig,
 	headers http.Header,
 	logger *slog.Logger,
 	client *http.Client,

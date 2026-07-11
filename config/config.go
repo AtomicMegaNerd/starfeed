@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/atomicmeganerd/starfeed/gitforge"
+	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -25,8 +27,8 @@ const (
 
 // The main Config struct used to hold configuration state for the app
 type Config struct {
-	GitForgeConfigs []GitForgeConfig `validate:"required,min=1"`
-	RSSServerConfig RSSServerConfig  `validate:"required"`
+	GitForgeConfigs []gitforge.GitForgeConfig `validate:"required,min=1"`
+	RSSServerConfig rss.RSSServerConfig       `validate:"required"`
 	DebugMode       bool
 	SingleRunMode   bool
 	HTTPTimeout     time.Duration `validate:"required"`

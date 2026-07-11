@@ -6,29 +6,15 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/atomicmeganerd/starfeed/gitforge"
 	"github.com/go-playground/validator/v10"
 )
-
-const (
-	GitHubForgeType  = "github"
-	ForgejoForgeType = "forgejo"
-)
-
-// This type both holds and validates the config for a GitForge
-type GitForgeConfig struct {
-	Type    string `validate:"required,oneof=github forgejo"`
-	Name    string `validate:"required,min=3"`
-	BaseURL string `validate:"required,url"`
-	ApiURL  string `validate:"required,url"`
-	Token   string `validate:"required,min=10"`
-	Enabled bool
-}
 
 func buildGitForgeConfigs(
 	validate *validator.Validate,
 	envGetter envGetter,
-) ([]GitForgeConfig, error) {
-	gitForgeConfigs := make([]GitForgeConfig, 0)
+) ([]gitforge.GitForgeConfig, error) {
+	gitForgeConfigs := make([]gitforge.GitForgeConfig, 0)
 
 	for ix := 0; ; ix++ {
 		gitForgeCsv := envGetter.Getenv(fmt.Sprintf("%s_%d", gitForgeKey, ix))
@@ -60,7 +46,14 @@ func buildGitForgeConfigs(
 			return nil, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
 		}
 
-		gitForgeConfig := GitForgeConfig{hostType, name, baseURL, apiURL, token, enabled}
+		gitForgeConfig := gitforge.GitForgeConfig{
+			Type:    hostType,
+			Name:    name,
+			BaseURL: baseURL,
+			ApiURL:  apiURL,
+			Token:   token,
+			Enabled: enabled,
+		}
 
 		if err := validate.Struct(gitForgeConfig); err != nil {
 			return nil, err
