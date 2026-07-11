@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/atomicmeganerd/starfeed/gitforge"
@@ -36,23 +35,14 @@ func buildGitForgeConfigs(
 
 		hostType := strings.TrimSpace(parts[0])
 		name := strings.TrimSpace(parts[1])
-		baseURL := strings.TrimSpace(parts[2])
-		apiURL := strings.TrimSpace(parts[3])
-		token := strings.TrimSpace(parts[4])
-		enabledStr := strings.TrimSpace(parts[5])
-
-		enabled, err := strconv.ParseBool(enabledStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
-		}
+		apiURL := strings.TrimSpace(parts[2])
+		token := strings.TrimSpace(parts[3])
 
 		gitForgeConfig := gitforge.GitForgeConfig{
-			Type:    hostType,
-			Name:    name,
-			BaseURL: baseURL,
-			ApiURL:  apiURL,
-			Token:   token,
-			Enabled: enabled,
+			Type:   hostType,
+			Name:   name,
+			ApiURL: apiURL,
+			Token:  token,
 		}
 
 		if err := validate.Struct(gitForgeConfig); err != nil {

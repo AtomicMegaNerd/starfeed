@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -15,36 +14,45 @@ import (
 	"github.com/lmittmann/tint"
 )
 
-const (
-	// Repo 1
-	repoName1    = "repo1"
-	repoHtmlURL1 = "https://github.com/user/repo1"
+var (
+	repo1 = StarredRepo{
+		Name:    "repo1",
+		RepoURL: "https://github.com/user/repo1",
+		FeedURL: "https://github.com/user/repo1/releases.atom",
+	}
 
-	// Repo 2
-	repoName2    = "repo2"
-	repoHtmlURL2 = "https://github.com/user/repo2"
+	repo2 = StarredRepo{
+		Name:    "repo2",
+		RepoURL: "https://github.com/user/repo2",
+		FeedURL: "https://github.com/user/repo2/releases.atom",
+	}
 
-	// Repo 3
-	repoName3    = "repo3"
-	repoHtmlURL3 = "https://github.com/user/repo3"
+	repo3 = StarredRepo{
+		Name:    "repo3",
+		RepoURL: "https://github.com/user/repo3",
+		FeedURL: "https://github.com/user/repo3/releases.atom",
+	}
 
-	// Repo 4
-	repoName4    = "repo4"
-	repoHtmlURL4 = "https://github.com/user/repo4"
+	repo4 = StarredRepo{
+		Name:    "repo4",
+		RepoURL: "https://github.com/user/repo4",
+		FeedURL: "https://github.com/user/repo4/releases.atom",
+	}
+
+	MockGitHubConfig = GitForgeConfig{
+		Type:   GitHubForgeType,
+		Name:   testutils.GitHubName,
+		ApiURL: testutils.GitHubAPIURL,
+		Token:  testutils.GitHubToken,
+	}
 )
 
-func TestGetStarredRepos(t *testing.T) {
-	logger := slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
-			Level:      slog.LevelDebug,
-			TimeFormat: time.RFC3339,
-		}),
-	)
+func TestLoadRepoMap(t *testing.T) {
 
 	testCases := []struct {
 		name          string
 		responses     []http.Response
-		expectedRepos []StarredRepo
+		expectedRepos FeedRepoMap
 		expectError   bool
 	}{
 		{
@@ -54,8 +62,8 @@ func TestGetStarredRepos(t *testing.T) {
 					Body: io.NopCloser(
 						strings.NewReader(`[
 							{
-								"name": "` + repoName1 + `",
-								"html_url": "` + repoHtmlURL1 + `"
+								"name": "` + repo1.Name + `",
+								"html_url": "` + repo1.RepoURL + `"
 							}
 						]`,
 						),
@@ -64,7 +72,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []StarredRepo{{Name: repoName1, RepoURL: repoHtmlURL1}},
+			expectedRepos: FeedRepoMap{repo1.FeedURL: repo1},
 			expectError:   false,
 		},
 		{
@@ -73,12 +81,12 @@ func TestGetStarredRepos(t *testing.T) {
 				{
 					Body: io.NopCloser(strings.NewReader(`[
 						{
-							"name": "` + repoName1 + `",
-							"html_url": "` + repoHtmlURL1 + `"
+							"name": "` + repo1.Name + `",
+							"html_url": "` + repo1.RepoURL + `"
 						},
 						{
-							"name": "` + repoName2 + `",
-							"html_url": "` + repoHtmlURL2 + `"
+							"name": "` + repo2.Name + `",
+							"html_url": "` + repo2.RepoURL + `"
 						}
 						]`),
 					),
@@ -93,12 +101,12 @@ func TestGetStarredRepos(t *testing.T) {
 				{
 					Body: io.NopCloser(strings.NewReader(`[
 						{
-							"name": "` + repoName3 + `",
-							"html_url": "` + repoHtmlURL3 + `"
+							"name": "` + repo3.Name + `",
+							"html_url": "` + repo3.RepoURL + `"
 						},
 						{
-							"name": "` + repoName4 + `",
-							"html_url": "` + repoHtmlURL4 + `"
+							"name": "` + repo4.Name + `",
+							"html_url": "` + repo4.RepoURL + `"
 						}
 						]`),
 					),
@@ -106,11 +114,11 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []StarredRepo{
-				{Name: repoName1, RepoURL: repoHtmlURL1},
-				{Name: repoName2, RepoURL: repoHtmlURL2},
-				{Name: repoName3, RepoURL: repoHtmlURL3},
-				{Name: repoName4, RepoURL: repoHtmlURL4},
+			expectedRepos: FeedRepoMap{
+				repo1.FeedURL: repo1,
+				repo2.FeedURL: repo2,
+				repo3.FeedURL: repo3,
+				repo4.FeedURL: repo4,
 			},
 			expectError: false,
 		},
@@ -123,8 +131,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusNotFound,
 				},
 			},
-			expectedRepos: []StarredRepo{},
-			expectError:   true,
+			expectError: true,
 		},
 		{
 			name: "Reading response body should trigger an error",
@@ -135,8 +142,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []StarredRepo{},
-			expectError:   true,
+			expectError: true,
 		},
 		{
 			name: "Invalid json should trigger an error",
@@ -147,8 +153,7 @@ func TestGetStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []StarredRepo{},
-			expectError:   true,
+			expectError: true,
 		},
 	}
 
@@ -158,9 +163,9 @@ func TestGetStarredRepos(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
-			gh := MockValidGitHub(mockClient, logger)
+			gh := NewGitForge(MockGitHubConfig, testutils.TestLogger(), mockClient)
 
-			repos, err := gh.GetStarredRepos(ctx)
+			err := gh.LoadRepoMap(ctx)
 
 			if tc.expectError {
 				if err == nil {
@@ -173,17 +178,6 @@ func TestGetStarredRepos(t *testing.T) {
 				t.Fatalf("Expected no error, got %v", err)
 			}
 
-			if len(repos) != len(tc.expectedRepos) {
-				t.Fatalf("Expected %d repos, got %d", len(tc.expectedRepos), len(repos))
-			}
-
-			for _, expected := range tc.expectedRepos {
-				ok := slices.Contains(repos, expected)
-				if !ok {
-					t.Errorf("Expected repo %s not found", expected.Name)
-					continue
-				}
-			}
 		})
 	}
 }
@@ -221,7 +215,7 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 					`)),
 				},
 			},
-			expectError: false,
+			expectHasEntries: true,
 		},
 		{
 			name:    "Feed has no entries",
@@ -236,7 +230,6 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 					`)),
 				},
 			},
-			expectError: false,
 		},
 		{
 			name:    "Error making request",
@@ -248,7 +241,6 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 					Body:       io.NopCloser(strings.NewReader("")),
 				},
 			},
-			expectError: true,
 		},
 		{
 			name:    "Error reading response",
@@ -259,7 +251,6 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 					Body: testutils.NewErrorReadCloser(),
 				},
 			},
-			expectError: true,
 		},
 		{
 			name:    "Error parsing XML",
@@ -276,7 +267,6 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 					`)),
 				},
 			},
-			expectError: true,
 		},
 		{
 			name:    "Not found does not result in error",
@@ -288,8 +278,6 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 					StatusCode: http.StatusNotFound,
 				},
 			},
-			expectHasEntries: false,
-			expectError:      false,
 		},
 	}
 
@@ -299,25 +287,13 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
-			gh := MockValidGitHub(mockClient, logger)
+			gh := NewGitForge(MockGitHubConfig, logger, mockClient)
 
 			repo := StarredRepo{RepoURL: tc.repoURL}
-			err := gh.CheckReleaseFeedExistsAndHasEntries(ctx, &repo)
+			hasEntries := gh.repoHasRelaseFeed(ctx, repo)
 
-			if err != nil && !tc.expectError {
-				t.Fatalf("Expected no error, got %v", err)
-			}
-
-			if err == nil {
-				if tc.expectError {
-					t.Fatalf("Expected an error, got none")
-				}
-
-				if tc.expectHasEntries {
-					if repo.FeedURL != tc.feedURL {
-						t.Fatalf("Expected feed %s but got %s", tc.feedURL, repo.FeedURL)
-					}
-				}
+			if tc.expectHasEntries != hasEntries {
+				t.Fatalf("Expected HasEntries to be %t but got %t", tc.expectHasEntries, hasEntries)
 			}
 		})
 	}

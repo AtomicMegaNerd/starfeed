@@ -51,8 +51,8 @@ func main() {
 	defer ticker.Stop()
 
 	// Try to authenticate to the target RSS server
-	rssServer, err := rss.NewFreshRSS(ctx, cfg.RSSServerConfig, logger, client)
-	if err != nil {
+	rssServer := rss.NewFreshRSS(cfg.RSSServerConfig, logger, client)
+	if err := rssServer.Authenticate(ctx); err != nil {
 		logger.Error("Error authenticating to FreshRSS", "error", err)
 		os.Exit(1)
 	}

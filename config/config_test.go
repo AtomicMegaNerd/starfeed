@@ -11,6 +11,24 @@ import (
 )
 
 var (
+	MockRSSConfig = rss.RSSServerConfig{
+		Name:    testutils.FreshRSSName,
+		BaseURL: testutils.FreshRSSURL,
+		User:    testutils.FreshRSSUser,
+	}
+	MockGitHubConfig = gitforge.GitForgeConfig{
+		Type:   gitforge.GitHubForgeType,
+		Name:   testutils.GitHubName,
+		ApiURL: testutils.GitHubAPIURL,
+		Token:  testutils.GitHubToken,
+	}
+	MockCodebergConfig = gitforge.GitForgeConfig{
+		Type:   gitforge.ForgejoForgeType,
+		Name:   testutils.CodebergName,
+		ApiURL: testutils.CodebergAPIURL,
+		Token:  testutils.CodebergToken,
+	}
+
 	validGitForgetCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s,%s",
 		gitforge.GitHubForgeType,
@@ -31,7 +49,7 @@ var (
 	)
 	validRSSCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s",
-		rss.FreshRSSType,
+		testutils.FreshRSSName,
 		testutils.FreshRSSURL,
 		testutils.FreshRSSUser,
 		testutils.FreshRSSToken,
@@ -59,7 +77,7 @@ var (
 		testutils.GitHubAPIURL,
 		testutils.TrueBool,
 	)
-	missingRSSCSV = fmt.Sprintf("%s,%s", rss.FreshRSSType, testutils.FreshRSSURL)
+	missingRSSCSV = fmt.Sprintf("%s,%s", testutils.FreshRSSName, testutils.FreshRSSURL)
 
 	emptyBaseURLCSV = fmt.Sprintf(
 		"%s,%s,,%s,%s,%s",
@@ -89,7 +107,7 @@ var (
 	)
 	validRSSCSVWithSpaces = fmt.Sprintf(
 		" %s , %s , %s , %s , %s ",
-		rss.FreshRSSType,
+		testutils.FreshRSSName,
 		testutils.FreshRSSURL,
 		testutils.FreshRSSUser,
 		testutils.FreshRSSToken,
@@ -97,9 +115,9 @@ var (
 	)
 
 	emptyURLRSSCSV = fmt.Sprintf("%s,,%s,%s,%s",
-		rss.FreshRSSType, testutils.FreshRSSUser, testutils.FreshRSSToken, testutils.TrueBool)
+		testutils.FreshRSSName, testutils.FreshRSSUser, testutils.FreshRSSToken, testutils.TrueBool)
 	emptyTokenRSSCSV = fmt.Sprintf("%s,%s,%s,,%s",
-		rss.FreshRSSType, testutils.FreshRSSURL, testutils.FreshRSSUser, testutils.TrueBool)
+		testutils.FreshRSSName, testutils.FreshRSSURL, testutils.FreshRSSUser, testutils.TrueBool)
 	invalidEnabledGitForgeCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s,%s",
 		gitforge.GitHubForgeType,
@@ -111,7 +129,7 @@ var (
 	)
 	invalidEnabledRSSCSV = fmt.Sprintf(
 		"%s,%s,%s,%s,%s",
-		rss.FreshRSSType,
+		testutils.FreshRSSName,
 		testutils.FreshRSSURL,
 		testutils.FreshRSSUser,
 		testutils.FreshRSSToken,
@@ -125,14 +143,19 @@ var (
 		testutils.GitHubAPIURL,
 		testutils.GitHubToken,
 	)
-	missingEnabledRSSCSV = fmt.Sprintf("%s,%s,%s,%s",
-		rss.FreshRSSType, testutils.FreshRSSURL, testutils.FreshRSSUser, testutils.FreshRSSToken)
+	missingEnabledRSSCSV = fmt.Sprintf(
+		"%s,%s,%s,%s",
+		testutils.FreshRSSName,
+		testutils.FreshRSSURL,
+		testutils.FreshRSSUser,
+		testutils.FreshRSSToken,
+	)
 )
 
 func validConfig() *Config {
 	return &Config{
-		GitForgeConfigs: []gitforge.GitForgeConfig{gitforge.MockValidGitHubConfig},
-		RSSServerConfig: rss.MockValidFreshRSSConfig,
+		GitForgeConfigs: []gitforge.GitForgeConfig{MockGitHubConfig},
+		RSSServerConfig: MockRSSConfig,
 		DebugMode:       false,
 		SingleRunMode:   false,
 		HTTPTimeout:     defaultHTTPTimeoutSeconds * time.Second,
@@ -166,8 +189,8 @@ func TestNewConfig(t *testing.T) {
 			},
 			expectError: false,
 			expected: &Config{
-				GitForgeConfigs: []gitforge.GitForgeConfig{gitforge.MockValidGitHubConfig},
-				RSSServerConfig: rss.MockValidFreshRSSConfig,
+				GitForgeConfigs: []gitforge.GitForgeConfig{MockGitHubConfig},
+				RSSServerConfig: MockRSSConfig,
 				DebugMode:       true,
 				SingleRunMode:   true,
 				HTTPTimeout:     30 * time.Second,
@@ -183,10 +206,10 @@ func TestNewConfig(t *testing.T) {
 			expectError: false,
 			expected: &Config{
 				GitForgeConfigs: []gitforge.GitForgeConfig{
-					gitforge.MockValidGitHubConfig,
-					gitforge.MockValidCodebergConfig,
+					MockGitHubConfig,
+					MockCodebergConfig,
 				},
-				RSSServerConfig: rss.MockValidFreshRSSConfig,
+				RSSServerConfig: MockRSSConfig,
 				DebugMode:       false,
 				SingleRunMode:   false,
 				HTTPTimeout:     defaultHTTPTimeoutSeconds * time.Second,

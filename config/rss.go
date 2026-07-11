@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/atomicmeganerd/starfeed/rss"
@@ -25,19 +24,12 @@ func buildRssServerConfig(
 	baseURL := strings.TrimSpace(parts[1])
 	user := strings.TrimSpace(parts[2])
 	token := strings.TrimSpace(parts[3])
-	enabledStr := strings.TrimSpace(parts[4])
-
-	enabled, err := strconv.ParseBool(enabledStr)
-	if err != nil {
-		return rss.RSSServerConfig{}, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
-	}
 
 	rssConfig := rss.RSSServerConfig{
-		Type:    rssType,
+		Name:    rssType,
 		BaseURL: baseURL,
 		User:    user,
 		Token:   token,
-		Enabled: enabled,
 	}
 
 	if err := validate.Struct(rssConfig); err != nil {

@@ -12,185 +12,64 @@ import (
 	"github.com/atomicmeganerd/starfeed/common"
 )
 
-// The FreshRSS is a private struct that implements FreshRSSFeedManager.
 type FreshRSS struct {
-	RSSType string
-	Enabled bool
-	baseURL string
-	user    string
-	logger  *slog.Logger
-	headers http.Header
-	client  *http.Client
+	cfg            RSSServerConfig
+	addUrl         string
+	addCategoryUrl string
+	editUrl        string
+	feeds          FeedSet
+	logger         *slog.Logger
+	headers        http.Header
+	client         *http.Client
 }
 
-// NewFreshRSS creates a new FreshRSSFeedManager instance.
-// Arguments:
-// - cfg: This holds the configuration state this object needs.
-// - client: The http client to use for requests (used for mocking).
 func NewFreshRSS(
-	ctx context.Context,
-	rssConfig RSSServerConfig,
+	cfg RSSServerConfig,
 	logger *slog.Logger,
 	client *http.Client,
-) (FreshRSS, error) {
-	logger = logger.With("rssServer", rssConfig.Type)
+) *FreshRSS {
+	logger = logger.With("rssServer", cfg.Name)
+
 	headers := http.Header{}
 	headers.Set("Content-type", "application/x-www-form-urlencoded")
 
-	// Only authenticate if the RSS server is enabled
-	if rssConfig.Enabled {
-		authToken, err := authenticate(ctx, rssConfig, headers, logger, client)
-		if err != nil {
-			return FreshRSS{}, err
-		}
-		headers.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", authToken))
-	}
-
-	return FreshRSS{
-		RSSType: rssConfig.Type,
-		Enabled: rssConfig.Enabled,
-		baseURL: rssConfig.BaseURL,
-		user:    rssConfig.User,
-		logger:  logger,
+	return &FreshRSS{
+		cfg:    cfg,
+		logger: logger,
+		addUrl: fmt.Sprintf(
+			"%s/api/greader.php/reader/api/0/subscription/quickadd",
+			cfg.BaseURL,
+		),
+		addCategoryUrl: fmt.Sprintf(
+			"%s/api/greader.php/reader/api/0/subscription/edit",
+			cfg.BaseURL,
+		),
+		editUrl: fmt.Sprintf(
+			"%s/api/greader.php/reader/api/0/subscription/edit",
+			cfg.BaseURL,
+		),
 		headers: headers,
 		client:  client,
-	}, nil
-}
-
-// AddFeed adds a feed to the FreshRSS instance.
-// Arguments:
-// - feedURL: The URL of the feed to add.
-// - name: The name of the feed.
-// - category: The category to add the feed to.
-func (f FreshRSS) AddFeed(
-	ctx context.Context,
-	feedURL, name, category string,
-) error {
-	addURL := fmt.Sprintf(
-		"%s/api/greader.php/reader/api/0/subscription/quickadd", f.baseURL,
-	)
-	formData := url.Values{
-		"quickadd": {feedURL},
 	}
-
-	f.logger.Debug("Adding feed to FreshRSS", "url", addURL)
-	res, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, addURL, []byte(formData.Encode()), f.headers, f.client,
-	)
-	if err != nil {
-		return err
-	}
-
-	// Parse the response
-	var resData FreshRSSAddFeedResponse
-	if err = json.Unmarshal(res, &resData); err != nil {
-		return err
-	}
-
-	// Add the sub to the category
-	if err = f.addFeedToCategory(ctx, resData.StreamId, name, category); err != nil {
-		return err
-	}
-
-	f.logger.Debug("Successfully added feed to FreshRSS", "feed", feedURL)
-	return nil
-}
-
-// GetExistingFeeds gets the existing feeds from the FreshRSS instance.
-func (f FreshRSS) GetExistingFeeds(ctx context.Context) (map[string]struct{}, error) {
-	getURL := fmt.Sprintf(
-		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.baseURL,
-	)
-
-	// Perform the request
-	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, getURL, nil, f.headers, f.client)
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse the response
-	var feeds RSSFeedList
-	if err = json.Unmarshal(res, &feeds); err != nil {
-		return nil, err
-	}
-
-	// NOTE: In Go map[T]struct{} is the idiomatic way to make a set as struct{} is 0-bytes
-	feedSet := make(map[string]struct{})
-	for _, feed := range feeds.Feeds {
-		feedSet[feed.URL] = struct{}{}
-	}
-	return feedSet, nil
-}
-
-// RemoveFeed removes a feed from the FreshRSS instance.
-// Arguments:
-// - context
-// - feedURL: The URL of the feed to remove.
-func (f FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
-	rmURL := fmt.Sprintf(
-		"%s/api/greader.php/reader/api/0/subscription/edit", f.baseURL,
-	)
-
-	formData := url.Values{
-		"ac": {"unsubscribe"},
-		"s":  {fmt.Sprintf("feed/%s", feedURL)},
-	}
-
-	// We do not care about the response
-	if _, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, rmURL, []byte(formData.Encode()), f.headers, f.client,
-	); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (f FreshRSS) addFeedToCategory(
-	ctx context.Context,
-	streamId, name, category string,
-) error {
-	addURL := fmt.Sprintf(
-		"%s/api/greader.php/reader/api/0/subscription/edit", f.baseURL,
-	)
-
-	formData := url.Values{
-		"ac": {"edit"},
-		"s":  {streamId},
-		"t":  {name},
-		"a":  {fmt.Sprintf("user/%s/label/%s", f.user, category)},
-	}
-
-	if _, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, addURL, []byte(formData.Encode()), f.headers, f.client,
-	); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // This function will authenticate to FreshRSS.
-func authenticate(
+func (f *FreshRSS) Authenticate(
 	ctx context.Context,
-	rssConfig RSSServerConfig,
-	headers http.Header,
-	logger *slog.Logger,
-	client *http.Client,
-) (string, error) {
-	reqURL := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", rssConfig.BaseURL)
-	logger.Debug("Authenticating with FreshRSS", "url", reqURL)
+) error {
+	reqURL := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", f.cfg.BaseURL)
+	f.logger.Debug("Authenticating with FreshRSS", "url", reqURL)
 	formData := []byte(
 		url.Values{
-			"Email":  {rssConfig.User},
-			"Passwd": {rssConfig.Token},
+			"Email":  {f.cfg.User},
+			"Passwd": {f.cfg.Token},
 		}.Encode(),
 	)
 	data, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, reqURL, formData, headers, client,
+		ctx, http.MethodPost, reqURL, formData, f.headers, f.client,
 	)
 	if err != nil {
-		return "", fmt.Errorf("error authenticating to RSS Server: %w, url: %s", err, reqURL)
+		return fmt.Errorf("error authenticating to RSS Server: %w, url: %s", err, reqURL)
 	}
 
 	var authToken string
@@ -201,8 +80,114 @@ func authenticate(
 		}
 	}
 
-	if authToken == "" {
-		return "", fmt.Errorf("unable to parse rss auth token response")
+	f.headers.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", authToken))
+	return nil
+}
+
+func (f *FreshRSS) LoadFeeds(
+	ctx context.Context,
+) error {
+	getURL := fmt.Sprintf(
+		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.cfg.BaseURL,
+	)
+
+	// Perform the request
+	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, getURL, nil, f.headers, f.client)
+	if err != nil {
+		return err
 	}
-	return authToken, nil
+
+	// Parse the response
+	var feeds RSSFeedList
+	if err = json.Unmarshal(res, &feeds); err != nil {
+		return err
+	}
+
+	for _, feed := range feeds.Feeds {
+		f.feeds[feed.URL] = struct{}{}
+	}
+
+	return nil
+}
+
+func (f *FreshRSS) AddFeed(
+	ctx context.Context,
+	feedURL, name, category string,
+) error {
+
+	// Check if feed exists already
+	if _, exists := f.feeds[feedURL]; exists {
+		f.logger.Debug("Not adding feed as it is already in RSS", "feed", name)
+		return nil
+	}
+
+	formData := url.Values{
+		"quickadd": {feedURL},
+	}
+
+	res, _, err := common.DoAPIRequest(
+		ctx, http.MethodPost, f.addUrl, []byte(formData.Encode()), f.headers, f.client,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Parse the response
+	var feedResponse FreshRSSAddFeedResponse
+	if err = json.Unmarshal(res, &feedResponse); err != nil {
+		return err
+	}
+
+	// Add the sub to the category
+	if err = f.addFeedToCategory(ctx, feedResponse.StreamId, name, category); err != nil {
+		return err
+	}
+
+	f.logger.Debug("Successfully added feed to FreshRSS", "feed", feedURL)
+	return nil
+}
+
+func (f *FreshRSS) Feeds() map[string]struct{} {
+	return f.feeds
+}
+
+func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
+
+	formData := url.Values{
+		"ac": {"unsubscribe"},
+		"s":  {fmt.Sprintf("feed/%s", feedURL)},
+	}
+
+	// We do not care about the response
+	if _, _, err := common.DoAPIRequest(
+		ctx, http.MethodPost, f.editUrl, []byte(formData.Encode()), f.headers, f.client,
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (f *FreshRSS) Name() string {
+	return f.cfg.Name
+}
+
+func (f *FreshRSS) addFeedToCategory(
+	ctx context.Context,
+	streamId, name, category string,
+) error {
+	formData := url.Values{
+		"ac": {"edit"},
+		"s":  {streamId},
+		"t":  {name},
+		"a":  {fmt.Sprintf("user/%s/label/%s", f.cfg.User, category)},
+	}
+
+	if _, _, err := common.DoAPIRequest(
+		ctx, http.MethodPost, f.addCategoryUrl, []byte(formData.Encode()), f.headers, f.client,
+	); err != nil {
+		return err
+	}
+
+	return nil
 }

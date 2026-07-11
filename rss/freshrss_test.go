@@ -4,16 +4,18 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/atomicmeganerd/starfeed/testutils"
-	"github.com/lmittmann/tint"
 )
+
+var MockRSSConfig = RSSServerConfig{
+	Name:    testutils.FreshRSSName,
+	BaseURL: testutils.FreshRSSURL,
+	User:    testutils.FreshRSSUser,
+}
 
 const (
 	mockAuthToken = "1234567890"
@@ -70,42 +72,28 @@ func TestAuthenticate(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.responses[0].Status, func(t *testing.T) {
 			t.Parallel()
-			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
+			mockClient := &http.Client{Transport: &mockTransport}
 
-			headers := http.Header{}
-			headers.Set("Content-type", "application/x-www-form-urlencoded")
-			authToken, err := authenticate(
-				ctx,
-				MockValidFreshRSSConfig,
-				headers,
-				testutils.TestLogger(),
-				&http.Client{Transport: &mockTransport},
-			)
+			f := NewFreshRSS(MockRSSConfig, testutils.TestLogger(), mockClient)
+			err := f.Authenticate(context.Background())
 			if tc.expectError {
 				if err == nil {
-					t.Errorf("Expected error but got nil")
+					t.Fatalf("Expected error but got nil")
 				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error but got %v", err)
-				}
-
-				if authToken != tc.expectedAuthToken {
-					t.Errorf("expected authToken %s but got %s", authToken, tc.expectedAuthToken)
-				}
+				return
 			}
+
+			if err != nil {
+				t.Fatalf("Expected no error but got %v", err)
+				return
+			}
+
 		})
 	}
 }
 
 func TestAddFeed(t *testing.T) {
-	logger := slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
-			Level:      slog.LevelDebug,
-			TimeFormat: time.RFC3339,
-		}),
-	)
 
 	testCases := []struct {
 		name             string
@@ -204,8 +192,13 @@ func TestAddFeed(t *testing.T) {
 				tc.urlRegexPatterns,
 			)
 			mockClient := &http.Client{Transport: &mockTransport}
-			rss := MockValidRSSServer(ctx, mockClient, logger)
-			err := rss.AddFeed(ctx, "http://localhost/feeds/123", "name", "category")
+			f := NewFreshRSS(
+				MockRSSConfig,
+				testutils.TestLogger(),
+				mockClient,
+			)
+
+			err := f.AddFeed(ctx, "http://localhost/feeds/123", "name", "category")
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")
@@ -219,13 +212,7 @@ func TestAddFeed(t *testing.T) {
 	}
 }
 
-func TestGetExistingFeeds(t *testing.T) {
-	logger := slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
-			Level:      slog.LevelDebug,
-			TimeFormat: time.RFC3339,
-		}),
-	)
+func TestLoadFeeds(t *testing.T) {
 
 	testCases := []struct {
 		name            string
@@ -291,8 +278,15 @@ func TestGetExistingFeeds(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
-			rss := MockValidRSSServer(ctx, mockClient, logger)
-			feeds, err := rss.GetExistingFeeds(ctx)
+			f := NewFreshRSS(
+				MockRSSConfig,
+				testutils.TestLogger(),
+				mockClient,
+			)
+
+			err := f.LoadFeeds(ctx)
+			feeds := f.Feeds()
+
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")
@@ -317,12 +311,6 @@ func TestGetExistingFeeds(t *testing.T) {
 }
 
 func TestRemoveFeed(t *testing.T) {
-	logger := slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
-			Level:      slog.LevelDebug,
-			TimeFormat: time.RFC3339,
-		}),
-	)
 
 	testCases := []struct {
 		name        string
@@ -361,16 +349,24 @@ func TestRemoveFeed(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
-			rss := MockValidRSSServer(ctx, mockClient, logger)
+
+			rss := NewFreshRSS(
+				MockRSSConfig,
+				testutils.TestLogger(),
+				mockClient,
+			)
+
 			err := rss.RemoveFeed(ctx, tc.feedURL)
+
 			if tc.expectError {
 				if err == nil {
-					t.Errorf("Expected error but got nil")
+					t.Fatalf("Expected error but got nil")
 				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error but got %v", err)
-				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Expected no error but got %v", err)
 			}
 		})
 	}

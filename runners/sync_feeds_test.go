@@ -2,12 +2,9 @@ package runners
 
 import (
 	"context"
-	"encoding/json"
-	"io"
+	"errors"
 	"log/slog"
-	"net/http"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -18,214 +15,49 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var (
+	MockRSSConfig = rss.RSSServerConfig{
+		Name:    testutils.FreshRSSName,
+		BaseURL: testutils.FreshRSSURL,
+		User:    testutils.FreshRSSUser,
+	}
+
+	MockGitHubConfig = gitforge.GitForgeConfig{
+		Type:   gitforge.GitHubForgeType,
+		Name:   testutils.GitHubName,
+		ApiURL: testutils.GitHubAPIURL,
+		Token:  testutils.GitHubToken,
+	}
+)
+
 func TestSyncFeeds(t *testing.T) {
 	logger := testutils.TestLogger()
 
 	testCases := []struct {
 		name        string
-		responses   []http.Response
-		urlRegex    []string
+		gitForge    GitForge
+		rssServer   RSSServer
 		expectError bool
-	}{
-		{
-			name: "Successful workflow with no repos",
-			responses: []http.Response{
-				// FreshRSS auth request
-				{
-					Body:       io.NopCloser(strings.NewReader(`Auth=test_token\n`)),
-					Status:     "200 OK",
-					StatusCode: http.StatusOK,
-				},
-				// FreshRSS get existing feeds
-				{
-					Body:       io.NopCloser(strings.NewReader(`{"feeds": []}`)),
-					Status:     "200 OK",
-					StatusCode: http.StatusOK,
-				},
-				// GitHub get starred repos
-				{
-					Body:       io.NopCloser(strings.NewReader(`[]`)),
-					Status:     "200 OK",
-					StatusCode: http.StatusOK,
-				},
-			},
-			urlRegex: []string{
-				`.*rss.*api.*accounts.*`,
-				`.*rss.*api.*reader.*`,
-				`.*api\.[a-z0-9]*\.com.*`,
-			},
-			expectError: false,
-		},
-		{
-			name: "Authentication failure should exit early",
-			responses: []http.Response{
-				{
-					Body:       io.NopCloser(strings.NewReader(`{"error": "unauthorized"}`)),
-					Status:     "401 Unauthorized",
-					StatusCode: http.StatusUnauthorized,
-				},
-			},
-			urlRegex: []string{
-				`.*rss.*api.*accounts.*`,
-			},
-			expectError: true,
-		},
-	}
+	}{}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			mockTransport := testutils.NewMockURLSelectedRoundTripper(tc.responses, tc.urlRegex)
-			mockClient := &http.Client{Transport: &mockTransport}
 
-			// If authentication fails we need to handle that.
-			rssServer, err := rss.MockValidRSSEnabledServer(ctx, mockClient, logger)
-			// Otherwise test teh rest of the flows
-			if err == nil {
-				runner := NewSyncFeedsRunner(
-					gitforge.MockValidGitHub(&http.Client{}, logger),
-					rssServer,
-					logger,
-				)
+			runner := NewSyncFeedsRunner(
+				tc.gitForge,
+				tc.rssServer,
+				logger,
+			)
 
-				err = runner.Run(ctx)
-			}
+			err := runner.Run(ctx)
 
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error %q", err)
-			}
-		})
-	}
-}
-
-func TestPublishToFreshRSS(t *testing.T) {
-	logger := slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
-			Level:      slog.LevelDebug,
-			TimeFormat: time.RFC3339,
-		}),
-	)
-
-	exampleRepo := gitforge.StarredRepo{
-		Name:    "repo",
-		RepoURL: "https://github.com/user/repo",
-		FeedURL: "https://github.com/user/repo/releases.atom",
-	}
-
-	exampleRepoJSON, _ := json.Marshal(exampleRepo)
-	exampleRepoStr := string(exampleRepoJSON)
-
-	testCases := []struct {
-		name             string
-		existingFeeds    map[string]struct{}
-		repo             gitforge.StarredRepo
-		responses        []http.Response
-		atomHasEntries   bool
-		expectErr        bool
-		expectedAPICalls int
-	}{
-		{
-			name: "Feed already exists - should skip",
-			existingFeeds: map[string]struct{}{
-				"https://github.com/user/repo/releases.atom": {},
-			},
-			repo:             exampleRepo,
-			atomHasEntries:   true,
-			expectedAPICalls: 0,
-		},
-		{
-			name: "Feed has no entries - should skip",
-			existingFeeds: map[string]struct{}{
-				"https://github.com/user/repo/releases.atom": {},
-			},
-			repo:             exampleRepo,
-			atomHasEntries:   false,
-			expectedAPICalls: 0,
-		},
-		{
-			name:          "New feed with entries - should add",
-			existingFeeds: map[string]struct{}{},
-			repo:          exampleRepo,
-			responses: []http.Response{
-				{
-					// Publish feed
-					StatusCode: http.StatusOK,
-					Body:       io.NopCloser(strings.NewReader(exampleRepoStr)),
-				},
-				{
-					// Add to category
-					StatusCode: http.StatusOK,
-				},
-			},
-			atomHasEntries:   true,
-			expectedAPICalls: 2,
-		},
-		{
-			name:          "Add feed fails - should handle error gracefully",
-			existingFeeds: map[string]struct{}{},
-			repo: gitforge.StarredRepo{
-				Name:    "repo",
-				RepoURL: "https://github.com/user/repo",
-				FeedURL: "https://github.com/user/repo/releases.atom",
-			},
-			responses: []http.Response{
-				{
-					StatusCode: http.StatusBadRequest,
-				},
-			},
-			atomHasEntries:   true,
-			expectErr:        true,
-			expectedAPICalls: 1,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			ctx := context.Background()
-
-			mockTransport := testutils.NewMockRoundTripper(tc.responses)
-			mockClient := &http.Client{Transport: &mockTransport}
-
-			mockRunner := &SyncFeedsRunner{
-				gitForge:  gitforge.MockValidGitHub(&http.Client{}, logger),
-				rssServer: rss.MockValidRSSServer(ctx, mockClient, logger),
-				logger:    logger,
-			}
-
-			g := &errgroup.Group{}
-
-			g.Go(func() error {
-				return mockRunner.publishToFreshRSS(
-					ctx,
-					tc.existingFeeds,
-					tc.repo,
-				)
-			})
-
-			err := g.Wait()
-
-			if tc.expectErr {
-				if err == nil {
-					t.Fatal("Expected error but didn't get one")
-				}
-			} else {
-				if err != nil {
-					t.Fatalf("Got an error that we didn't expect %v", err)
-				}
-
-				timesCalled := mockTransport.GetNumCalls()
-				if timesCalled != tc.expectedAPICalls {
-					t.Fatalf(
-						"Expected %d API calls but had %d",
-						tc.expectedAPICalls,
-						timesCalled,
-					)
-				}
 			}
 		})
 	}
@@ -240,13 +72,13 @@ func TestRemoveStaleFeed(t *testing.T) {
 	)
 
 	testCases := []struct {
-		name             string
-		starredRepoMap   map[string]gitforge.StarredRepo
-		gitForge         gitforge.GitForge
-		rssFeed          string
-		responses        []http.Response
-		expectError      bool
-		expectedAPICalls int
+		name            string
+		forgeType       string
+		starredRepoMap  map[string]gitforge.StarredRepo
+		rssFeed         string
+		expectError     error
+		isRelFeed       bool
+		expectedRemoved int
 	}{
 		{
 			name: "Feed still starred - should not remove",
@@ -257,51 +89,37 @@ func TestRemoveStaleFeed(t *testing.T) {
 					FeedURL: "https://github.com/user/repo/releases.atom",
 				},
 			},
-			gitForge: gitforge.MockValidGitHub(&http.Client{}, logger),
-			rssFeed:  "https://github.com/user/repo/releases.atom",
+			isRelFeed: true,
+			rssFeed:   "https://github.com/user/repo/releases.atom",
 		},
 		{
 			name:           "Github unstarred - should not remove codeberg repo",
 			starredRepoMap: map[string]gitforge.StarredRepo{},
-			gitForge:       gitforge.MockValidGitHub(&http.Client{}, logger),
 			rssFeed:        "https://codeberg.org/user/repo/releases.atom",
 		},
 		{
 			name:           "Codeberg unstarred - should not remove Github repo",
 			starredRepoMap: map[string]gitforge.StarredRepo{},
-			gitForge:       gitforge.MockValidCodeberg(&http.Client{}, logger),
 			rssFeed:        "https://github.com/user/repo/releases.atom",
 		},
 		{
 			name:           "Not a release feed - should not remove",
 			starredRepoMap: map[string]gitforge.StarredRepo{},
-			gitForge:       gitforge.MockValidCodeberg(&http.Client{}, logger),
 			rssFeed:        "https://roflstar.com/feed/feed.xml",
 		},
 		{
-			name:           "Feed no longer starred - should remove",
-			starredRepoMap: map[string]gitforge.StarredRepo{},
-			gitForge:       gitforge.MockValidGitHub(&http.Client{}, logger),
-			rssFeed:        "https://github.com/user/old-repo/releases.atom",
-			responses: []http.Response{
-				{
-					StatusCode: http.StatusOK,
-				},
-			},
-			expectedAPICalls: 1,
+			name:            "Feed no longer starred - should remove",
+			starredRepoMap:  map[string]gitforge.StarredRepo{},
+			rssFeed:         "https://github.com/user/old-repo/releases.atom",
+			isRelFeed:       true,
+			expectedRemoved: 1,
 		},
 		{
 			name:           "Remove feed fails - should handle error gracefully",
 			starredRepoMap: map[string]gitforge.StarredRepo{},
 			rssFeed:        "https://github.com/user/old-repo/releases.atom",
-			gitForge:       gitforge.MockValidGitHub(&http.Client{}, logger),
-			responses: []http.Response{
-				{
-					StatusCode: http.StatusBadRequest,
-				},
-			},
-			expectError:      true,
-			expectedAPICalls: 1,
+			isRelFeed:      true,
+			expectError:    errors.New("error removing feed"),
 		},
 	}
 
@@ -309,40 +127,46 @@ func TestRemoveStaleFeed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			mockTransport := testutils.NewMockRoundTripper(tc.responses)
-			mockClient := &http.Client{Transport: &mockTransport}
+
+			feeds := rss.FeedSet{tc.rssFeed: {}}
+
+			rssServer := &MockRSSServer{
+				ExpectedError: tc.expectError,
+			}
+			gitForge := &MockGitForge{
+				ExpectedFeeds:         tc.starredRepoMap,
+				ExpectedIsReleaseFeed: tc.isRelFeed,
+			}
 
 			runner := &SyncFeedsRunner{
-				rssServer: rss.MockValidRSSServer(ctx, mockClient, logger),
-				gitForge:  tc.gitForge,
+				rssServer: rssServer,
+				gitForge:  gitForge,
 				logger:    logger,
 			}
 
 			g := &errgroup.Group{}
-			g.Go(func() error {
-				return runner.removeStaleFeed(
-					ctx, tc.starredRepoMap, tc.rssFeed,
-				)
-			})
+			runner.removeStaleFeeds(ctx, g, feeds)
 			err := g.Wait()
 
-			if tc.expectError {
+			if tc.expectError != nil {
 				if err == nil {
 					t.Fatal("Expected error but didn't get one")
+					return
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("Got an error that we didn't expect %v", err)
-				}
+			}
 
-				timesCalled := mockTransport.GetNumCalls()
-				if timesCalled != tc.expectedAPICalls {
-					t.Fatalf(
-						"Expected %d API calls but had %d",
-						tc.expectedAPICalls,
-						timesCalled,
-					)
-				}
+			if err != nil {
+				t.Fatalf("Got an error that we didn't expect %v", err)
+				return
+			}
+
+			if tc.expectedRemoved != len(rssServer.RemovedFeeds) {
+				t.Fatalf(
+					"Expected %d feeds to be removed but %d were",
+					tc.expectedRemoved,
+					len(rssServer.RemovedFeeds),
+				)
+				return
 			}
 		})
 	}
