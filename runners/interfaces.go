@@ -3,17 +3,17 @@ package runners
 import (
 	"context"
 
-	"github.com/atomicmeganerd/starfeed/gitforge"
+	"github.com/atomicmeganerd/starfeed/common"
 )
 
 type GitForge interface {
-	FeedRepoMap() gitforge.FeedRepoMap
+	FeedRepoMap() common.FeedRepoMap
 	Name() string
 }
 
 type RSSServer interface {
 	AddFeed(ctx context.Context, feedURL, name, category string) error
 	RemoveFeed(ctx context.Context, feedURL string) error
-	Feeds() map[string]struct{}
+	Feeds() common.FeedSet
 	Name() string
 }

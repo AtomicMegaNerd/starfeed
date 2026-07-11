@@ -1,7 +1,5 @@
 package rss
 
-type FeedSet map[string]struct{}
-
 type FreshRSSAddFeedResponse struct {
 	NumResults int    `json:"numResults"`
 	Query      string `json:"query"`

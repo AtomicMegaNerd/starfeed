@@ -14,10 +14,11 @@ import (
 
 type FreshRSS struct {
 	cfg            RSSServerConfig
+	getUrl         string
 	addUrl         string
 	addCategoryUrl string
 	editUrl        string
-	feeds          FeedSet
+	feeds          common.FeedSet
 	logger         *slog.Logger
 	headers        http.Header
 	client         *http.Client
@@ -28,14 +29,14 @@ func NewFreshRSS(
 	logger *slog.Logger,
 	client *http.Client,
 ) *FreshRSS {
-	logger = logger.With("rssServer", cfg.Name)
-
 	headers := http.Header{}
 	headers.Set("Content-type", "application/x-www-form-urlencoded")
-
 	return &FreshRSS{
 		cfg:    cfg,
-		logger: logger,
+		logger: logger.With("rssServer", cfg.Name),
+		getUrl: fmt.Sprintf(
+			"%s/api/greader.php/reader/api/0/subscription/list?output=json", cfg.BaseURL,
+		),
 		addUrl: fmt.Sprintf(
 			"%s/api/greader.php/reader/api/0/subscription/quickadd",
 			cfg.BaseURL,
@@ -48,6 +49,7 @@ func NewFreshRSS(
 			"%s/api/greader.php/reader/api/0/subscription/edit",
 			cfg.BaseURL,
 		),
+		feeds:   make(common.FeedSet, 0),
 		headers: headers,
 		client:  client,
 	}
@@ -87,18 +89,13 @@ func (f *FreshRSS) Authenticate(
 func (f *FreshRSS) LoadFeeds(
 	ctx context.Context,
 ) error {
-	getURL := fmt.Sprintf(
-		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.cfg.BaseURL,
-	)
-
-	// Perform the request
-	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, getURL, nil, f.headers, f.client)
+	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, f.getUrl, nil, f.headers, f.client)
 	if err != nil {
 		return err
 	}
 
 	// Parse the response
-	var feeds RSSFeedList
+	feeds := &RSSFeedList{}
 	if err = json.Unmarshal(res, &feeds); err != nil {
 		return err
 	}
@@ -106,7 +103,6 @@ func (f *FreshRSS) LoadFeeds(
 	for _, feed := range feeds.Feeds {
 		f.feeds[feed.URL] = struct{}{}
 	}
-
 	return nil
 }
 
@@ -114,7 +110,6 @@ func (f *FreshRSS) AddFeed(
 	ctx context.Context,
 	feedURL, name, category string,
 ) error {
-
 	// Check if feed exists already
 	if _, exists := f.feeds[feedURL]; exists {
 		f.logger.Debug("Not adding feed as it is already in RSS", "feed", name)
@@ -124,7 +119,6 @@ func (f *FreshRSS) AddFeed(
 	formData := url.Values{
 		"quickadd": {feedURL},
 	}
-
 	res, _, err := common.DoAPIRequest(
 		ctx, http.MethodPost, f.addUrl, []byte(formData.Encode()), f.headers, f.client,
 	)
@@ -132,8 +126,7 @@ func (f *FreshRSS) AddFeed(
 		return err
 	}
 
-	// Parse the response
-	var feedResponse FreshRSSAddFeedResponse
+	feedResponse := &FreshRSSAddFeedResponse{}
 	if err = json.Unmarshal(res, &feedResponse); err != nil {
 		return err
 	}
@@ -147,12 +140,7 @@ func (f *FreshRSS) AddFeed(
 	return nil
 }
 
-func (f *FreshRSS) Feeds() map[string]struct{} {
-	return f.feeds
-}
-
 func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
-
 	formData := url.Values{
 		"ac": {"unsubscribe"},
 		"s":  {fmt.Sprintf("feed/%s", feedURL)},
@@ -166,6 +154,10 @@ func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
 	}
 
 	return nil
+}
+
+func (f *FreshRSS) Feeds() common.FeedSet {
+	return f.feeds
 }
 
 func (f *FreshRSS) Name() string {
@@ -188,6 +180,5 @@ func (f *FreshRSS) addFeedToCategory(
 	); err != nil {
 		return err
 	}
-
 	return nil
 }

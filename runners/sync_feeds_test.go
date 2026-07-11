@@ -8,26 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/gitforge"
-	"github.com/atomicmeganerd/starfeed/rss"
+	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/testutils"
 	"github.com/lmittmann/tint"
 	"golang.org/x/sync/errgroup"
-)
-
-var (
-	MockRSSConfig = rss.RSSServerConfig{
-		Name:    testutils.FreshRSSName,
-		BaseURL: testutils.FreshRSSURL,
-		User:    testutils.FreshRSSUser,
-	}
-
-	MockGitHubConfig = gitforge.GitForgeConfig{
-		Type:   gitforge.GitHubForgeType,
-		Name:   testutils.GitHubName,
-		ApiURL: testutils.GitHubAPIURL,
-		Token:  testutils.GitHubToken,
-	}
 )
 
 func TestSyncFeeds(t *testing.T) {
@@ -74,7 +58,7 @@ func TestRemoveStaleFeed(t *testing.T) {
 	testCases := []struct {
 		name            string
 		forgeType       string
-		starredRepoMap  map[string]gitforge.StarredRepo
+		starredRepoMap  common.FeedRepoMap
 		rssFeed         string
 		expectError     error
 		isRelFeed       bool
@@ -82,44 +66,35 @@ func TestRemoveStaleFeed(t *testing.T) {
 	}{
 		{
 			name: "Feed still starred - should not remove",
-			starredRepoMap: map[string]gitforge.StarredRepo{
-				"https://github.com/user/repo/releases.atom": {
-					Name:    "repo",
-					RepoURL: "https://github.com/user/repo",
-					FeedURL: "https://github.com/user/repo/releases.atom",
-				},
+			starredRepoMap: common.FeedRepoMap{
+				"https://github.com/user/repo/releases.atom": "repo",
 			},
 			isRelFeed: true,
 			rssFeed:   "https://github.com/user/repo/releases.atom",
 		},
 		{
-			name:           "Github unstarred - should not remove codeberg repo",
-			starredRepoMap: map[string]gitforge.StarredRepo{},
-			rssFeed:        "https://codeberg.org/user/repo/releases.atom",
+			name:    "Github unstarred - should not remove codeberg repo",
+			rssFeed: "https://codeberg.org/user/repo/releases.atom",
 		},
 		{
-			name:           "Codeberg unstarred - should not remove Github repo",
-			starredRepoMap: map[string]gitforge.StarredRepo{},
-			rssFeed:        "https://github.com/user/repo/releases.atom",
+			name:    "Codeberg unstarred - should not remove Github repo",
+			rssFeed: "https://github.com/user/repo/releases.atom",
 		},
 		{
-			name:           "Not a release feed - should not remove",
-			starredRepoMap: map[string]gitforge.StarredRepo{},
-			rssFeed:        "https://roflstar.com/feed/feed.xml",
+			name:    "Not a release feed - should not remove",
+			rssFeed: "https://roflstar.com/feed/feed.xml",
 		},
 		{
 			name:            "Feed no longer starred - should remove",
-			starredRepoMap:  map[string]gitforge.StarredRepo{},
 			rssFeed:         "https://github.com/user/old-repo/releases.atom",
 			isRelFeed:       true,
 			expectedRemoved: 1,
 		},
 		{
-			name:           "Remove feed fails - should handle error gracefully",
-			starredRepoMap: map[string]gitforge.StarredRepo{},
-			rssFeed:        "https://github.com/user/old-repo/releases.atom",
-			isRelFeed:      true,
-			expectError:    errors.New("error removing feed"),
+			name:        "Remove feed fails - should handle error gracefully",
+			rssFeed:     "https://github.com/user/old-repo/releases.atom",
+			isRelFeed:   true,
+			expectError: errors.New("error removing feed"),
 		},
 	}
 
@@ -128,14 +103,13 @@ func TestRemoveStaleFeed(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
 
-			feeds := rss.FeedSet{tc.rssFeed: {}}
+			feeds := common.FeedSet{tc.rssFeed: {}}
 
 			rssServer := &MockRSSServer{
 				ExpectedError: tc.expectError,
 			}
 			gitForge := &MockGitForge{
-				ExpectedFeeds:         tc.starredRepoMap,
-				ExpectedIsReleaseFeed: tc.isRelFeed,
+				ExpectedFeeds: tc.starredRepoMap,
 			}
 
 			runner := &SyncFeedsRunner{

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/testutils"
 	"github.com/lmittmann/tint"
 )
@@ -52,7 +53,7 @@ func TestLoadRepoMap(t *testing.T) {
 	testCases := []struct {
 		name          string
 		responses     []http.Response
-		expectedRepos FeedRepoMap
+		expectedRepos common.FeedRepoMap
 		expectError   bool
 	}{
 		{
@@ -72,7 +73,7 @@ func TestLoadRepoMap(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: FeedRepoMap{repo1.FeedURL: repo1},
+			expectedRepos: common.FeedRepoMap{repo1.FeedURL: repo1.Name},
 			expectError:   false,
 		},
 		{
@@ -114,11 +115,11 @@ func TestLoadRepoMap(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: FeedRepoMap{
-				repo1.FeedURL: repo1,
-				repo2.FeedURL: repo2,
-				repo3.FeedURL: repo3,
-				repo4.FeedURL: repo4,
+			expectedRepos: common.FeedRepoMap{
+				repo1.FeedURL: repo1.Name,
+				repo2.FeedURL: repo2.Name,
+				repo3.FeedURL: repo3.Name,
+				repo4.FeedURL: repo4.Name,
 			},
 			expectError: false,
 		},

@@ -20,7 +20,7 @@ var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 type GitForge struct {
 	name         string
 	fetchRepoURL string
-	feedRepoMap  FeedRepoMap
+	feedRepoMap  common.FeedRepoMap
 	headers      http.Header
 	logger       *slog.Logger
 	client       *http.Client
@@ -35,6 +35,7 @@ func NewGitForge(
 		name:         cfg.Name,
 		headers:      buildHeaders(cfg),
 		fetchRepoURL: buildStarredRepoUrl(cfg),
+		feedRepoMap:  make(common.FeedRepoMap, 0),
 		logger: logger.With(
 			slog.Group("gitforge",
 				"name", cfg.Name,
@@ -76,11 +77,10 @@ func (g *GitForge) LoadRepoMap(
 
 		for _, repo := range repos {
 			repo.FeedURL = fmt.Sprintf("%s/releases.atom", repo.RepoURL)
-			repo.ForgeName = g.name
 			if !g.repoHasRelaseFeed(ctx, repo) {
 				continue
 			}
-			g.feedRepoMap[repo.FeedURL] = repo
+			g.feedRepoMap[repo.FeedURL] = repo.Name
 		}
 
 		nextPageURL = g.parseNextPageURL(respHeaders)
@@ -93,7 +93,7 @@ func (g *GitForge) LoadRepoMap(
 	}
 }
 
-func (g *GitForge) FeedRepoMap() FeedRepoMap {
+func (g *GitForge) FeedRepoMap() common.FeedRepoMap {
 	return g.feedRepoMap
 }
 

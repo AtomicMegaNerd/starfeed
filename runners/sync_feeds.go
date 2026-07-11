@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/rss"
+	"github.com/atomicmeganerd/starfeed/common"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -56,9 +56,9 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 }
 
 func (p SyncFeedsRunner) filterFeedsExistForGitForge(
-	feeds rss.FeedSet,
-) rss.FeedSet {
-	filteredFeeds := make(rss.FeedSet, 0)
+	feeds common.FeedSet,
+) common.FeedSet {
+	filteredFeeds := make(common.FeedSet, 0)
 	for feed := range feeds {
 		if _, exists := p.gitForge.FeedRepoMap()[feed]; exists {
 			filteredFeeds[feed] = struct{}{}
@@ -71,9 +71,9 @@ func (p SyncFeedsRunner) addNewReleaseFeeds(
 	ctx context.Context,
 	eg *errgroup.Group,
 ) {
-	for _, repo := range p.gitForge.FeedRepoMap() {
+	for feedURL, repoName := range p.gitForge.FeedRepoMap() {
 		eg.Go(func() error {
-			return p.rssServer.AddFeed(ctx, repo.FeedURL, repo.Name, p.gitForge.Name())
+			return p.rssServer.AddFeed(ctx, feedURL, repoName, p.gitForge.Name())
 		})
 	}
 }
