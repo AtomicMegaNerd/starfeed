@@ -6,7 +6,7 @@ require golang.org/x/sync v0.22.0
 
 require (
 	github.com/go-playground/validator/v10 v10.30.3
-	github.com/lmittmann/tint v1.1.3
+	github.com/lmittmann/tint v1.2.0
 )
 
 require (
