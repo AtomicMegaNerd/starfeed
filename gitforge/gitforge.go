@@ -160,10 +160,10 @@ func (g *GitForge) Name() string {
 func (g *GitForge) IsRepoFeedStale(feedUrl string) bool {
 	// First of all, if the repo exists it canot be stale
 	g.mtx.RLock()
+	defer g.mtx.RUnlock()
 	if _, exists := g.feeds[feedUrl]; exists {
 		return false
 	}
-	g.mtx.RUnlock()
 
 	// If the repo does not exist but matches the regex for this gitforge it is stale
 	return g.isReleasePattern.MatchString(feedUrl)
