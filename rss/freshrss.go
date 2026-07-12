@@ -18,7 +18,7 @@ type FreshRSS struct {
 	addUrl         string
 	addCategoryUrl string
 	editUrl        string
-	feeds          common.FeedSet
+	feeds          map[string]struct{}
 	logger         *slog.Logger
 	headers        http.Header
 	client         *http.Client
@@ -49,7 +49,7 @@ func NewFreshRSS(
 			"%s/api/greader.php/reader/api/0/subscription/edit",
 			cfg.BaseURL,
 		),
-		feeds:   make(common.FeedSet, 0),
+		feeds:   make(map[string]struct{}, 0),
 		headers: headers,
 		client:  client,
 	}
@@ -156,7 +156,7 @@ func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
 	return nil
 }
 
-func (f *FreshRSS) Feeds() common.FeedSet {
+func (f *FreshRSS) Feeds() map[string]struct{} {
 	return f.feeds
 }
 

@@ -32,14 +32,12 @@ func main() {
 	}
 
 	client := &http.Client{Timeout: cfg.HTTPTimeout}
-
 	logger := getLogger(cfg.DebugMode)
 
 	logger.Info("***********************************************")
 	logger.Info(" Welcome to Starfeed", "version", version, "commit", commit)
 	logger.Info("***********************************************")
 
-	// Again written by the human:
 	// Register signal handling. This will setup a private channel in our ctx object will
 	// be closed if one of these signals is received. This is easy to understand...
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

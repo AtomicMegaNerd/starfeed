@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/testutils"
 	"github.com/lmittmann/tint"
 	"golang.org/x/sync/errgroup"
@@ -20,7 +19,7 @@ func TestSyncFeeds(t *testing.T) {
 	testCases := []struct {
 		name        string
 		gitForge    GitForge
-		rssServer   RSSServer
+		rssServer   RssServer
 		expectError bool
 	}{}
 
@@ -58,19 +57,18 @@ func TestRemoveStaleFeed(t *testing.T) {
 	testCases := []struct {
 		name            string
 		forgeType       string
-		starredRepoMap  common.FeedRepoMap
+		starredRepoMap  map[string]string
 		rssFeed         string
-		expectError     error
-		isRelFeed       bool
+		expectedErr     error
+		repoIsStale     bool
 		expectedRemoved int
 	}{
 		{
 			name: "Feed still starred - should not remove",
-			starredRepoMap: common.FeedRepoMap{
+			starredRepoMap: map[string]string{
 				"https://github.com/user/repo/releases.atom": "repo",
 			},
-			isRelFeed: true,
-			rssFeed:   "https://github.com/user/repo/releases.atom",
+			rssFeed: "https://github.com/user/repo/releases.atom",
 		},
 		{
 			name:    "Github unstarred - should not remove codeberg repo",
@@ -87,14 +85,14 @@ func TestRemoveStaleFeed(t *testing.T) {
 		{
 			name:            "Feed no longer starred - should remove",
 			rssFeed:         "https://github.com/user/old-repo/releases.atom",
-			isRelFeed:       true,
+			repoIsStale:     true,
 			expectedRemoved: 1,
 		},
 		{
 			name:        "Remove feed fails - should handle error gracefully",
 			rssFeed:     "https://github.com/user/old-repo/releases.atom",
-			isRelFeed:   true,
-			expectError: errors.New("error removing feed"),
+			repoIsStale: true,
+			expectedErr: errors.New("error removing feed"),
 		},
 	}
 
@@ -103,13 +101,13 @@ func TestRemoveStaleFeed(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
 
-			feeds := common.FeedSet{tc.rssFeed: {}}
-
-			rssServer := &MockRSSServer{
-				ExpectedError: tc.expectError,
+			rssServer := &MockRssServer{
+				ExpectedFeeds: map[string]struct{}{tc.rssFeed: {}},
+				ExpectedError: tc.expectedErr,
 			}
 			gitForge := &MockGitForge{
-				ExpectedFeeds: tc.starredRepoMap,
+				ExpectedFeeds:     tc.starredRepoMap,
+				ExpectedRepoStale: tc.repoIsStale,
 			}
 
 			runner := &SyncFeedsRunner{
@@ -119,14 +117,14 @@ func TestRemoveStaleFeed(t *testing.T) {
 			}
 
 			g := &errgroup.Group{}
-			runner.removeStaleFeeds(ctx, g, feeds)
+			runner.removeStaleFeeds(ctx, g)
 			err := g.Wait()
 
-			if tc.expectError != nil {
+			if tc.expectedErr != nil {
 				if err == nil {
 					t.Fatal("Expected error but didn't get one")
-					return
 				}
+				return
 			}
 
 			if err != nil {

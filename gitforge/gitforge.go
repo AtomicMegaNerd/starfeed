@@ -18,12 +18,13 @@ var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
 // This object represents a supported git host where we have 'starred' repos.
 type GitForge struct {
-	name         string
-	fetchRepoURL string
-	feedRepoMap  common.FeedRepoMap
-	headers      http.Header
-	logger       *slog.Logger
-	client       *http.Client
+	name             string
+	fetchRepoURL     string
+	feeds            map[string]string
+	isReleasePattern *regexp.Regexp
+	headers          http.Header
+	logger           *slog.Logger
+	client           *http.Client
 }
 
 func NewGitForge(
@@ -33,9 +34,15 @@ func NewGitForge(
 ) *GitForge {
 	return &GitForge{
 		name:         cfg.Name,
-		headers:      buildHeaders(cfg),
 		fetchRepoURL: buildStarredRepoUrl(cfg),
-		feedRepoMap:  make(common.FeedRepoMap, 0),
+		feeds:        make(map[string]string, 0),
+		isReleasePattern: regexp.MustCompile(
+			fmt.Sprintf(
+				`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
+				regexp.QuoteMeta(cfg.ApiURL),
+			),
+		),
+		headers: buildHeaders(cfg),
 		logger: logger.With(
 			slog.Group("gitforge",
 				"name", cfg.Name,
@@ -46,7 +53,7 @@ func NewGitForge(
 	}
 }
 
-func (g *GitForge) LoadRepoMap(
+func (g *GitForge) LoadFeeds(
 	ctx context.Context,
 ) error {
 	g.logger.Debug("Loading feeds for starred repos", "url", g.fetchRepoURL)
@@ -77,10 +84,10 @@ func (g *GitForge) LoadRepoMap(
 
 		for _, repo := range repos {
 			repo.FeedURL = fmt.Sprintf("%s/releases.atom", repo.RepoURL)
-			if !g.repoHasRelaseFeed(ctx, repo) {
+			if !g.repoHasReleaseFeed(ctx, repo) {
 				continue
 			}
-			g.feedRepoMap[repo.FeedURL] = repo.Name
+			g.feeds[repo.FeedURL] = repo.Name
 		}
 
 		nextPageURL = g.parseNextPageURL(respHeaders)
@@ -93,15 +100,15 @@ func (g *GitForge) LoadRepoMap(
 	}
 }
 
-func (g *GitForge) FeedRepoMap() common.FeedRepoMap {
-	return g.feedRepoMap
+func (g *GitForge) Feeds() map[string]string {
+	return g.feeds
 }
 
 func (g *GitForge) Name() string {
 	return g.name
 }
 
-func (g *GitForge) repoHasRelaseFeed(
+func (g *GitForge) repoHasReleaseFeed(
 	ctx context.Context,
 	repo StarredRepo,
 ) bool {
@@ -153,4 +160,14 @@ func buildStarredRepoUrl(cfg GitForgeConfig) string {
 		return fmt.Sprintf("%s/user/starred?per_page=100", cfg.ApiURL)
 	}
 	return fmt.Sprintf("%s/user/starred?limit=100", cfg.ApiURL)
+}
+
+func (g *GitForge) IsRepoFeedStale(feedUrl string) bool {
+	// First of all, if the repo exists it canot be stale
+	if _, exists := g.feeds[feedUrl]; exists {
+		return false
+	}
+
+	// If the repo does not exist but matches the regex for this gitforge it is stale
+	return g.isReleasePattern.MatchString(feedUrl)
 }

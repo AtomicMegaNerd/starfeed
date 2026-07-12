@@ -19,8 +19,8 @@ const (
 	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
 	httpTimeoutKey   = "STARFEED_HTTP_TIMEOUT"
 
-	gitForgeConfigFields  = 6
-	rssServerConfigFields = 5
+	gitForgeConfigFields  = 4
+	rssServerConfigFields = 4
 
 	defaultHTTPTimeoutSeconds = 60
 )

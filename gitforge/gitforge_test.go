@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/testutils"
 	"github.com/lmittmann/tint"
 )
@@ -53,7 +52,7 @@ func TestLoadRepoMap(t *testing.T) {
 	testCases := []struct {
 		name          string
 		responses     []http.Response
-		expectedRepos common.FeedRepoMap
+		expectedRepos map[string]string
 		expectError   bool
 	}{
 		{
@@ -73,7 +72,7 @@ func TestLoadRepoMap(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: common.FeedRepoMap{repo1.FeedURL: repo1.Name},
+			expectedRepos: map[string]string{repo1.FeedURL: repo1.Name},
 			expectError:   false,
 		},
 		{
@@ -115,7 +114,7 @@ func TestLoadRepoMap(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: common.FeedRepoMap{
+			expectedRepos: map[string]string{
 				repo1.FeedURL: repo1.Name,
 				repo2.FeedURL: repo2.Name,
 				repo3.FeedURL: repo3.Name,
@@ -166,7 +165,7 @@ func TestLoadRepoMap(t *testing.T) {
 			mockClient := &http.Client{Transport: &mockTransport}
 			gh := NewGitForge(MockGitHubConfig, testutils.TestLogger(), mockClient)
 
-			err := gh.LoadRepoMap(ctx)
+			err := gh.LoadFeeds(ctx)
 
 			if tc.expectError {
 				if err == nil {
@@ -291,7 +290,7 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 			gh := NewGitForge(MockGitHubConfig, logger, mockClient)
 
 			repo := StarredRepo{RepoURL: tc.repoURL}
-			hasEntries := gh.repoHasRelaseFeed(ctx, repo)
+			hasEntries := gh.repoHasReleaseFeed(ctx, repo)
 
 			if tc.expectHasEntries != hasEntries {
 				t.Fatalf("Expected HasEntries to be %t but got %t", tc.expectHasEntries, hasEntries)
