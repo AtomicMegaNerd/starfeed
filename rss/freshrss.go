@@ -21,7 +21,9 @@ type FreshRSS struct {
 	logger  *slog.Logger
 	headers http.Header
 	client  *http.Client
-	mtx     sync.RWMutex
+	// Because we share this instance with multiple runners we have to
+	// protect the feeds set
+	mtx sync.RWMutex
 }
 
 func NewFreshRSS(
@@ -181,7 +183,6 @@ func (f *FreshRSS) addFeedToCategory(
 	ctx context.Context,
 	streamId, name, category string,
 ) error {
-
 	addCategoryUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit",
 		f.cfg.URL,
