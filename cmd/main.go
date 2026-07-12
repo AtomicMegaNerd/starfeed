@@ -37,6 +37,7 @@ func main() {
 	logger.Info("***********************************************")
 	logger.Info(" Welcome to Starfeed", "version", version, "commit", commit)
 	logger.Info("***********************************************")
+	logger.Debug("Debug mode enabled")
 
 	// Register signal handling. This will setup a private channel in our ctx object will
 	// be closed if one of these signals is received. This is easy to understand...

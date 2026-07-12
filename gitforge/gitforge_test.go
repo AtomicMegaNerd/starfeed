@@ -15,25 +15,25 @@ import (
 )
 
 var (
-	repo1 = StarredRepo{
+	repo1 = GitRepo{
 		Name:    "repo1",
 		RepoURL: "https://github.com/user/repo1",
 		FeedURL: "https://github.com/user/repo1/releases.atom",
 	}
 
-	repo2 = StarredRepo{
+	repo2 = GitRepo{
 		Name:    "repo2",
 		RepoURL: "https://github.com/user/repo2",
 		FeedURL: "https://github.com/user/repo2/releases.atom",
 	}
 
-	repo3 = StarredRepo{
+	repo3 = GitRepo{
 		Name:    "repo3",
 		RepoURL: "https://github.com/user/repo3",
 		FeedURL: "https://github.com/user/repo3/releases.atom",
 	}
 
-	repo4 = StarredRepo{
+	repo4 = GitRepo{
 		Name:    "repo4",
 		RepoURL: "https://github.com/user/repo4",
 		FeedURL: "https://github.com/user/repo4/releases.atom",
@@ -52,7 +52,7 @@ func TestFetchStarredRepos(t *testing.T) {
 	testCases := []struct {
 		name          string
 		responses     []http.Response
-		expectedRepos []StarredRepo
+		expectedRepos []GitRepo
 		expectError   bool
 	}{
 		{
@@ -72,7 +72,7 @@ func TestFetchStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []StarredRepo{repo1},
+			expectedRepos: []GitRepo{repo1},
 			expectError:   false,
 		},
 		{
@@ -114,7 +114,7 @@ func TestFetchStarredRepos(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: []StarredRepo{repo1, repo2, repo3, repo4},
+			expectedRepos: []GitRepo{repo1, repo2, repo3, repo4},
 			expectError:   false,
 		},
 		{
@@ -312,7 +312,7 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 			mockClient := &http.Client{Transport: &mockTransport}
 			gh := NewGitForge(MockGitHubConfig, logger, mockClient)
 
-			repo := StarredRepo{RepoURL: tc.repoURL}
+			repo := GitRepo{RepoURL: tc.repoURL}
 			hasEntries := gh.repoHasReleaseFeed(ctx, repo)
 
 			if tc.expectHasEntries != hasEntries {

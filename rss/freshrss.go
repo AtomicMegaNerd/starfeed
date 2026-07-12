@@ -47,7 +47,7 @@ func (f *FreshRSS) Authenticate(
 	ctx context.Context,
 ) error {
 	reqURL := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", f.cfg.URL)
-	f.logger.Debug("Authenticating with FreshRSS", "url", reqURL)
+	f.logger.Debug("Authenticating to FreshRSS", "url", reqURL)
 	formData := []byte(
 		url.Values{
 			"Email":  {f.cfg.User},
@@ -58,7 +58,7 @@ func (f *FreshRSS) Authenticate(
 		ctx, http.MethodPost, reqURL, formData, f.headers, f.client,
 	)
 	if err != nil {
-		return fmt.Errorf("error authenticating to RSS Server: %w, url: %s", err, reqURL)
+		return fmt.Errorf("error authenticating to freshrss: %w, url: %s", err, reqURL)
 	}
 
 	var authToken string
@@ -70,7 +70,7 @@ func (f *FreshRSS) Authenticate(
 	}
 
 	if authToken == "" {
-		return errors.New("failed to parse authToken")
+		return errors.New("failed to parse authtoken returned from freshrss")
 	}
 
 	// We can set all required headers after we authenticate
@@ -81,11 +81,9 @@ func (f *FreshRSS) Authenticate(
 func (f *FreshRSS) LoadFeeds(
 	ctx context.Context,
 ) error {
-	// Clear the feeds set before reloading...
 	newFeeds := make(map[string]struct{}, 0)
 	loadUrl := fmt.Sprintf(
-		"%s/api/greader.php/reader/api/0/subscription/list?output=json",
-		f.cfg.URL,
+		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.cfg.URL,
 	)
 	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, loadUrl, nil, f.headers, f.client)
 	if err != nil {
@@ -97,7 +95,6 @@ func (f *FreshRSS) LoadFeeds(
 	if err = json.Unmarshal(res, &feeds); err != nil {
 		return err
 	}
-
 	for _, feed := range feeds.Feeds {
 		newFeeds[feed.URL] = struct{}{}
 	}
@@ -105,6 +102,8 @@ func (f *FreshRSS) LoadFeeds(
 	f.mtx.Lock()
 	defer f.mtx.Unlock()
 	f.feeds = newFeeds
+	slog.Info("Loaded existing feeds from FreshRSS", "numFeeds", len(f.feeds))
+
 	return nil
 }
 
@@ -118,7 +117,7 @@ func (f *FreshRSS) AddFeed(
 	f.mtx.RUnlock()
 
 	if exists {
-		f.logger.Debug("Not adding feed as it is already in RSS", "feed", name)
+		f.logger.Debug("Not adding feed as it is already in FreshRSS", "feed", name)
 		return nil
 	}
 
@@ -143,7 +142,7 @@ func (f *FreshRSS) AddFeed(
 		return err
 	}
 
-	f.logger.Debug("Successfully added feed to FreshRSS", "feed", feedURL)
+	f.logger.Info("Successfully added feed", "feed", feedURL)
 	return nil
 }
 
@@ -164,6 +163,7 @@ func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
 		return err
 	}
 
+	f.logger.Info("Removed feed", "feed", feedURL)
 	return nil
 }
 

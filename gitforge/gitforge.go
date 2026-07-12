@@ -6,11 +6,14 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/atomicmeganerd/starfeed/common"
+	"golang.org/x/sync/errgroup"
 )
 
 // This regex will match if there is a next page in the response headers
@@ -24,6 +27,7 @@ type GitForge struct {
 	headers          http.Header
 	logger           *slog.Logger
 	client           *http.Client
+	mtx              sync.RWMutex
 }
 
 func NewGitForge(
@@ -45,7 +49,6 @@ func NewGitForge(
 		logger: logger.With(
 			slog.Group("gitforge",
 				"name", cfg.Name,
-				"type", cfg.Type,
 			),
 		),
 		client: client,
@@ -57,29 +60,53 @@ func (g *GitForge) LoadFeeds(
 ) error {
 	// Clear the feeds map before reloading...
 	g.feeds = make(map[string]string, 0)
+
+	// Get all repos
 	repos, err := g.fetchStarredRepos(ctx)
 	if err != nil {
 		return err
 	}
+
+	eg, ctx := errgroup.WithContext(ctx)
+	eg.SetLimit(5)
+
+	// Check each repo to make sure it has valid entries in its ATOM feed for releases
+	// This can be done in parallel
 	for _, repo := range repos {
-		if !g.repoHasReleaseFeed(ctx, repo) {
-			continue
-		}
-		g.feeds[repo.FeedURL] = repo.Name
+		eg.Go(func() error {
+			logger := g.logger.With(
+				"feed", repo.FeedURL,
+				"repo", repo.Name,
+			)
+			if !g.repoHasReleaseFeed(ctx, repo) {
+				logger.Warn("Repo does not have valid release feed")
+				return nil
+			}
+
+			g.mtx.Lock()
+			g.feeds[repo.FeedURL] = repo.Name
+			g.mtx.Unlock()
+			g.logger.Info("Added feed for repo to feeds map")
+			return nil
+		})
 	}
+	// We don't get an error
+	_ = eg.Wait()
+
 	g.logger.Info(
-		"Successfully loaded starred repos with release feeds from Git host",
+		"Successfully added all feeds to feeds map",
+		"numFeeds", len(g.feeds),
 	)
 	return nil
 }
 
 func (g *GitForge) fetchStarredRepos(
 	ctx context.Context,
-) ([]StarredRepo, error) {
-	g.logger.Debug("Fetching starred repos", "url", g.fetchRepoURL)
-	allRepos := make([]StarredRepo, 0)
+) ([]GitRepo, error) {
+	allRepos := make([]GitRepo, 0)
 	nextPageURL := g.fetchRepoURL
 	for {
+		g.logger.Debug("Fetching starred repos", "url", nextPageURL)
 		data, respHeaders, err := common.DoAPIRequest(
 			ctx,
 			http.MethodGet,
@@ -95,7 +122,7 @@ func (g *GitForge) fetchStarredRepos(
 			)
 		}
 
-		repos := make([]StarredRepo, 0)
+		repos := make([]GitRepo, 0)
 		if err := json.Unmarshal(data, &repos); err != nil {
 			return nil, fmt.Errorf(
 				"error %w parsing JSON response from gitforge %s",
@@ -103,23 +130,26 @@ func (g *GitForge) fetchStarredRepos(
 			)
 		}
 
-		for i := range repos {
-			repos[i].FeedURL = fmt.Sprintf(
-				"%s/releases.atom", repos[i].RepoURL,
+		for ix := range repos {
+			repos[ix].FeedURL = fmt.Sprintf(
+				"%s/releases.atom", repos[ix].RepoURL,
 			)
 		}
 		allRepos = append(allRepos, repos...)
 
 		nextPageURL = g.parseNextPageURL(respHeaders)
 		if nextPageURL == "" {
+			g.logger.Info("Finished loading starred repos", "numRepos", len(allRepos))
 			return allRepos, nil
 		}
-		g.logger.Debug("Found next page", "url", nextPageURL)
 	}
 }
 
 func (g *GitForge) Feeds() map[string]string {
-	return g.feeds
+	g.mtx.RLock()
+	defer g.mtx.RUnlock()
+	feedsCopy := maps.Clone(g.feeds)
+	return feedsCopy
 }
 
 func (g *GitForge) Name() string {
@@ -128,9 +158,11 @@ func (g *GitForge) Name() string {
 
 func (g *GitForge) IsRepoFeedStale(feedUrl string) bool {
 	// First of all, if the repo exists it canot be stale
+	g.mtx.RLock()
 	if _, exists := g.feeds[feedUrl]; exists {
 		return false
 	}
+	g.mtx.RUnlock()
 
 	// If the repo does not exist but matches the regex for this gitforge it is stale
 	return g.isReleasePattern.MatchString(feedUrl)
@@ -138,8 +170,10 @@ func (g *GitForge) IsRepoFeedStale(feedUrl string) bool {
 
 func (g *GitForge) repoHasReleaseFeed(
 	ctx context.Context,
-	repo StarredRepo,
+	repo GitRepo,
 ) bool {
+	logger := g.logger.With("repo", repo.Name, "feed", repo.FeedURL)
+	logger.Debug("Checking if repo has release feed")
 	data, _, err := common.DoAPIRequest(ctx, http.MethodGet, repo.FeedURL, nil, g.headers, g.client)
 	if err != nil {
 		return false
@@ -149,6 +183,7 @@ func (g *GitForge) repoHasReleaseFeed(
 		return false
 	}
 	if len(relFeed.Entries) >= 1 {
+		logger.Debug("Repo feed is valid")
 		return true
 	}
 	return false
