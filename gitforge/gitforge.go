@@ -67,11 +67,12 @@ func (g *GitForge) LoadFeeds(
 		return err
 	}
 
-	eg, ctx := errgroup.WithContext(ctx)
+	// We aren't using errors here but errgroup gives us SetLimit
+	eg := &errgroup.Group{}
 	eg.SetLimit(5)
 
 	// Check each repo to make sure it has valid entries in its ATOM feed for releases
-	// This can be done in parallel
+	// This can be done in parallel to make it much faster
 	for _, repo := range repos {
 		eg.Go(func() error {
 			logger := g.logger.With(
@@ -90,7 +91,7 @@ func (g *GitForge) LoadFeeds(
 			return nil
 		})
 	}
-	// We don't get an error
+	// We don't get an error, see comment above
 	_ = eg.Wait()
 
 	g.logger.Info(
