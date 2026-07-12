@@ -32,6 +32,7 @@ func NewFreshRSS(
 	client *http.Client,
 ) *FreshRSS {
 	headers := http.Header{}
+	headers.Set("Content-type", "application/x-www-form-urlencoded")
 	return &FreshRSS{
 		cfg:     cfg,
 		logger:  logger.With("rssServer", cfg.Name),
@@ -57,7 +58,6 @@ func (f *FreshRSS) Authenticate(
 		ctx, http.MethodPost, reqURL, formData, f.headers, f.client,
 	)
 	if err != nil {
-		f.logger.Debug("Error authenticating", "error", err)
 		return fmt.Errorf("error authenticating to RSS Server: %w, url: %s", err, reqURL)
 	}
 
@@ -75,7 +75,6 @@ func (f *FreshRSS) Authenticate(
 
 	// We can set all required headers after we authenticate
 	f.headers.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", authToken))
-	f.headers.Set("Content-type", "application/x-www-form-urlencoded")
 	return nil
 }
 
