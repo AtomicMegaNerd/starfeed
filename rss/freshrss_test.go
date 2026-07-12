@@ -24,10 +24,9 @@ const (
 
 func TestAuthenticate(t *testing.T) {
 	testCases := []struct {
-		name              string
-		responses         []http.Response
-		expectedAuthToken string
-		expectError       bool
+		name        string
+		responses   []http.Response
+		expectError bool
 	}{
 		{
 			name: "Successful authentication",
@@ -40,8 +39,7 @@ func TestAuthenticate(t *testing.T) {
 					Status:     testutils.StatusOKString,
 				},
 			},
-			expectedAuthToken: mockAuthToken,
-			expectError:       false,
+			expectError: false,
 		},
 		{
 			name: "Invalid text response should return error",
@@ -52,8 +50,7 @@ func TestAuthenticate(t *testing.T) {
 					Status:     testutils.StatusOKString,
 				},
 			},
-			expectedAuthToken: "",
-			expectError:       true,
+			expectError: true,
 		},
 		{
 			name: "Failed authentication",
@@ -64,8 +61,7 @@ func TestAuthenticate(t *testing.T) {
 					Status:     testutils.StatusUnauthorizedString,
 				},
 			},
-			expectedAuthToken: "",
-			expectError:       true,
+			expectError: true,
 		},
 	}
 
@@ -77,6 +73,7 @@ func TestAuthenticate(t *testing.T) {
 
 			f := NewFreshRSS(MockRSSConfig, testutils.TestLogger(), mockClient)
 			err := f.Authenticate(context.Background())
+
 			if tc.expectError {
 				if err == nil {
 					t.Fatalf("Expected error but got nil")

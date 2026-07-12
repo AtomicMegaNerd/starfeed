@@ -3,6 +3,7 @@ package rss
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -13,15 +14,11 @@ import (
 )
 
 type FreshRSS struct {
-	cfg            RSSServerConfig
-	getUrl         string
-	addUrl         string
-	addCategoryUrl string
-	editUrl        string
-	feeds          map[string]struct{}
-	logger         *slog.Logger
-	headers        http.Header
-	client         *http.Client
+	cfg     RSSServerConfig
+	feeds   map[string]struct{}
+	logger  *slog.Logger
+	headers http.Header
+	client  *http.Client
 }
 
 func NewFreshRSS(
@@ -30,25 +27,9 @@ func NewFreshRSS(
 	client *http.Client,
 ) *FreshRSS {
 	headers := http.Header{}
-	headers.Set("Content-type", "application/x-www-form-urlencoded")
 	return &FreshRSS{
-		cfg:    cfg,
-		logger: logger.With("rssServer", cfg.Name),
-		getUrl: fmt.Sprintf(
-			"%s/api/greader.php/reader/api/0/subscription/list?output=json", cfg.BaseURL,
-		),
-		addUrl: fmt.Sprintf(
-			"%s/api/greader.php/reader/api/0/subscription/quickadd",
-			cfg.BaseURL,
-		),
-		addCategoryUrl: fmt.Sprintf(
-			"%s/api/greader.php/reader/api/0/subscription/edit",
-			cfg.BaseURL,
-		),
-		editUrl: fmt.Sprintf(
-			"%s/api/greader.php/reader/api/0/subscription/edit",
-			cfg.BaseURL,
-		),
+		cfg:     cfg,
+		logger:  logger.With("rssServer", cfg.Name),
 		feeds:   make(map[string]struct{}, 0),
 		headers: headers,
 		client:  client,
@@ -71,6 +52,7 @@ func (f *FreshRSS) Authenticate(
 		ctx, http.MethodPost, reqURL, formData, f.headers, f.client,
 	)
 	if err != nil {
+		f.logger.Debug("Error authenticating", "error", err)
 		return fmt.Errorf("error authenticating to RSS Server: %w, url: %s", err, reqURL)
 	}
 
@@ -82,14 +64,25 @@ func (f *FreshRSS) Authenticate(
 		}
 	}
 
+	if authToken == "" {
+		return errors.New("failed to parse authToken")
+	}
+
+	// We can set all required headers after we authenticate
 	f.headers.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", authToken))
+	f.headers.Set("Content-type", "application/x-www-form-urlencoded")
 	return nil
 }
 
 func (f *FreshRSS) LoadFeeds(
 	ctx context.Context,
 ) error {
-	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, f.getUrl, nil, f.headers, f.client)
+
+	loadUrl := fmt.Sprintf(
+		"%s/api/greader.php/reader/api/0/subscription/list?output=json",
+		f.cfg.BaseURL,
+	)
+	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, loadUrl, nil, f.headers, f.client)
 	if err != nil {
 		return err
 	}
@@ -116,11 +109,12 @@ func (f *FreshRSS) AddFeed(
 		return nil
 	}
 
+	addUrl := fmt.Sprintf("%s/api/greader.php/reader/api/0/subscription/quickadd", f.cfg.BaseURL)
 	formData := url.Values{
 		"quickadd": {feedURL},
 	}
 	res, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, f.addUrl, []byte(formData.Encode()), f.headers, f.client,
+		ctx, http.MethodPost, addUrl, []byte(formData.Encode()), f.headers, f.client,
 	)
 	if err != nil {
 		return err
@@ -141,6 +135,11 @@ func (f *FreshRSS) AddFeed(
 }
 
 func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
+
+	editUrl := fmt.Sprintf(
+		"%s/api/greader.php/reader/api/0/subscription/edit",
+		f.cfg.BaseURL,
+	)
 	formData := url.Values{
 		"ac": {"unsubscribe"},
 		"s":  {fmt.Sprintf("feed/%s", feedURL)},
@@ -148,7 +147,7 @@ func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
 
 	// We do not care about the response
 	if _, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, f.editUrl, []byte(formData.Encode()), f.headers, f.client,
+		ctx, http.MethodPost, editUrl, []byte(formData.Encode()), f.headers, f.client,
 	); err != nil {
 		return err
 	}
@@ -168,6 +167,11 @@ func (f *FreshRSS) addFeedToCategory(
 	ctx context.Context,
 	streamId, name, category string,
 ) error {
+
+	addCategoryUrl := fmt.Sprintf(
+		"%s/api/greader.php/reader/api/0/subscription/edit",
+		f.cfg.BaseURL,
+	)
 	formData := url.Values{
 		"ac": {"edit"},
 		"s":  {streamId},
@@ -176,7 +180,7 @@ func (f *FreshRSS) addFeedToCategory(
 	}
 
 	if _, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, f.addCategoryUrl, []byte(formData.Encode()), f.headers, f.client,
+		ctx, http.MethodPost, addCategoryUrl, []byte(formData.Encode()), f.headers, f.client,
 	); err != nil {
 		return err
 	}
