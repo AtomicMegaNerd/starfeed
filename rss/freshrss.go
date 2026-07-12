@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/atomicmeganerd/starfeed/common"
 )
@@ -19,6 +21,7 @@ type FreshRSS struct {
 	logger  *slog.Logger
 	headers http.Header
 	client  *http.Client
+	mtx     sync.RWMutex
 }
 
 func NewFreshRSS(
@@ -78,7 +81,7 @@ func (f *FreshRSS) LoadFeeds(
 	ctx context.Context,
 ) error {
 	// Clear the feeds set before reloading...
-	f.feeds = make(map[string]struct{}, 0)
+	newFeeds := make(map[string]struct{}, 0)
 	loadUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/list?output=json",
 		f.cfg.URL,
@@ -95,8 +98,12 @@ func (f *FreshRSS) LoadFeeds(
 	}
 
 	for _, feed := range feeds.Feeds {
-		f.feeds[feed.URL] = struct{}{}
+		newFeeds[feed.URL] = struct{}{}
 	}
+
+	f.mtx.Lock()
+	defer f.mtx.Unlock()
+	f.feeds = newFeeds
 	return nil
 }
 
@@ -105,7 +112,11 @@ func (f *FreshRSS) AddFeed(
 	feedURL, name, category string,
 ) error {
 	// Check if feed exists already
-	if _, exists := f.feeds[feedURL]; exists {
+	f.mtx.RLock()
+	_, exists := f.feeds[feedURL]
+	f.mtx.RUnlock()
+
+	if exists {
 		f.logger.Debug("Not adding feed as it is already in RSS", "feed", name)
 		return nil
 	}
@@ -136,7 +147,6 @@ func (f *FreshRSS) AddFeed(
 }
 
 func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
-
 	editUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit",
 		f.cfg.URL,
@@ -157,7 +167,10 @@ func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
 }
 
 func (f *FreshRSS) Feeds() map[string]struct{} {
-	return f.feeds
+	f.mtx.RLock()
+	defer f.mtx.RUnlock()
+	feedsCopy := maps.Clone(f.feeds)
+	return feedsCopy
 }
 
 func (f *FreshRSS) Name() string {
