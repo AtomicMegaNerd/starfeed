@@ -77,7 +77,8 @@ func (f *FreshRSS) Authenticate(
 func (f *FreshRSS) LoadFeeds(
 	ctx context.Context,
 ) error {
-
+	// Clear the feeds set before reloading...
+	f.feeds = make(map[string]struct{}, 0)
 	loadUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/list?output=json",
 		f.cfg.URL,

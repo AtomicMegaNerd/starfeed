@@ -55,6 +55,8 @@ func NewGitForge(
 func (g *GitForge) LoadFeeds(
 	ctx context.Context,
 ) error {
+	// Clear the feeds map before reloading...
+	g.feeds = make(map[string]string, 0)
 	repos, err := g.fetchStarredRepos(ctx)
 	if err != nil {
 		return err
