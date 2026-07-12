@@ -42,7 +42,7 @@ var (
 	MockGitHubConfig = GitForgeConfig{
 		Type:  GitHubForgeType,
 		Name:  testutils.GitHubName,
-		URL:   testutils.GitHubURL,
+		Fqdn:  testutils.GitHubFqdn,
 		Token: testutils.GitHubToken,
 	}
 )

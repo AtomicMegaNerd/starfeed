@@ -5,16 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.5.0] - 2026-06-06
+## [v0.5.0] - 2026-07-10
 
 ### Changed
 
-- Removed unnecessary interfaces and generics
-- Reduced pointer usage in favor of value semantics
-- Moved interfaces to consumer packages
+- Much better use of interfaces reducing coupling between layers.
+- gitforge and rss instances manage their own state.
 - Consolidated HTTP request logic into `common` package
 - Removed `atom` package (feed checking now in `githost`)
-- Authentication moved to FreshRSS constructor
 - Logger passed explicitly instead of using global `slog`
 
 ## [v0.4.1] - 2026-05-20

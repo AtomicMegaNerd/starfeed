@@ -33,6 +33,6 @@ type Entry struct {
 type GitForgeConfig struct {
 	Type  string `validate:"required,oneof=github forgejo"`
 	Name  string `validate:"required,min=3"`
-	URL   string `validate:"required,url"`
+	Fqdn  string `validate:"required,min=8"`
 	Token string `validate:"required,min=10"`
 }

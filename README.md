@@ -35,9 +35,9 @@ Currently supported Git Forges:
 ## Environment Variables
 
 - `STARFEED_GIT_FORGE_*n*` where _n_ is a number from 0..n. This is a CSV value with the following
-  format: `type,name,url,api_url,token,enabled`.
+  format: `type,name,fqdn,token`.
 - `STARFEED_RSS_SERVER` which again uses CSV to configure our RSS server. Format:
-  `type,url,user,token,enabled`.
+  `type,url,user,token`.
 
 ### Optional
 
@@ -78,11 +78,11 @@ Below is an example file that shows how to configure the environment variables.
 
 ```bash
 # Git Forges
-export STARFEED_GIT_FORGE_0=forgejo,Codeberg,https://codeberg.org,https://codeberg.org/api/v1,*****************,true
-export STARFEED_GIT_FORGE_1=github,GitHub,https://github.com,https://api.github.com,***************,true
+export STARFEED_GIT_FORGE_0=forgejo,Codeberg,codeberg.org,*****************
+export STARFEED_GIT_FORGE_1=github,GitHub,github.com,***************
 
 # RSS Server
-export STARFEED_RSS_SERVER=freshrss,http://freshrss:80,chris@megaparsec.ca,*****************,true
+export STARFEED_RSS_SERVER=freshrss,http://freshrss:80,chris@megaparsec.ca,*****************
 
 # Use these with `docker-compose.yml` if you want the FreshRSS test harness locally.
 export STARFEED_RSS_USER=chris@megaparsec.ca

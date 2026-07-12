@@ -37,8 +37,8 @@ func NewGitForge(
 		feeds:        make(map[string]string, 0),
 		isReleasePattern: regexp.MustCompile(
 			fmt.Sprintf(
-				`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
-				regexp.QuoteMeta(cfg.URL),
+				`^https://%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
+				regexp.QuoteMeta(cfg.Fqdn),
 			),
 		),
 		headers: buildHeaders(cfg),
@@ -185,7 +185,7 @@ func buildHeaders(cfg GitForgeConfig) http.Header {
 
 func buildStarredRepoUrl(cfg GitForgeConfig) string {
 	if cfg.Type == GitHubForgeType {
-		return fmt.Sprintf("%s/user/starred?per_page=100", cfg.URL)
+		return fmt.Sprintf("https://api.%s/user/starred?per_page=100", cfg.Fqdn)
 	}
-	return fmt.Sprintf("%s/user/starred?limit=100", cfg.URL)
+	return fmt.Sprintf("https://%s/api/v1/user/starred?limit=100", cfg.Fqdn)
 }

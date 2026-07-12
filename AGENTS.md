@@ -23,9 +23,9 @@ Currently supported:
 ## Environment Variables
 
 - `STARFEED_GIT_FORGE_*n*` where _n_ is a number from 0..n. This is a CSV value with the following
-  format: `type,name,url,api_url,token,enabled`.
+  format: `type,name,fqdn,token`.
 - `STARFEED_RSS_SERVER` which again uses CSV to configure our RSS server. Format:
-  `type,url,user,token,enabled`.
+  `type,url,user,token`.
 
 Optional:
 

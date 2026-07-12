@@ -41,7 +41,7 @@ func buildGitForgeConfigs(
 		gitForgeConfig := gitforge.GitForgeConfig{
 			Type:  hostType,
 			Name:  name,
-			URL:   apiURL,
+			Fqdn:  apiURL,
 			Token: token,
 		}
 
