@@ -55,10 +55,29 @@ func NewGitForge(
 func (g *GitForge) LoadFeeds(
 	ctx context.Context,
 ) error {
-	g.logger.Debug("Loading feeds for starred repos", "url", g.fetchRepoURL)
+	repos, err := g.fetchStarredRepos(ctx)
+	if err != nil {
+		return err
+	}
+	for _, repo := range repos {
+		if !g.repoHasReleaseFeed(ctx, repo) {
+			continue
+		}
+		g.feeds[repo.FeedURL] = repo.Name
+	}
+	g.logger.Info(
+		"Successfully loaded starred repos with release feeds from Git host",
+	)
+	return nil
+}
+
+func (g *GitForge) fetchStarredRepos(
+	ctx context.Context,
+) ([]StarredRepo, error) {
+	g.logger.Debug("Fetching starred repos", "url", g.fetchRepoURL)
+	allRepos := make([]StarredRepo, 0)
 	nextPageURL := g.fetchRepoURL
 	for {
-		// Get the raw data
 		data, respHeaders, err := common.DoAPIRequest(
 			ctx,
 			http.MethodGet,
@@ -68,33 +87,31 @@ func (g *GitForge) LoadFeeds(
 			g.client,
 		)
 		if err != nil {
-			return fmt.Errorf(
-				"error %w getting raw data from gitforge: %s url: %s", err, g.name, nextPageURL,
+			return nil, fmt.Errorf(
+				"error %w getting raw data from gitforge: %s url: %s",
+				err, g.name, nextPageURL,
 			)
 		}
 
-		// Parse Repos
 		repos := make([]StarredRepo, 0)
 		if err := json.Unmarshal(data, &repos); err != nil {
-			return fmt.Errorf(
-				"error %w parsing JSON response from gitforge %s", err, g.name,
+			return nil, fmt.Errorf(
+				"error %w parsing JSON response from gitforge %s",
+				err, g.name,
 			)
 		}
 
-		for _, repo := range repos {
-			repo.FeedURL = fmt.Sprintf("%s/releases.atom", repo.RepoURL)
-			if !g.repoHasReleaseFeed(ctx, repo) {
-				continue
-			}
-			g.feeds[repo.FeedURL] = repo.Name
+		for i := range repos {
+			repos[i].FeedURL = fmt.Sprintf(
+				"%s/releases.atom", repos[i].RepoURL,
+			)
 		}
+		allRepos = append(allRepos, repos...)
 
 		nextPageURL = g.parseNextPageURL(respHeaders)
 		if nextPageURL == "" {
-			g.logger.Info("Successfully loaded starred repos with release feeds from Git host")
-			return nil
+			return allRepos, nil
 		}
-
 		g.logger.Debug("Found next page", "url", nextPageURL)
 	}
 }

@@ -47,12 +47,12 @@ var (
 	}
 )
 
-func TestLoadRepoMap(t *testing.T) {
+func TestFetchStarredRepos(t *testing.T) {
 
 	testCases := []struct {
 		name          string
 		responses     []http.Response
-		expectedRepos map[string]string
+		expectedRepos []StarredRepo
 		expectError   bool
 	}{
 		{
@@ -72,7 +72,7 @@ func TestLoadRepoMap(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: map[string]string{repo1.FeedURL: repo1.Name},
+			expectedRepos: []StarredRepo{repo1},
 			expectError:   false,
 		},
 		{
@@ -114,13 +114,8 @@ func TestLoadRepoMap(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
-			expectedRepos: map[string]string{
-				repo1.FeedURL: repo1.Name,
-				repo2.FeedURL: repo2.Name,
-				repo3.FeedURL: repo3.Name,
-				repo4.FeedURL: repo4.Name,
-			},
-			expectError: false,
+			expectedRepos: []StarredRepo{repo1, repo2, repo3, repo4},
+			expectError:   false,
 		},
 		{
 			name: "404 response should trigger an error",
@@ -165,7 +160,7 @@ func TestLoadRepoMap(t *testing.T) {
 			mockClient := &http.Client{Transport: &mockTransport}
 			gh := NewGitForge(MockGitHubConfig, testutils.TestLogger(), mockClient)
 
-			err := gh.LoadFeeds(ctx)
+			repos, err := gh.fetchStarredRepos(ctx)
 
 			if tc.expectError {
 				if err == nil {
@@ -178,6 +173,34 @@ func TestLoadRepoMap(t *testing.T) {
 				t.Fatalf("Expected no error, got %v", err)
 			}
 
+			if len(repos) != len(tc.expectedRepos) {
+				t.Fatalf(
+					"Expected %d repos, got %d",
+					len(tc.expectedRepos), len(repos),
+				)
+			}
+
+			for i, repo := range repos {
+				expected := tc.expectedRepos[i]
+				if repo.Name != expected.Name {
+					t.Errorf(
+						"Repo %d: expected Name %q, got %q",
+						i, expected.Name, repo.Name,
+					)
+				}
+				if repo.RepoURL != expected.RepoURL {
+					t.Errorf(
+						"Repo %d: expected RepoURL %q, got %q",
+						i, expected.RepoURL, repo.RepoURL,
+					)
+				}
+				if repo.FeedURL != expected.FeedURL {
+					t.Errorf(
+						"Repo %d: expected FeedURL %q, got %q",
+						i, expected.FeedURL, repo.FeedURL,
+					)
+				}
+			}
 		})
 	}
 }
@@ -271,7 +294,7 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 		{
 			name:    "Not found does not result in error",
 			repoURL: "https://github.com/user/repo5",
-			feedURL: "",
+			feedURL: "https://github.com/user/repo5/releases.atom",
 			responses: []http.Response{
 				{
 					Status:     "Not found",
