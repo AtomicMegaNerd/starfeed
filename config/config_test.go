@@ -12,35 +12,35 @@ import (
 
 var (
 	MockRSSConfig = rss.RSSServerConfig{
-		Name:    testutils.FreshRSSName,
-		BaseURL: testutils.FreshRSSURL,
-		User:    testutils.FreshRSSUser,
+		Name: testutils.FreshRSSName,
+		URL:  testutils.FreshRSSURL,
+		User: testutils.FreshRSSUser,
 	}
 	MockGitHubConfig = gitforge.GitForgeConfig{
-		Type:   gitforge.GitHubForgeType,
-		Name:   testutils.GitHubName,
-		ApiURL: testutils.GitHubAPIURL,
-		Token:  testutils.GitHubToken,
+		Type:  gitforge.GitHubForgeType,
+		Name:  testutils.GitHubName,
+		URL:   testutils.GitHubURL,
+		Token: testutils.GitHubToken,
 	}
 	MockCodebergConfig = gitforge.GitForgeConfig{
-		Type:   gitforge.ForgejoForgeType,
-		Name:   testutils.CodebergName,
-		ApiURL: testutils.CodebergAPIURL,
-		Token:  testutils.CodebergToken,
+		Type:  gitforge.ForgejoForgeType,
+		Name:  testutils.CodebergName,
+		URL:   testutils.CodebergURL,
+		Token: testutils.CodebergToken,
 	}
 
 	validGitHubCSV = fmt.Sprintf(
 		"%s,%s,%s,%s",
 		gitforge.GitHubForgeType,
 		testutils.GitHubName,
-		testutils.GitHubAPIURL,
+		testutils.GitHubURL,
 		testutils.GitHubToken,
 	)
 	validForgejoCSV = fmt.Sprintf(
 		"%s,%s,%s,%s",
 		gitforge.ForgejoForgeType,
 		testutils.CodebergName,
-		testutils.CodebergAPIURL,
+		testutils.CodebergURL,
 		testutils.CodebergToken,
 	)
 	validRSSCSV = fmt.Sprintf(
@@ -62,7 +62,7 @@ var (
 		"%s,%s,%s,",
 		gitforge.GitHubForgeType,
 		testutils.GitHubName,
-		testutils.GitHubAPIURL,
+		testutils.GitHubURL,
 	)
 	missingRSSCSV = fmt.Sprintf("%s,%s", testutils.FreshRSSName, testutils.FreshRSSURL)
 
@@ -77,7 +77,7 @@ var (
 		" %s , %s , %s , %s",
 		gitforge.GitHubForgeType,
 		testutils.GitHubName,
-		testutils.GitHubAPIURL,
+		testutils.GitHubURL,
 		testutils.GitHubToken,
 	)
 	validRSSCSVWithSpaces = fmt.Sprintf(

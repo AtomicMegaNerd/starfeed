@@ -16,7 +16,6 @@ import (
 // This regex will match if there is a next page in the response headers
 var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
-// This object represents a supported git host where we have 'starred' repos.
 type GitForge struct {
 	name             string
 	fetchRepoURL     string
@@ -39,7 +38,7 @@ func NewGitForge(
 		isReleasePattern: regexp.MustCompile(
 			fmt.Sprintf(
 				`^%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
-				regexp.QuoteMeta(cfg.ApiURL),
+				regexp.QuoteMeta(cfg.URL),
 			),
 		),
 		headers: buildHeaders(cfg),
@@ -108,6 +107,16 @@ func (g *GitForge) Name() string {
 	return g.name
 }
 
+func (g *GitForge) IsRepoFeedStale(feedUrl string) bool {
+	// First of all, if the repo exists it canot be stale
+	if _, exists := g.feeds[feedUrl]; exists {
+		return false
+	}
+
+	// If the repo does not exist but matches the regex for this gitforge it is stale
+	return g.isReleasePattern.MatchString(feedUrl)
+}
+
 func (g *GitForge) repoHasReleaseFeed(
 	ctx context.Context,
 	repo StarredRepo,
@@ -157,17 +166,7 @@ func buildHeaders(cfg GitForgeConfig) http.Header {
 
 func buildStarredRepoUrl(cfg GitForgeConfig) string {
 	if cfg.Type == GitHubForgeType {
-		return fmt.Sprintf("%s/user/starred?per_page=100", cfg.ApiURL)
+		return fmt.Sprintf("%s/user/starred?per_page=100", cfg.URL)
 	}
-	return fmt.Sprintf("%s/user/starred?limit=100", cfg.ApiURL)
-}
-
-func (g *GitForge) IsRepoFeedStale(feedUrl string) bool {
-	// First of all, if the repo exists it canot be stale
-	if _, exists := g.feeds[feedUrl]; exists {
-		return false
-	}
-
-	// If the repo does not exist but matches the regex for this gitforge it is stale
-	return g.isReleasePattern.MatchString(feedUrl)
+	return fmt.Sprintf("%s/user/starred?limit=100", cfg.URL)
 }

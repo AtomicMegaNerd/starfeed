@@ -12,9 +12,9 @@ import (
 )
 
 var MockRSSConfig = RSSServerConfig{
-	Name:    testutils.FreshRSSName,
-	BaseURL: testutils.FreshRSSURL,
-	User:    testutils.FreshRSSUser,
+	Name: testutils.FreshRSSName,
+	URL:  testutils.FreshRSSURL,
+	User: testutils.FreshRSSUser,
 }
 
 const (

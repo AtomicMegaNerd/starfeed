@@ -39,10 +39,10 @@ func buildGitForgeConfigs(
 		token := strings.TrimSpace(parts[3])
 
 		gitForgeConfig := gitforge.GitForgeConfig{
-			Type:   hostType,
-			Name:   name,
-			ApiURL: apiURL,
-			Token:  token,
+			Type:  hostType,
+			Name:  name,
+			URL:   apiURL,
+			Token: token,
 		}
 
 		if err := validate.Struct(gitForgeConfig); err != nil {

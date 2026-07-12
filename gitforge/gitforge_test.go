@@ -40,10 +40,10 @@ var (
 	}
 
 	MockGitHubConfig = GitForgeConfig{
-		Type:   GitHubForgeType,
-		Name:   testutils.GitHubName,
-		ApiURL: testutils.GitHubAPIURL,
-		Token:  testutils.GitHubToken,
+		Type:  GitHubForgeType,
+		Name:  testutils.GitHubName,
+		URL:   testutils.GitHubURL,
+		Token: testutils.GitHubToken,
 	}
 )
 

@@ -40,7 +40,7 @@ func NewFreshRSS(
 func (f *FreshRSS) Authenticate(
 	ctx context.Context,
 ) error {
-	reqURL := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", f.cfg.BaseURL)
+	reqURL := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", f.cfg.URL)
 	f.logger.Debug("Authenticating with FreshRSS", "url", reqURL)
 	formData := []byte(
 		url.Values{
@@ -80,7 +80,7 @@ func (f *FreshRSS) LoadFeeds(
 
 	loadUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/list?output=json",
-		f.cfg.BaseURL,
+		f.cfg.URL,
 	)
 	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, loadUrl, nil, f.headers, f.client)
 	if err != nil {
@@ -109,7 +109,7 @@ func (f *FreshRSS) AddFeed(
 		return nil
 	}
 
-	addUrl := fmt.Sprintf("%s/api/greader.php/reader/api/0/subscription/quickadd", f.cfg.BaseURL)
+	addUrl := fmt.Sprintf("%s/api/greader.php/reader/api/0/subscription/quickadd", f.cfg.URL)
 	formData := url.Values{
 		"quickadd": {feedURL},
 	}
@@ -138,7 +138,7 @@ func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
 
 	editUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit",
-		f.cfg.BaseURL,
+		f.cfg.URL,
 	)
 	formData := url.Values{
 		"ac": {"unsubscribe"},
@@ -170,7 +170,7 @@ func (f *FreshRSS) addFeedToCategory(
 
 	addCategoryUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit",
-		f.cfg.BaseURL,
+		f.cfg.URL,
 	)
 	formData := url.Values{
 		"ac": {"edit"},

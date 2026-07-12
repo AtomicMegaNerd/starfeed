@@ -2,15 +2,13 @@ package testutils
 
 // This package contains mock data that we can re-use over and over again in our tests.
 const (
-	GitHubName   = "mygithub"
-	GitHubURL    = "https://github.com"
-	GitHubToken  = "ghp_abcdefghijklmnopqrstuvwxyz"
-	GitHubAPIURL = "https://api.github.com"
+	GitHubName  = "mygithub"
+	GitHubURL   = "https://github.com"
+	GitHubToken = "ghp_abcdefghijklmnopqrstuvwxyz"
 	// Forgejo/Codeberg
-	CodebergName   = "codeberg"
-	CodebergURL    = "https://codeberg.org"
-	CodebergAPIURL = "https://api.codeberg.org"
-	CodebergToken  = "cb_abcdefghijklmnopqrstuvwxyz"
+	CodebergName  = "codeberg"
+	CodebergURL   = "https://codeberg.org"
+	CodebergToken = "cb_abcdefghijklmnopqrstuvwxyz"
 	// FreshRSS
 	FreshRSSName  = "freshrss"
 	FreshRSSURL   = "http://freshrss.example.com"

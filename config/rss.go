@@ -26,10 +26,10 @@ func buildRssServerConfig(
 	token := strings.TrimSpace(parts[3])
 
 	rssConfig := rss.RSSServerConfig{
-		Name:    rssType,
-		BaseURL: baseURL,
-		User:    user,
-		Token:   token,
+		Name:  rssType,
+		URL:   baseURL,
+		User:  user,
+		Token: token,
 	}
 
 	if err := validate.Struct(rssConfig); err != nil {

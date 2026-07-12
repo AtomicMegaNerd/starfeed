@@ -55,7 +55,7 @@ func main() {
 		os.Exit(1)
 	}
 	logger.Info(
-		"Successfully authenticated to RSS Server", "rssServer", cfg.RSSServerConfig.BaseURL,
+		"Successfully authenticated to RSS Server", "rssServer", cfg.RSSServerConfig.URL,
 	)
 
 	// For each GitForge in our config let's create a new runner
