@@ -3,15 +3,11 @@ package gitforge
 import (
 	"context"
 	"io"
-	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/atomicmeganerd/starfeed/testutils"
-	"github.com/lmittmann/tint"
 )
 
 var (
@@ -206,12 +202,6 @@ func TestFetchStarredRepos(t *testing.T) {
 }
 
 func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
-	logger := slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
-			Level:      slog.LevelDebug,
-			TimeFormat: time.RFC3339,
-		}),
-	)
 
 	testCases := []struct {
 		name             string
@@ -310,7 +300,7 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
-			gh := NewGitForge(MockGitHubConfig, logger, mockClient)
+			gh := NewGitForge(MockGitHubConfig, testutils.TestLogger(), mockClient)
 
 			repo := GitRepo{RepoURL: tc.repoURL}
 			hasEntries := gh.repoHasReleaseFeed(ctx, repo)

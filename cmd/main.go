@@ -122,16 +122,16 @@ func executeRunners(ctx context.Context, runners []starfeedRunner) error {
 func getLogger(debug bool) *slog.Logger {
 	if debug {
 		return slog.New(
-			tint.NewHandler(os.Stderr, &tint.Options{
-				Level:      slog.LevelDebug,
-				TimeFormat: time.RFC3339,
-			}),
+			tint.NewTextHandler(
+				os.Stderr,
+				&tint.Options{Level: slog.LevelDebug, TimeFormat: time.RFC3339},
+			),
 		)
 	}
 	return slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
-			Level:      slog.LevelInfo,
-			TimeFormat: time.RFC3339,
-		}),
+		tint.NewTextHandler(
+			os.Stderr,
+			&tint.Options{Level: slog.LevelInfo, TimeFormat: time.RFC3339},
+		),
 	)
 }

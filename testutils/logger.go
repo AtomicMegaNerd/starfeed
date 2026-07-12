@@ -10,9 +10,9 @@ import (
 
 func TestLogger() *slog.Logger {
 	return slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
-			Level:      slog.LevelDebug,
-			TimeFormat: time.RFC3339,
-		}),
+		tint.NewTextHandler(
+			os.Stderr,
+			&tint.Options{Level: slog.LevelDebug, TimeFormat: time.RFC3339},
+		),
 	)
 }

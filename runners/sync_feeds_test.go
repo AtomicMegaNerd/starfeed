@@ -163,10 +163,10 @@ func TestSyncFeeds(t *testing.T) {
 
 func TestRemoveStaleFeed(t *testing.T) {
 	logger := slog.New(
-		tint.NewHandler(os.Stderr, &tint.Options{
-			Level:      slog.LevelDebug,
-			TimeFormat: time.RFC3339,
-		}),
+		tint.NewTextHandler(
+			os.Stderr,
+			&tint.Options{Level: slog.LevelDebug, TimeFormat: time.RFC3339},
+		),
 	)
 
 	testCases := []struct {
