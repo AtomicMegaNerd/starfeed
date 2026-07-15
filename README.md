@@ -177,6 +177,21 @@ To lint the code:
 task lint
 ```
 
+## Cutting a Release
+
+We use [GoReleaser](https://goreleaser.com/) with a GitHub action to create a new release of
+Starfeed. This will publish our Docker image to Docker Hub.
+
+Steps:
+
+- Create a PR with your changes and ensure CI passes.
+- Merge the PR to `main`.
+- Go to the **Actions** tab on GitHub.
+- Select the **Starfeed Release** workflow from the sidebar.
+- Click **Run workflow** and enter the version tag in semver format (e.g. `v0.5.1`).
+- The workflow will run CI first, then validate the version, create and push the git tag, and run
+  GoReleaser to build binaries and publish the Docker image to Docker Hub.
+
 ## Roadmap
 
 These are future items that I want to focus on.
@@ -185,7 +200,7 @@ These are future items that I want to focus on.
 
 I really want to get these items done.
 
-- [x] Migrate to a config file (TOML) that Nix will securely deploy usine agenix.
+- [x] Migrate to a config file (TOML) that Nix will securely deploy using agenix.
 - [ ] Monitoring
 - [ ] Setup integration test with a local test instance of Forgejo in the `docker-compose.yml` file.
 
