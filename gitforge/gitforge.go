@@ -59,7 +59,9 @@ func (g *GitForge) LoadFeeds(
 	ctx context.Context,
 ) error {
 	// Clear the feeds map before reloading...
+	g.mtx.Lock()
 	g.feeds = make(map[string]string, 0)
+	g.mtx.Unlock()
 
 	// Get all repos
 	repos, err := g.fetchStarredRepos(ctx)
