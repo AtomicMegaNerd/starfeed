@@ -119,7 +119,7 @@ the project directory. See the direnv docs for more information.
 
 ## Running Locally with Containers (Recommended)
 
-You can either **Docker** or **Podman** to run Starfeed. The instructions below show both options.
+Use either **Docker** or **Podman** to run Starfeed. The instructions below show both options.
 
 The included `docker-compose.yml` file will run FreshRSS and Starfeed locally. As long as the
 environment is set up correctly above it will configure Starfeed to connect to this local test
@@ -145,9 +145,6 @@ task docker-down
 
 ## Build and Run Go Binary (Not Recommended)
 
-This app uses [Taskfile](https://taskfile.dev) to build and run the app. You can use the following
-command to build the app:
-
 ### Build
 
 ```bash
@@ -156,7 +153,7 @@ task build
 
 #### Run
 
-As long as you have a `starfeed.toml` config file, you should be able to run the app. However,
+As long as you have a valid `starfeed.toml` config file, you should be able to run the app. However,
 you'll need to point to an existing FreshRSS instance. Generally the docker-compose option is
 superior as it will spin up a test FreshRSS instance for you.
 
