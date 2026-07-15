@@ -151,7 +151,7 @@ task docker-down
 task build
 ```
 
-#### Run
+### Run
 
 As long as you have a valid `starfeed.toml` config file, you should be able to run the app. However,
 you'll need to point to an existing FreshRSS instance. Generally the docker-compose option is
@@ -161,11 +161,15 @@ superior as it will spin up a test FreshRSS instance for you.
 task run
 ```
 
+### Test
+
 To run the tests:
 
 ```bash
 task test
 ```
+
+### Lint
 
 To lint the code:
 
