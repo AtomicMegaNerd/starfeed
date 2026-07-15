@@ -28,11 +28,3 @@ type AtomFeed struct {
 type Entry struct {
 	Title string `xml:"title"`
 }
-
-// This type both holds and validates the config for a GitForge
-type GitForgeConfig struct {
-	Type  string `validate:"required,oneof=github forgejo"`
-	Name  string `validate:"required,min=3"`
-	Fqdn  string `validate:"required,min=8"`
-	Token string `validate:"required,min=10"`
-}

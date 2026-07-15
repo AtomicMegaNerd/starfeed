@@ -44,3 +44,6 @@ test-report*
 
 # Go task
 .task
+
+# Config
+starfeed.toml

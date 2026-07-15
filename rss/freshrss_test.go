@@ -11,12 +11,6 @@ import (
 	"github.com/atomicmeganerd/starfeed/testutils"
 )
 
-var MockRSSConfig = RSSServerConfig{
-	Name: testutils.FreshRSSName,
-	URL:  testutils.FreshRSSURL,
-	User: testutils.FreshRSSUser,
-}
-
 const (
 	mockAuthToken = "1234567890"
 	mockSid       = "2345678901"
@@ -71,8 +65,14 @@ func TestAuthenticate(t *testing.T) {
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewFreshRSS(MockRSSConfig, testutils.TestLogger(t), mockClient)
-			err := f.Authenticate(context.Background())
+			f := NewFreshRSS(
+				testutils.FreshRSSName,
+				testutils.FreshRSSUser,
+				testutils.FreshRSSURL,
+				testutils.TestLogger(t),
+				mockClient,
+			)
+			err := f.Authenticate(context.Background(), testutils.FreshRSSToken)
 
 			if tc.expectError {
 				if err == nil {
@@ -189,8 +189,11 @@ func TestAddFeed(t *testing.T) {
 				tc.urlRegexPatterns,
 			)
 			mockClient := &http.Client{Transport: &mockTransport}
+
 			f := NewFreshRSS(
-				MockRSSConfig,
+				testutils.FreshRSSName,
+				testutils.FreshRSSUser,
+				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
 				mockClient,
 			)
@@ -275,8 +278,11 @@ func TestLoadFeeds(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
+
 			f := NewFreshRSS(
-				MockRSSConfig,
+				testutils.FreshRSSName,
+				testutils.FreshRSSUser,
+				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
 				mockClient,
 			)
@@ -347,13 +353,15 @@ func TestRemoveFeed(t *testing.T) {
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			rss := NewFreshRSS(
-				MockRSSConfig,
+			f := NewFreshRSS(
+				testutils.FreshRSSName,
+				testutils.FreshRSSUser,
+				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
 				mockClient,
 			)
 
-			err := rss.RemoveFeed(ctx, tc.feedURL)
+			err := f.RemoveFeed(ctx, tc.feedURL)
 
 			if tc.expectError {
 				if err == nil {

@@ -31,8 +31,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	client := &http.Client{Timeout: cfg.HTTPTimeout}
-	logger := getLogger(cfg.DebugMode)
+	client := &http.Client{Timeout: 60 * time.Second}
+	logger := getLogger(cfg.Debug)
 
 	logger.Info("***********************************************")
 	logger.Info(" Welcome to Starfeed", "version", version, "commit", commit)
@@ -50,21 +50,25 @@ func main() {
 	defer ticker.Stop()
 
 	// Try to authenticate to the target RSS server
-	rssServer := rss.NewFreshRSS(cfg.RSSServerConfig, logger, client)
-	if err := rssServer.Authenticate(ctx); err != nil {
+	rssServer := rss.NewFreshRSS(
+		cfg.RSSServer.Name, cfg.RSSServer.User, cfg.RSSServer.URL, logger, client,
+	)
+	if err := rssServer.Authenticate(ctx, cfg.RSSServer.Token); err != nil {
 		logger.Error("Error authenticating to FreshRSS", "error", err)
 		os.Exit(1)
 	}
 	logger.Info(
-		"Successfully authenticated to RSS Server", "rssServer", cfg.RSSServerConfig.URL,
+		"Successfully authenticated to RSS Server", "rssServer", cfg.RSSServer.URL,
 	)
 
 	// For each GitForge in our config let's create a new runner
 	runnerSlice := make([]starfeedRunner, 0)
-	for _, gitForgeConfig := range cfg.GitForgeConfigs {
-		gitForge := gitforge.NewGitForge(gitForgeConfig, logger, client)
+	for _, forgeCfg := range cfg.GitForges {
+		gitForge := gitforge.NewGitForge(
+			forgeCfg.Type, forgeCfg.Name, forgeCfg.Fqdn, forgeCfg.Token, logger, client,
+		)
 		releasesRunner := runners.NewSyncFeedsRunner(gitForge, rssServer, logger)
-		logger.Info("Successfully registered runner for gitForge", "name", gitForgeConfig.Name)
+		logger.Info("Successfully registered runner for gitForge", "name", forgeCfg.Name)
 		runnerSlice = append(runnerSlice, releasesRunner)
 	}
 
@@ -74,7 +78,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if cfg.SingleRunMode {
+	if cfg.SingleRun {
 		logger.Info("Cancelling as we are in single run mode...")
 		return
 	}

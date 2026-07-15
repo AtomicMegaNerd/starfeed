@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"strconv"
 )
 
 type OSEnvGetter struct{}
@@ -11,10 +10,11 @@ func (o OSEnvGetter) Getenv(key string) string {
 	return os.Getenv(key)
 }
 
-func parseBoolEnv(envGetter envGetter, key string) (bool, error) {
-	v := envGetter.Getenv(key)
-	if v == "" {
-		return false, nil
+func getConfigurationData(g envGetter) ([]byte, error) {
+	cfgPath := g.Getenv(configPathEnvVar)
+	if cfgPath == "" {
+		cfgPath = defaultConfigPath
 	}
-	return strconv.ParseBool(v)
+
+	return os.ReadFile(cfgPath)
 }

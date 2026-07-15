@@ -1,37 +1,46 @@
 package config
 
 import (
-	"strconv"
-	"time"
+	"bytes"
+	"fmt"
 
-	"github.com/atomicmeganerd/starfeed/gitforge"
-	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/go-playground/validator/v10"
+	"github.com/pelletier/go-toml/v2"
 )
 
 const (
-	// required
-	gitForgeKey  = "STARFEED_GIT_FORGE"
-	rssServerKey = "STARFEED_RSS_SERVER"
-
-	// optional
-	debugModeKey     = "STARFEED_DEBUG_MODE"
-	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
-	httpTimeoutKey   = "STARFEED_HTTP_TIMEOUT"
-
-	gitForgeConfigFields  = 4
-	rssServerConfigFields = 4
-
-	defaultHTTPTimeoutSeconds = 60
+	configPathEnvVar  = "STARFEED_CONFIG_PATH"
+	defaultConfigPath = "./starfeed.toml"
 )
 
 // The main Config struct used to hold configuration state for the app
 type Config struct {
-	GitForgeConfigs []gitforge.GitForgeConfig `validate:"required,min=1"`
-	RSSServerConfig rss.RSSServerConfig       `validate:"required"`
-	DebugMode       bool
-	SingleRunMode   bool
-	HTTPTimeout     time.Duration `validate:"required"`
+	GitForges []GitForgeConfig `validate:"required,min=1" toml:"git_forges"`
+	RSSServer RSSServerConfig  `validate:"required"       toml:"rss_server"`
+	Debug     bool             `validate:"required"       toml:"debug"`
+	SingleRun bool             `validate:"required"       toml:"single_run"`
+}
+
+// This type both holds and validates the config for a GitForge
+type GitForgeConfig struct {
+	Type     string `validate:"required,oneof=github forgejo" toml:"type"`
+	Name     string `validate:"required,min=3"                toml:"name"`
+	Fqdn     string `validate:"required,min=8"                toml:"fqdn"`
+	TokenEnv string `validate:"required"                      toml:"token_env"`
+
+	// This is not loaded from the toml
+	Token string `validate:"required,min=10"`
+}
+
+// This type both holds and validates the config for the RSS Server
+type RSSServerConfig struct {
+	Name     string `validate:"required,oneof=freshrss" toml:"name"`
+	URL      string `validate:"required,url"            toml:"url"`
+	User     string `validate:"required,min=3"          toml:"user"`
+	TokenEnv string `validate:"required"                toml:"token_env"`
+
+	// This is not loaded from the toml
+	Token string `validate:"required,min=10"`
 }
 
 type envGetter interface {
@@ -41,42 +50,36 @@ type envGetter interface {
 func NewConfig(g envGetter) (Config, error) {
 	validate := validator.New()
 
-	// Parse optional HTTP timeout
-	httpTimeout := defaultHTTPTimeoutSeconds * time.Second
-	if timeoutStr := g.Getenv(httpTimeoutKey); timeoutStr != "" {
-		if timeoutSeconds, err := strconv.Atoi(timeoutStr); err == nil && timeoutSeconds > 0 {
-			httpTimeout = time.Duration(timeoutSeconds) * time.Second
-		}
+	cfgData, err := getConfigurationData(g)
+	if err != nil {
+		return Config{}, fmt.Errorf(
+			"could not load config TOML file %s: %w",
+			defaultConfigPath,
+			err,
+		)
 	}
 
-	debugMode, err := parseBoolEnv(g, debugModeKey)
-	if err != nil {
-		return Config{}, err
-	}
-	singleRunMode, err := parseBoolEnv(g, singleRunModeKey)
-	if err != nil {
-		return Config{}, err
-	}
-
-	gitForgeConfigs, err := buildGitForgeConfigs(validate, g)
-	if err != nil {
-		return Config{}, err
-	}
-	rssConfig, err := buildRssServerConfig(validate, g)
-	if err != nil {
-		return Config{}, err
+	var cfg Config
+	// We are making it strict to disallow unknown fields. This will protect against typos
+	dec := toml.NewDecoder(bytes.NewReader(cfgData))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&cfg); err != nil {
+		return Config{}, fmt.Errorf(
+			"could not parse invalid TOML file %s: %w",
+			defaultConfigPath,
+			err,
+		)
 	}
 
-	cfg := Config{
-		GitForgeConfigs: gitForgeConfigs,
-		RSSServerConfig: rssConfig,
-		DebugMode:       debugMode,
-		SingleRunMode:   singleRunMode,
-		HTTPTimeout:     httpTimeout,
+	// Load the secrets from the environment
+	for ix := range cfg.GitForges {
+		cfg.GitForges[ix].Token = g.Getenv(cfg.GitForges[ix].TokenEnv)
 	}
+	cfg.RSSServer.Token = g.Getenv(cfg.RSSServer.TokenEnv)
 
+	// If anything doesn't load properly (secrets included) this will catch it and fail
 	if err := validate.Struct(cfg); err != nil {
-		return Config{}, err
+		return Config{}, fmt.Errorf("config failed validation: %w", err)
 	}
 
 	return cfg, nil

@@ -31,24 +31,24 @@ type GitForge struct {
 }
 
 func NewGitForge(
-	cfg GitForgeConfig,
+	forgeType, name, fqdn, token string,
 	logger *slog.Logger,
 	client *http.Client,
 ) *GitForge {
 	return &GitForge{
-		name:         cfg.Name,
-		fetchRepoURL: buildStarredRepoUrl(cfg),
+		name:         name,
+		fetchRepoURL: buildStarredRepoUrl(forgeType, fqdn),
 		feeds:        make(map[string]string, 0),
 		isReleasePattern: regexp.MustCompile(
 			fmt.Sprintf(
 				`^https://%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
-				regexp.QuoteMeta(cfg.Fqdn),
+				regexp.QuoteMeta(fqdn),
 			),
 		),
-		headers: buildHeaders(cfg),
+		headers: buildHeaders(forgeType, token),
 		logger: logger.With(
 			slog.Group("gitforge",
-				"name", cfg.Name,
+				"name", name,
 			),
 		),
 		client: client,
@@ -207,21 +207,21 @@ func (g *GitForge) parseNextPageURL(respHeaders http.Header) string {
 	return ""
 }
 
-func buildHeaders(cfg GitForgeConfig) http.Header {
+func buildHeaders(forgeType, token string) http.Header {
 	headers := http.Header{}
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 	headers.Set("User-Agent", "github.com/atomicmeganerd/starfeed")
-	headers.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.Token))
-	if cfg.Type == GitHubForgeType {
+	headers.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	if forgeType == GitHubForgeType {
 		headers.Set("X-GitHub-Api-Version", "2022-11-28")
 	}
 	return headers
 }
 
-func buildStarredRepoUrl(cfg GitForgeConfig) string {
-	if cfg.Type == GitHubForgeType {
-		return fmt.Sprintf("https://api.%s/user/starred?per_page=100", cfg.Fqdn)
+func buildStarredRepoUrl(forgeType, fqdn string) string {
+	if forgeType == GitHubForgeType {
+		return fmt.Sprintf("https://api.%s/user/starred?per_page=100", fqdn)
 	}
-	return fmt.Sprintf("https://%s/api/v1/user/starred?limit=100", cfg.Fqdn)
+	return fmt.Sprintf("https://%s/api/v1/user/starred?limit=100", fqdn)
 }

@@ -34,13 +34,6 @@ var (
 		RepoURL: "https://github.com/user/repo4",
 		FeedURL: "https://github.com/user/repo4/releases.atom",
 	}
-
-	MockGitHubConfig = GitForgeConfig{
-		Type:  GitHubForgeType,
-		Name:  testutils.GitHubName,
-		Fqdn:  testutils.GitHubFqdn,
-		Token: testutils.GitHubToken,
-	}
 )
 
 func TestFetchStarredRepos(t *testing.T) {
@@ -154,7 +147,14 @@ func TestFetchStarredRepos(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
-			gh := NewGitForge(MockGitHubConfig, testutils.TestLogger(t), mockClient)
+			gh := NewGitForge(
+				GitHubForgeType,
+				testutils.GitHubName,
+				testutils.GitHubFqdn,
+				testutils.GitHubToken,
+				testutils.TestLogger(t),
+				mockClient,
+			)
 
 			repos, err := gh.fetchStarredRepos(ctx)
 
@@ -300,7 +300,15 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
-			gh := NewGitForge(MockGitHubConfig, testutils.TestLogger(t), mockClient)
+
+			gh := NewGitForge(
+				GitHubForgeType,
+				testutils.GitHubName,
+				testutils.GitHubFqdn,
+				testutils.GitHubToken,
+				testutils.TestLogger(t),
+				mockClient,
+			)
 
 			repo := GitRepo{RepoURL: tc.repoURL}
 			hasEntries := gh.repoHasReleaseFeed(ctx, repo)
