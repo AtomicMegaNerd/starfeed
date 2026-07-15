@@ -43,7 +43,7 @@ func NewConfig(cl configLoader) (Config, error) {
 
 	cfgData, err := cl.LoadConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("could not load config TOML file: %w", err)
+		return Config{}, fmt.Errorf("could not load config toml file: %w", err)
 	}
 
 	var cfg Config
@@ -51,11 +51,7 @@ func NewConfig(cl configLoader) (Config, error) {
 	dec := toml.NewDecoder(bytes.NewReader(cfgData))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {
-		return Config{}, fmt.Errorf(
-			"could not parse invalid TOML file %s: %w",
-			defaultConfigPath,
-			err,
-		)
+		return Config{}, fmt.Errorf("could not parse invalid toml file %w", err)
 	}
 
 	// If anything doesn't load properly (secrets included) this will catch it and fail
