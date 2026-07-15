@@ -14,7 +14,7 @@ import (
 )
 
 func TestSyncFeeds(t *testing.T) {
-	logger := testutils.TestLogger()
+	logger := testutils.TestLogger(t)
 
 	testCases := []struct {
 		name        string

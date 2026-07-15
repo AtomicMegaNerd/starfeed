@@ -2,16 +2,16 @@ package testutils
 
 import (
 	"log/slog"
-	"os"
+	"testing"
 	"time"
 
 	"github.com/lmittmann/tint"
 )
 
-func TestLogger() *slog.Logger {
+func TestLogger(t *testing.T) *slog.Logger {
 	return slog.New(
 		tint.NewTextHandler(
-			os.Stderr,
+			t.Output(),
 			&tint.Options{Level: slog.LevelDebug, TimeFormat: time.RFC3339},
 		),
 	)
