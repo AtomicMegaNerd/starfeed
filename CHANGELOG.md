@@ -14,6 +14,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Consolidated HTTP request logic into `common` package
 - Removed `atom` package (feed checking now in `githost`)
 - Logger passed explicitly instead of using global `slog`
+- Migrated to a TOML based configuration.
 
 ## [v0.4.1] - 2026-05-20
 
