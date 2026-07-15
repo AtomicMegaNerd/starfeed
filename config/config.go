@@ -1,175 +1,63 @@
 package config
 
 import (
-	"errors"
+	"bytes"
 	"fmt"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/go-playground/validator/v10"
-)
-
-const (
-	// required
-	gitHostKey   = "STARFEED_GIT_HOST_"
-	rssServerKey = "STARFEED_RSS_SERVER"
-
-	// optional
-	debugModeKey     = "STARFEED_DEBUG_MODE"
-	singleRunModeKey = "STARFEED_SINGLE_RUN_MODE"
-	httpTimeoutKey   = "STARFEED_HTTP_TIMEOUT"
-
-	gitHostConfigFields   = 6
-	rssServerConfigFields = 5
-
-	defaultHttpTimeoutSeconds = 60
+	"github.com/pelletier/go-toml/v2"
 )
 
 // The main Config struct used to hold configuration state for the app
 type Config struct {
-	GitHostConfigs  []GitHostConfig  `validate:"required,min=1"`
-	RSSServerConfig *RSSServerConfig `validate:"required"`
-	DebugMode       bool
-	SingleRunMode   bool
-	HTTPTimeout     time.Duration `validate:"required"`
+	// dive here tells validator to validate each element in our slice
+	GitForges []GitForgeConfig `validate:"required,min=1,dive" toml:"git_forges"`
+	RSSServer RSSServerConfig  `validate:"required"            toml:"rss_server"`
+	Debug     bool             `                               toml:"debug"`
+	SingleRun bool             `                               toml:"single_run"`
 }
 
-func NewConfig(envGetter EnvGetter) (*Config, error) {
-	validate := validator.New()
-
-	// Parse optional HTTP timeout
-	httpTimeout := defaultHttpTimeoutSeconds * time.Second
-	if timeoutStr := envGetter.Getenv(httpTimeoutKey); timeoutStr != "" {
-		if timeoutSeconds, err := strconv.Atoi(timeoutStr); err == nil && timeoutSeconds > 0 {
-			httpTimeout = time.Duration(timeoutSeconds) * time.Second
-		}
-	}
-
-	debugMode := false
-	debugMode, _ = parseBoolEnv(envGetter, debugModeKey)
-	singleRunMode := false
-	singleRunMode, _ = parseBoolEnv(envGetter, singleRunModeKey)
-
-	gitHostConfigs, err := buildGitHostConfigs(validate, envGetter)
-	if err != nil {
-		return nil, err
-	}
-	rssConfig, err := buildRssServerConfig(validate, envGetter)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg := &Config{
-		GitHostConfigs:  gitHostConfigs,
-		RSSServerConfig: rssConfig,
-		DebugMode:       debugMode,
-		SingleRunMode:   singleRunMode,
-		HTTPTimeout:     httpTimeout,
-	}
-
-	if err := validate.Struct(cfg); err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
-}
-
-// This type both holds and validates the config for a GitHost
-type GitHostConfig struct {
-	// TODO: Can I use a custom string type for this? Should I?
-	Type    string `validate:"required,oneof=github forgejo"`
-	Name    string `validate:"required,min=3"`
-	BaseURL string `validate:"required,url"`
-	ApiURL  string `validate:"required,url"`
-	Token   string `validate:"required,min=10"`
-	Enabled bool
-}
-
-func buildGitHostConfigs(
-	validate *validator.Validate,
-	envGetter EnvGetter,
-) ([]GitHostConfig, error) {
-	gitHostConfigs := make([]GitHostConfig, 0)
-
-	for ix := 0; ; ix++ {
-		gitHostCsv := envGetter.Getenv(fmt.Sprintf("%s%d", gitHostKey, ix))
-		if gitHostCsv == "" {
-			if ix == 0 {
-				return nil, errors.New("must define at least 1 git host")
-			}
-			break
-		}
-
-		parts := strings.SplitN(gitHostCsv, ",", gitHostConfigFields)
-		if len(parts) != gitHostConfigFields {
-			return nil, fmt.Errorf(
-				"expected csv to have %d parts but it had %d",
-				gitHostConfigFields,
-				len(parts),
-			)
-		}
-
-		hostType := strings.TrimSpace(parts[0])
-		name := strings.TrimSpace(parts[1])
-		baseURL := strings.TrimSpace(parts[2])
-		apiURL := strings.TrimSpace(parts[3])
-		token := strings.TrimSpace(parts[4])
-		enabledStr := strings.TrimSpace(parts[5])
-
-		enabled, err := strconv.ParseBool(enabledStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
-		}
-
-		gitHostConfig := GitHostConfig{hostType, name, baseURL, apiURL, token, enabled}
-
-		if err := validate.Struct(gitHostConfig); err != nil {
-			return nil, err
-		}
-		gitHostConfigs = append(gitHostConfigs, gitHostConfig)
-	}
-
-	return gitHostConfigs, nil
+// This type both holds and validates the config for a GitForge
+type GitForgeConfig struct {
+	Type  string `validate:"required,oneof=github forgejo" toml:"type"`
+	Name  string `validate:"required,min=3"                toml:"name"`
+	Fqdn  string `validate:"required,min=8"                toml:"fqdn"`
+	Token string `validate:"required,min=10"` // WARNING: This is a secret
 }
 
 // This type both holds and validates the config for the RSS Server
 type RSSServerConfig struct {
-	Type    string `validate:"required,oneof=freshrss"`
-	BaseURL string `validate:"required,url"`
-	User    string `validate:"required,min=3"`
-	Token   string `validate:"required,min=10"`
-	Enabled bool
+	Name  string `validate:"required,oneof=freshrss" toml:"name"`
+	URL   string `validate:"required,url"            toml:"url"`
+	User  string `validate:"required,min=3"          toml:"user"`
+	Token string `validate:"required,min=10"` // WARNING: This is a secret
 }
 
-func buildRssServerConfig(
-	validate *validator.Validate,
-	envGetter EnvGetter,
-) (*RSSServerConfig, error) {
-	rssCsv := envGetter.Getenv(rssServerKey)
+// This interface lets us mock our ConfigLoader for testing
+type configLoader interface {
+	LoadConfig() ([]byte, error)
+}
 
-	parts := strings.SplitN(rssCsv, ",", rssServerConfigFields)
-	if len(parts) != rssServerConfigFields {
-		return nil, fmt.Errorf(
-			"expected csv to have %d parts but it had %d", rssServerConfigFields, len(parts),
-		)
-	}
-	rssType := strings.TrimSpace(parts[0])
-	baseUrl := strings.TrimSpace(parts[1])
-	user := strings.TrimSpace(parts[2])
-	token := strings.TrimSpace(parts[3])
-	enabledStr := strings.TrimSpace(parts[4])
+func NewConfig(cl configLoader) (Config, error) {
+	validate := validator.New()
 
-	enabled, err := strconv.ParseBool(enabledStr)
+	cfgData, err := cl.LoadConfig()
 	if err != nil {
-		return nil, fmt.Errorf("invalid Enabled value %q: %w", enabledStr, err)
+		return Config{}, fmt.Errorf("could not load config toml file: %w", err)
 	}
 
-	rssConfig := &RSSServerConfig{rssType, baseUrl, user, token, enabled}
-
-	if err := validate.Struct(rssConfig); err != nil {
-		return nil, err
+	var cfg Config
+	// We are making it strict to disallow unknown fields. This will protect against typos
+	dec := toml.NewDecoder(bytes.NewReader(cfgData))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&cfg); err != nil {
+		return Config{}, fmt.Errorf("could not parse invalid toml file %w", err)
 	}
 
-	return rssConfig, nil
+	// If anything doesn't load properly (secrets included) this will catch it and fail
+	if err := validate.Struct(cfg); err != nil {
+		return Config{}, fmt.Errorf("config failed validation: %w", err)
+	}
+
+	return cfg, nil
 }

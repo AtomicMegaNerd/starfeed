@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.0] - 2026-07-10
+
+### Changed
+
+- Much better use of interfaces reducing coupling between layers.
+- gitforge and rss instances manage their own state.
+- Consolidated HTTP request logic into `common` package
+- Removed `atom` package (feed checking now in `githost`)
+- Logger passed explicitly instead of using global `slog`
+- Migrated to a TOML based configuration.
+
 ## [v0.4.1] - 2026-05-20
 
 ### Fixed

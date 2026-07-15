@@ -2,23 +2,19 @@ package config
 
 import (
 	"os"
-	"strconv"
 )
 
-type EnvGetter interface {
-	Getenv(key string) string
-}
+const (
+	configPathEnvVar  = "STARFEED_CONFIG_PATH"
+	defaultConfigPath = "./starfeed.toml"
+)
 
-type OSEnvGetter struct{}
+type ConfigLoader struct{}
 
-func (o OSEnvGetter) Getenv(key string) string {
-	return os.Getenv(key)
-}
-
-func parseBoolEnv(envGetter EnvGetter, key string) (bool, error) {
-	v := envGetter.Getenv(key)
-	if v == "" {
-		return false, nil
+func (cl ConfigLoader) LoadConfig() ([]byte, error) {
+	cfgPath := os.Getenv(configPathEnvVar)
+	if cfgPath == "" {
+		cfgPath = defaultConfigPath
 	}
-	return strconv.ParseBool(v)
+	return os.ReadFile(cfgPath)
 }

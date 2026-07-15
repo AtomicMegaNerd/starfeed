@@ -9,53 +9,36 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/atomicmeganerd/starfeed/atom"
 	"github.com/atomicmeganerd/starfeed/config"
-	"github.com/atomicmeganerd/starfeed/githost"
+	"github.com/atomicmeganerd/starfeed/gitforge"
 	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/runners"
 	"github.com/lmittmann/tint"
 	"golang.org/x/sync/errgroup"
 )
 
+// This is injected by the CI/CD to tag the binary
 var (
 	version = "local"
 	commit  = ""
 )
 
 func main() {
-	slog.Info("***********************************************")
-	slog.Info(" Welcome to Starfeed", "version", version, "commit", commit)
-	slog.Info("***********************************************")
-
 	// The configuration is loaded from the environment
-	cfg, err := config.NewConfig(config.OSEnvGetter{})
+	cfg, err := config.NewConfig(config.ConfigLoader{})
 	if err != nil {
-		slog.Error("Failed to load configuration", "error", err.Error())
+		slog.Error("Failed to load configuration", "error", err)
 		os.Exit(1)
 	}
 
-	client := &http.Client{Timeout: cfg.HTTPTimeout}
+	client := &http.Client{Timeout: 60 * time.Second}
+	logger := getLogger(cfg.Debug)
 
-	// configure logger
-	w := os.Stderr
-	if cfg.DebugMode {
-		slog.SetDefault(slog.New(
-			tint.NewHandler(w, &tint.Options{
-				Level:      slog.LevelDebug,
-				TimeFormat: time.RFC3339,
-			}),
-		))
-	} else {
-		slog.SetDefault(slog.New(
-			tint.NewHandler(w, &tint.Options{
-				Level:      slog.LevelInfo,
-				TimeFormat: time.RFC3339,
-			}),
-		))
-	}
+	logger.Info("***********************************************")
+	logger.Info(" Welcome to Starfeed", "version", version, "commit", commit)
+	logger.Info("***********************************************")
+	logger.Debug("Debug mode enabled")
 
-	// Again written by the human:
 	// Register signal handling. This will setup a private channel in our ctx object will
 	// be closed if one of these signals is received. This is easy to understand...
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -66,38 +49,37 @@ func main() {
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 
-	runnerSlice := make([]runner, 0)
-	feedChecker := atom.NewAtomFeedChecker(client)
-
-	rssServer := rss.NewFreshRSSFeedManager(cfg.RSSServerConfig, client)
-	if rssServer.Enabled() {
-		if err := rssServer.Authenticate(ctx); err != nil {
-			slog.Error("Error Authenticating to RSS", "error", err)
-			os.Exit(1)
-		}
-		slog.Info("Successfully authenticated to RSS server...", "URL", cfg.RSSServerConfig.BaseURL)
+	// Try to authenticate to the target RSS server
+	rssServer := rss.NewFreshRSS(
+		cfg.RSSServer.Name, cfg.RSSServer.User, cfg.RSSServer.URL, logger, client,
+	)
+	if err := rssServer.Authenticate(ctx, cfg.RSSServer.Token); err != nil {
+		logger.Error("Error authenticating to FreshRSS", "error", err)
+		os.Exit(1)
 	}
+	logger.Info(
+		"Successfully authenticated to RSS Server", "rssServer", cfg.RSSServer.URL,
+	)
 
-	// For each GitHost in our config let's create a new runner
-	for _, gitHostConfig := range cfg.GitHostConfigs {
-		gitHost, err := githost.NewGitHost(gitHostConfig, client)
-		slog.Info("Successfully registered git host", "name", gitHostConfig.Name)
-		if err != nil {
-			slog.Error("Cannot configure git host...", "error", err)
-			os.Exit(1)
-		}
-		releasesRunner := runners.NewPublishReleasesRunner(gitHost, rssServer, feedChecker)
+	// For each GitForge in our config let's create a new runner
+	runnerSlice := make([]starfeedRunner, 0)
+	for _, forgeCfg := range cfg.GitForges {
+		gitForge := gitforge.NewGitForge(
+			forgeCfg.Type, forgeCfg.Name, forgeCfg.Fqdn, forgeCfg.Token, logger, client,
+		)
+		releasesRunner := runners.NewSyncFeedsRunner(gitForge, rssServer, logger)
+		logger.Info("Successfully registered runner for gitForge", "name", forgeCfg.Name)
 		runnerSlice = append(runnerSlice, releasesRunner)
 	}
 
 	// Always run once...
 	if err := executeRunners(ctx, runnerSlice); err != nil {
-		slog.Error("Error executing runners", "error", err)
+		logger.Error("Error executing runners", "error", err)
 		os.Exit(1)
 	}
 
-	if cfg.SingleRunMode {
-		slog.Info("Cancelling as we are in single run mode...")
+	if cfg.SingleRun {
+		logger.Info("Cancelling as we are in single run mode...")
 		return
 	}
 
@@ -111,27 +93,27 @@ func main() {
 		// results in no data being returned but all we need here is wake the goroutine and execute
 		// the clause.
 		case <-ctx.Done():
-			slog.Info("Exiting...")
+			logger.Info("Exiting...")
 			return
 		// ticker.C receives a time.Time value here but we ignore it because our logs will
 		// already capture the timestamp when we execute. But it is good to recognize that
 		// the ticker channel is sent this data.
 		case <-ticker.C:
 			if err := executeRunners(ctx, runnerSlice); err != nil {
-				slog.Error("Error executing runners", "error", err)
+				logger.Error("Error executing runners", "error", err)
 				os.Exit(1)
 			}
-			slog.Info("Sleeping for 24 hours...")
+			logger.Info("Sleeping for 24 hours...")
 		}
 	}
 }
 
-type runner interface {
+type starfeedRunner interface {
 	Run(ctx context.Context) error
 }
 
 // Here we execute the runners in parallel...
-func executeRunners(ctx context.Context, runners []runner) error {
+func executeRunners(ctx context.Context, runners []starfeedRunner) error {
 	errGroup, runnerCtx := errgroup.WithContext(ctx)
 	for _, runner := range runners {
 		errGroup.Go(func() error {
@@ -139,4 +121,21 @@ func executeRunners(ctx context.Context, runners []runner) error {
 		})
 	}
 	return errGroup.Wait()
+}
+
+func getLogger(debug bool) *slog.Logger {
+	if debug {
+		return slog.New(
+			tint.NewTextHandler(
+				os.Stderr,
+				&tint.Options{Level: slog.LevelDebug, TimeFormat: time.RFC3339},
+			),
+		)
+	}
+	return slog.New(
+		tint.NewTextHandler(
+			os.Stderr,
+			&tint.Options{Level: slog.LevelInfo, TimeFormat: time.RFC3339},
+		),
+	)
 }

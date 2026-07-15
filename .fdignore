@@ -1,0 +1,5 @@
+!.env
+!starfeed.toml
+**/*.png
+**/*.jpg
+**/*.jpeg

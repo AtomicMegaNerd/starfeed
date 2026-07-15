@@ -1,427 +1,431 @@
 package config
 
 import (
-	"fmt"
+	"errors"
+	"reflect"
 	"testing"
-	"time"
 
-	"github.com/atomicmeganerd/starfeed/mocks"
+	"github.com/atomicmeganerd/starfeed/testutils"
 )
 
-var (
-	validGitHostCSV = fmt.Sprintf(
-		"%s,%s,%s,%s,%s,%s",
-		mocks.GitHubType,
-		mocks.GitHubName,
-		mocks.GitHubURL,
-		mocks.GitHubAPIURL,
-		mocks.GitHubToken,
-		mocks.TrueBool,
-	)
-	validForgejoCSV = fmt.Sprintf(
-		"%s,%s,%s,%s,%s,%s",
-		mocks.ForgejoType,
-		mocks.ForgejoName,
-		mocks.ForgejoURL,
-		mocks.ForgejoAPIUrl,
-		mocks.ForgejoToken,
-		mocks.TrueBool,
-	)
-	validRSSCSV = fmt.Sprintf(
-		"%s,%s,%s,%s,%s",
-		mocks.FreshRSSType,
-		mocks.FreshRSSURL,
-		mocks.FreshRSSUser,
-		mocks.FreshRSSToken,
-		mocks.TrueBool,
-	)
-	invalidTypeCSV = fmt.Sprintf(
-		"gitlab,mygitlab,https://gitlab.com,https://api.gitlab.com,%s,%s",
-		mocks.GitHubToken, mocks.TrueBool,
-	)
-	missingPartsCSV = fmt.Sprintf("%s,%s", mocks.GitHubType, mocks.GitHubURL)
-	emptyURLCSV     = fmt.Sprintf(
-		"%s,%s,,%s,%s,%s",
-		mocks.GitHubType,
-		mocks.GitHubName,
-		mocks.GitHubAPIURL,
-		mocks.GitHubToken,
-		mocks.TrueBool,
-	)
+func TestConfig_NewConfig(t *testing.T) {
+	testCases := []struct {
+		name            string
+		mockCfgData     func() []byte
+		expectedConfig  Config
+		configLoaderErr error
+		expectErr       bool
+	}{
+		{
+			name: "valid config with github forge",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
 
-	emptyTokenCSV = fmt.Sprintf(
-		"%s,%s,%s,%s,,%s",
-		mocks.GitHubType,
-		mocks.GitHubName,
-		mocks.GitHubURL,
-		mocks.GitHubAPIURL,
-		mocks.TrueBool,
-	)
-	missingRSSCSV = fmt.Sprintf("%s,%s", mocks.FreshRSSType, mocks.FreshRSSURL)
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
 
-	emptyBaseURLCSV = fmt.Sprintf(
-		"%s,%s,,%s,%s,%s",
-		mocks.GitHubType,
-		mocks.GitHubName,
-		mocks.GitHubAPIURL,
-		mocks.GitHubToken,
-		mocks.TrueBool,
-	)
-	emptyAPIURLCSV = fmt.Sprintf(
-		"%s,%s,%s,,%s,%s",
-		mocks.GitHubType,
-		mocks.GitHubName,
-		mocks.GitHubURL,
-		mocks.GitHubToken,
-		mocks.TrueBool,
-	)
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
+			},
+			expectedConfig: Config{
+				Debug:     true,
+				SingleRun: true,
+				GitForges: []GitForgeConfig{
+					{
+						Type:  "github",
+						Name:  "GitHub",
+						Fqdn:  "github.com",
+						Token: "ghp_1234567890abcdef",
+					},
+				},
+				RSSServer: RSSServerConfig{
+					Name:  "freshrss",
+					URL:   "http://freshrss:80",
+					User:  "testuser",
+					Token: "freshrss_token_12345",
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "valid config with forgejo forge",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = false
+single_run = false
 
-	validGitHostCSVWithSpaces = fmt.Sprintf(
-		" %s , %s , %s , %s , %s , %s ",
-		mocks.GitHubType,
-		mocks.GitHubName,
-		mocks.GitHubURL,
-		mocks.GitHubAPIURL,
-		mocks.GitHubToken,
-		mocks.TrueBool,
-	)
-	validRSSCSVWithSpaces = fmt.Sprintf(
-		" %s , %s , %s , %s , %s ",
-		mocks.FreshRSSType,
-		mocks.FreshRSSURL,
-		mocks.FreshRSSUser,
-		mocks.FreshRSSToken,
-		mocks.TrueBool,
-	)
+[[git_forges]]
+type = "forgejo"
+name = "Codeberg"
+fqdn = "codeberg.org"
+token = "forgejo_token_123456"
 
-	emptyURLRSSCSV = fmt.Sprintf("%s,,%s,%s,%s",
-		mocks.FreshRSSType, mocks.FreshRSSUser, mocks.FreshRSSToken, mocks.TrueBool)
-	emptyTokenRSSCSV = fmt.Sprintf("%s,%s,%s,,%s",
-		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser, mocks.TrueBool)
-	invalidEnabledGitHostCSV = fmt.Sprintf(
-		"%s,%s,%s,%s,%s,%s",
-		mocks.GitHubType,
-		mocks.GitHubName,
-		mocks.GitHubURL,
-		mocks.GitHubAPIURL,
-		mocks.GitHubToken,
-		mocks.Invalid,
-	)
-	invalidEnabledRSSCSV = fmt.Sprintf(
-		"%s,%s,%s,%s,%s",
-		mocks.FreshRSSType,
-		mocks.FreshRSSURL,
-		mocks.FreshRSSUser,
-		mocks.FreshRSSToken,
-		mocks.Invalid,
-	)
-	missingEnabledGitHostCSV = fmt.Sprintf("%s,%s,%s,%s,%s",
-		mocks.GitHubType, mocks.GitHubName, mocks.GitHubURL, mocks.GitHubAPIURL, mocks.GitHubToken)
-	missingEnabledRSSCSV = fmt.Sprintf("%s,%s,%s,%s",
-		mocks.FreshRSSType, mocks.FreshRSSURL, mocks.FreshRSSUser, mocks.FreshRSSToken)
-)
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
+			},
+			expectedConfig: Config{
+				Debug:     false,
+				SingleRun: false,
+				GitForges: []GitForgeConfig{
+					{
+						Type:  "forgejo",
+						Name:  "Codeberg",
+						Fqdn:  "codeberg.org",
+						Token: "forgejo_token_123456",
+					},
+				},
+				RSSServer: RSSServerConfig{
+					Name:  "freshrss",
+					URL:   "http://freshrss:80",
+					User:  "testuser",
+					Token: "freshrss_token_12345",
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "valid config with multiple forges",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = false
 
-func validConfig() *Config {
-	return &Config{
-		GitHostConfigs:  []GitHostConfig{MockValidGitHubConfig},
-		RSSServerConfig: MockValidFreshRSSConfig,
-		DebugMode:       false,
-		SingleRunMode:   false,
-		HTTPTimeout:     defaultHttpTimeoutSeconds * time.Second,
-	}
-}
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
 
-type NewConfigTestCase struct {
-	name        string
-	envVars     map[string]string
-	expectError bool
-	expected    *Config
-}
+[[git_forges]]
+type = "forgejo"
+name = "Codeberg"
+fqdn = "codeberg.org"
+token = "forgejo_token_123456"
 
-func TestNewConfig(t *testing.T) {
-	testCases := []NewConfigTestCase{
-		{
-			name: "All required variables present",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
-				"STARFEED_RSS_SERVER": validRSSCSV,
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
 			},
-			expectError: false,
-			expected:    validConfig(),
+			expectedConfig: Config{
+				Debug:     true,
+				SingleRun: false,
+				GitForges: []GitForgeConfig{
+					{
+						Type:  "github",
+						Name:  "GitHub",
+						Fqdn:  "github.com",
+						Token: "ghp_1234567890abcdef",
+					},
+					{
+						Type:  "forgejo",
+						Name:  "Codeberg",
+						Fqdn:  "codeberg.org",
+						Token: "forgejo_token_123456",
+					},
+				},
+				RSSServer: RSSServerConfig{
+					Name:  "freshrss",
+					URL:   "http://freshrss:80",
+					User:  "testuser",
+					Token: "freshrss_token_12345",
+				},
+			},
+			expectErr: false,
 		},
 		{
-			name: "All variables present with debug and single run mode",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0":      validGitHostCSV,
-				"STARFEED_RSS_SERVER":      validRSSCSV,
-				"STARFEED_DEBUG_MODE":      mocks.TrueBool,
-				"STARFEED_SINGLE_RUN_MODE": mocks.TrueBool,
-				"STARFEED_HTTP_TIMEOUT":    mocks.ValidTimeout,
+			name: "missing git_forges",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
 			},
-			expectError: false,
-			expected: &Config{
-				GitHostConfigs:  []GitHostConfig{MockValidGitHubConfig},
-				RSSServerConfig: MockValidFreshRSSConfig,
-				DebugMode:       true,
-				SingleRunMode:   true,
-				HTTPTimeout:     30 * time.Second,
-			},
+			expectErr: true,
 		},
 		{
-			name: "Multiple Git hosts",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
-				"STARFEED_GIT_HOST_1": validForgejoCSV,
-				"STARFEED_RSS_SERVER": validRSSCSV,
+			name: "empty git_forges array",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+
+git_forges = []
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
 			},
-			expectError: false,
-			expected: &Config{
-				GitHostConfigs:  []GitHostConfig{MockValidGitHubConfig, MockValidForgejoConfig},
-				RSSServerConfig: MockValidFreshRSSConfig,
-				DebugMode:       false,
-				SingleRunMode:   false,
-				HTTPTimeout:     defaultHttpTimeoutSeconds * time.Second,
-			},
+			expectErr: true,
 		},
 		{
-			name: "Spaces in CSV are trimmed",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSVWithSpaces,
-				"STARFEED_RSS_SERVER": validRSSCSVWithSpaces,
+			name: "invalid forge type",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+
+[[git_forges]]
+type = "gitlab"
+name = "GitLab"
+fqdn = "gitlab.com"
+token = "gitlab_token_123456"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
 			},
-			expectError: false,
-			expected:    validConfig(),
+			expectErr: true,
 		},
 		{
-			name: "Missing Git hosts should error",
-			envVars: map[string]string{
-				"STARFEED_RSS_SERVER": validRSSCSV,
+			name: "forge name too short",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+
+[[git_forges]]
+type = "github"
+name = "GH"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
 			},
-			expectError: true,
-			expected:    nil,
+			expectErr: true,
 		},
 		{
-			name: "Missing RSS server should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
+			name: "forge fqdn too short",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "gh.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
 			},
-			expectError: true,
-			expected:    nil,
+			expectErr: true,
 		},
 		{
-			name: "Invalid HTTP timeout defaults to 10 seconds",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0":   validGitHostCSV,
-				"STARFEED_RSS_SERVER":   validRSSCSV,
-				"STARFEED_HTTP_TIMEOUT": mocks.Invalid,
+			name: "forge token too short",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "short"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
 			},
-			expectError: false,
-			expected:    validConfig(),
+			expectErr: true,
 		},
 		{
-			name: "Zero HTTP timeout defaults to 10 seconds",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0":   validGitHostCSV,
-				"STARFEED_RSS_SERVER":   validRSSCSV,
-				"STARFEED_HTTP_TIMEOUT": mocks.ZeroTimeout,
+			name: "invalid rss server name",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "miniflux"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
 			},
-			expectError: false,
-			expected:    validConfig(),
+			expectErr: true,
 		},
 		{
-			name: "Invalid bool for debug mode result in false",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
-				"STARFEED_RSS_SERVER": validRSSCSV,
-				"STARFEED_DEBUG_MODE": mocks.Invalid,
+			name: "invalid rss server url",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "not-a-url"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
 			},
-			expectError: false,
-			expected:    validConfig(),
+			expectErr: true,
 		},
 		{
-			name: "Invalid bool for single run mode should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0":      validGitHostCSV,
-				"STARFEED_RSS_SERVER":      validRSSCSV,
-				"STARFEED_SINGLE_RUN_MODE": mocks.Invalid,
+			name: "rss server user too short",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "ab"
+token = "freshrss_token_12345"
+`)
 			},
-			expectError: false,
-			expected:    validConfig(),
+			expectErr: true,
 		},
 		{
-			name: "Invalid host type should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": invalidTypeCSV,
-				"STARFEED_RSS_SERVER": validRSSCSV,
+			name: "rss server token too short",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "short"
+`)
 			},
-			expectError: true,
-			expected:    nil,
+			expectErr: true,
 		},
 		{
-			name: "Missing CSV parts for git host should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": missingPartsCSV,
-				"STARFEED_RSS_SERVER": validRSSCSV,
+			name: "unknown toml field",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+unknown_field = "value"
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
 			},
-			expectError: true,
-			expected:    nil,
+			expectErr: true,
 		},
 		{
-			name: "Empty URL in git host CSV should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": emptyURLCSV,
-				"STARFEED_RSS_SERVER": validRSSCSV,
+			name: "invalid toml syntax",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+[invalid toml
+`)
 			},
-			expectError: true,
-			expected:    nil,
+			expectErr: true,
 		},
 		{
-			name: "Empty token in git host CSV should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": emptyTokenCSV,
-				"STARFEED_RSS_SERVER": validRSSCSV,
+			name: "config loader error",
+			mockCfgData: func() []byte {
+				return []byte("")
 			},
-			expectError: true,
-			expected:    nil,
-		},
-		{
-			name: "Missing CSV parts for RSS server should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
-				"STARFEED_RSS_SERVER": missingRSSCSV,
-			},
-			expectError: true,
-			expected:    nil,
-		},
-		{
-			name: "Empty URL in RSS server CSV should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
-				"STARFEED_RSS_SERVER": emptyURLRSSCSV,
-			},
-			expectError: true,
-			expected:    nil,
-		},
-		{
-			name: "Empty token in RSS server CSV should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
-				"STARFEED_RSS_SERVER": emptyTokenRSSCSV,
-			},
-			expectError: true,
-			expected:    nil,
-		},
-		{
-			name: "Empty BaseURL in git host CSV should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": emptyBaseURLCSV,
-				"STARFEED_RSS_SERVER": validRSSCSV,
-			},
-			expectError: true,
-			expected:    nil,
-		},
-		{
-			name: "Empty ApiURL in git host CSV should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": emptyAPIURLCSV,
-				"STARFEED_RSS_SERVER": validRSSCSV,
-			},
-			expectError: true,
-			expected:    nil,
-		},
-		{
-			name: "Invalid Enabled in git host CSV should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": invalidEnabledGitHostCSV,
-				"STARFEED_RSS_SERVER": validRSSCSV,
-			},
-			expectError: true,
-			expected:    nil,
-		},
-		{
-			name: "Invalid Enabled in RSS server CSV should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
-				"STARFEED_RSS_SERVER": invalidEnabledRSSCSV,
-			},
-			expectError: true,
-			expected:    nil,
-		},
-		{
-			name: "Missing Enabled in git host CSV should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": missingEnabledGitHostCSV,
-				"STARFEED_RSS_SERVER": validRSSCSV,
-			},
-			expectError: true,
-			expected:    nil,
-		},
-		{
-			name: "Missing Enabled in RSS server CSV should error",
-			envVars: map[string]string{
-				"STARFEED_GIT_HOST_0": validGitHostCSV,
-				"STARFEED_RSS_SERVER": missingEnabledRSSCSV,
-			},
-			expectError: true,
-			expected:    nil,
+			configLoaderErr: errors.New("failed to load config"),
+			expectErr:       true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockEnvGetter := NewMockEnvGetter(tc.envVars)
-			cfg, err := NewConfig(mockEnvGetter)
 
-			if tc.expectError {
+			mockCfgLoader := testutils.MockConfigLoader{
+				ExpectedData:  tc.mockCfgData(),
+				ExpectedError: tc.configLoaderErr,
+			}
+
+			cfg, err := NewConfig(mockCfgLoader)
+
+			if tc.expectErr {
 				if err == nil {
-					t.Errorf("Expected an error, got none")
+					t.Fatalf("Expected error but got nil")
 				}
 				return
 			}
 
 			if err != nil {
-				t.Errorf("Expected no error, got %v", err)
-				return
+				t.Fatalf("Expected no error but got %v", err)
 			}
 
-			if len(cfg.GitHostConfigs) != len(tc.expected.GitHostConfigs) {
-				t.Errorf(
-					"Expected %d GitHosts, got %d",
-					len(tc.expected.GitHostConfigs),
-					len(cfg.GitHostConfigs),
-				)
-				return
-			}
-
-			// NOTE: The validators in githost.GitHosts and rss.RSSServer constructor functions
-			// will validate that all of the values we pass in are valid. We'll test those
-			// factory functions in their respective packages.
-
-			if cfg.DebugMode != tc.expected.DebugMode {
-				t.Errorf("Expected DebugMode %t, got %t", tc.expected.DebugMode, cfg.DebugMode)
-			}
-
-			if cfg.SingleRunMode != tc.expected.SingleRunMode {
-				t.Errorf(
-					"Expected SingleRunMode %t, got %t",
-					tc.expected.SingleRunMode, cfg.SingleRunMode,
-				)
-			}
-
-			if cfg.HTTPTimeout != tc.expected.HTTPTimeout {
-				t.Errorf(
-					"Expected HTTPTimeout %v, got %v", tc.expected.HTTPTimeout, cfg.HTTPTimeout,
-				)
+			if !reflect.DeepEqual(tc.expectedConfig, cfg) {
+				t.Fatalf("Expected %v but got %v", tc.expectedConfig, cfg)
 			}
 		})
-	}
-}
-
-func TestOSEnvGetter(t *testing.T) {
-	getter := OSEnvGetter{}
-
-	result := getter.Getenv("STARFEED_NON_EXISTENT_VAR")
-	if result != "" {
-		t.Errorf("Expected empty string for non-existent env var, got %s", result)
 	}
 }

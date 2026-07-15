@@ -1,4 +1,4 @@
-package mocks
+package testutils
 
 import (
 	"errors"
@@ -41,20 +41,24 @@ func (mrt *MockMultiResponseRoundTripper) RoundTrip(req *http.Request) (*http.Re
 	return &mrt.responses[mrt.calls], nil
 }
 
+func (mtr *MockMultiResponseRoundTripper) GetNumCalls() int {
+	return mtr.calls
+}
+
 // This is a mock round tripper that can be used to mock http responses based on the URL
 // of the request. We will use regex patterns to match the URL of the requests.
-type MockUrlSelectedRoundTripper struct {
+type MockURLSelectedRoundTripper struct {
 	response         []http.Response
 	urlRegexPatterns []string
 }
 
-func NewMockUrlSelectedRoundTripper(
+func NewMockURLSelectedRoundTripper(
 	responses []http.Response, urls []string,
-) MockUrlSelectedRoundTripper {
-	return MockUrlSelectedRoundTripper{responses, urls}
+) MockURLSelectedRoundTripper {
+	return MockURLSelectedRoundTripper{responses, urls}
 }
 
-func (ust *MockUrlSelectedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+func (ust *MockURLSelectedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	for ix, url := range ust.urlRegexPatterns {
 		if matches, _ := regexp.MatchString(url, req.URL.String()); matches {
 			return &ust.response[ix], nil

@@ -13,7 +13,7 @@ env:
   out: bin/starfeed
   src: ./cmd/
   cover_out: cover.out
-  exclude_packages: "mocks|cmd"
+  exclude_packages: "testutils|cmd"
   CGO_ENABLED: "0"
 
 tasks:
