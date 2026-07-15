@@ -12,38 +12,48 @@ Currently supported:
 - GitHub
 - Forgejo based (including Codeberg)
 
-## Environment and Tooling
+## Config
 
-- Nix flake with nix-direnv is used for local development.
-  - Enable the flake environment to get the Go toolchain: run `direnv allow` with `.envrc`
-    containing `use flake`.
-- Taskfile is used for build/test/lint commands. Always use the task command to build, lint, test.
-- Podman or Docker can build and run the container. Podman is preferred locally.
+Use the `STARFEED_CONFIG_PATH` environment variable to point Starfeed to the correct path for the
+TOML file.
 
-## Environment Variables
+The TOML config contains secrets so must be kept in gitignore. On my server nix will deploy the TOML
+securely.
 
-- `STARFEED_GIT_FORGE_*n*` where _n_ is a number from 0..n. This is a CSV value with the following
-  format: `type,name,fqdn,token`.
-- `STARFEED_RSS_SERVER` which again uses CSV to configure our RSS server. Format:
-  `type,url,user,token`.
+```toml
+debug=true
+single_run=true
 
-Optional:
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "GITHUB_TOKEN"
 
-- `STARFEED_DEBUG_MODE` (any value valid for strconv.ParseBool is good here)
-- `STARFEED_SINGLE_RUN_MODE` (any value valid for strconv.ParseBool is good here)
-- `STARFEED_HTTP_TIMEOUT` (seconds; default 60)
+[[git_forges]]
+type = "forgejo"
+name = "Codeberg"
+fqdn = "codeberg.org"
+token = "CODEBERG_TOKEN"
 
-**NOTE**: The app defaults to 24-hour intervals unless `STARFEED_SINGLE_RUN_MODE=true`.
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "chris@megaparsec.ca"
+token = "FRESHRSS_TOKEN"
+```
 
-## Essential Commands
+**NOTE**: The TOML config must not be included in the docker image but mounted into the container.
 
-- Build binary: `task build`
-- Run locally: `task run`
-- Lint: `task lint`
-- Clean artifacts: `task clean`
-- Update deps: `task update-deps`
-- Generate coverage HTML: `task generate-test-reports`
-- Always run `task build`, `task test`, `task lint` after changes.
+## Tooling
+
+- [Go Task](https://taskfile.dev)
+- golangci-lint
+- goimports
+- golines
+- gopls
+
+I use logging for all debugging and never use a debugger.
 
 ## Code Organization
 
@@ -57,14 +67,13 @@ Optional:
 - `rss/`: Code that handles publishing the release feeds to RSS.
 - `testutils/`: Test doubles related data and shared mocks/functions.
 
-## Patterns and Conventions
+## Policies
 
 - Interfaces for external I/O (HTTP clients) to enable mocking.
 - Context passed to all network-bound components.
 - Secret values (tokens) must never be logged.
-- Use slog for structured logging; level toggled by `STARFEED_DEBUG_MODE`.
+- Use slog for structured logging.
 - Line length limit 100 chars.
-- Ignore lints on resp.Body.Close() calls as that method never returns an error.
 - For tests used shared mocks and data consts from `testutils/` package when possible.
 
 ## Testing

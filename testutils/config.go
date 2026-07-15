@@ -1,14 +1,10 @@
 package testutils
 
-// MockEnvGetter implements EnvGetter for testing
-type MockEnvGetter struct {
-	envVars map[string]string
+type MockConfigLoader struct {
+	ExpectedData  []byte
+	ExpectedError error
 }
 
-func NewMockEnvGetter(envVars map[string]string) *MockEnvGetter {
-	return &MockEnvGetter{envVars: envVars}
-}
-
-func (m *MockEnvGetter) Getenv(key string) string {
-	return m.envVars[key]
+func (cl MockConfigLoader) LoadConfig() ([]byte, error) {
+	return cl.ExpectedData, cl.ExpectedError
 }

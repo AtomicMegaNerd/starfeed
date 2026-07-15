@@ -25,7 +25,7 @@ var (
 
 func main() {
 	// The configuration is loaded from the environment
-	cfg, err := config.NewConfig(config.OSEnvGetter{})
+	cfg, err := config.NewConfig(config.ConfigLoader{})
 	if err != nil {
 		slog.Error("Failed to load configuration", "error", err)
 		os.Exit(1)

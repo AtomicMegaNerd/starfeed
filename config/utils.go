@@ -4,17 +4,17 @@ import (
 	"os"
 )
 
-type OSEnvGetter struct{}
+const (
+	configPathEnvVar  = "STARFEED_CONFIG_PATH"
+	defaultConfigPath = "./starfeed.toml"
+)
 
-func (o OSEnvGetter) Getenv(key string) string {
-	return os.Getenv(key)
-}
+type ConfigLoader struct{}
 
-func getConfigurationData(g envGetter) ([]byte, error) {
-	cfgPath := g.Getenv(configPathEnvVar)
+func (cl ConfigLoader) LoadConfig() ([]byte, error) {
+	cfgPath := os.Getenv(configPathEnvVar)
 	if cfgPath == "" {
 		cfgPath = defaultConfigPath
 	}
-
 	return os.ReadFile(cfgPath)
 }

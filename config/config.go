@@ -8,11 +8,6 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-const (
-	configPathEnvVar  = "STARFEED_CONFIG_PATH"
-	defaultConfigPath = "./starfeed.toml"
-)
-
 // The main Config struct used to hold configuration state for the app
 type Config struct {
 	GitForges []GitForgeConfig `validate:"required,min=1" toml:"git_forges"`
@@ -23,34 +18,29 @@ type Config struct {
 
 // This type both holds and validates the config for a GitForge
 type GitForgeConfig struct {
-	Type     string `validate:"required,oneof=github forgejo" toml:"type"`
-	Name     string `validate:"required,min=3"                toml:"name"`
-	Fqdn     string `validate:"required,min=8"                toml:"fqdn"`
-	TokenEnv string `validate:"required"                      toml:"token_env"`
-
-	// This is not loaded from the toml
-	Token string `validate:"required,min=10"`
+	Type  string `validate:"required,oneof=github forgejo" toml:"type"`
+	Name  string `validate:"required,min=3"                toml:"name"`
+	Fqdn  string `validate:"required,min=8"                toml:"fqdn"`
+	Token string `validate:"required,min=10"` // WARNING: This is a secret
 }
 
 // This type both holds and validates the config for the RSS Server
 type RSSServerConfig struct {
-	Name     string `validate:"required,oneof=freshrss" toml:"name"`
-	URL      string `validate:"required,url"            toml:"url"`
-	User     string `validate:"required,min=3"          toml:"user"`
-	TokenEnv string `validate:"required"                toml:"token_env"`
-
-	// This is not loaded from the toml
-	Token string `validate:"required,min=10"`
+	Name  string `validate:"required,oneof=freshrss" toml:"name"`
+	URL   string `validate:"required,url"            toml:"url"`
+	User  string `validate:"required,min=3"          toml:"user"`
+	Token string `validate:"required,min=10"` // WARNING: This is a secret
 }
 
-type envGetter interface {
-	Getenv(key string) string
+// This interface lets us mock our ConfigLoader for testing
+type configLoader interface {
+	LoadConfig() ([]byte, error)
 }
 
-func NewConfig(g envGetter) (Config, error) {
+func NewConfig(cl configLoader) (Config, error) {
 	validate := validator.New()
 
-	cfgData, err := getConfigurationData(g)
+	cfgData, err := cl.LoadConfig()
 	if err != nil {
 		return Config{}, fmt.Errorf(
 			"could not load config TOML file %s: %w",
@@ -70,12 +60,6 @@ func NewConfig(g envGetter) (Config, error) {
 			err,
 		)
 	}
-
-	// Load the secrets from the environment
-	for ix := range cfg.GitForges {
-		cfg.GitForges[ix].Token = g.Getenv(cfg.GitForges[ix].TokenEnv)
-	}
-	cfg.RSSServer.Token = g.Getenv(cfg.RSSServer.TokenEnv)
 
 	// If anything doesn't load properly (secrets included) this will catch it and fail
 	if err := validate.Struct(cfg); err != nil {
