@@ -10,10 +10,11 @@ import (
 
 // The main Config struct used to hold configuration state for the app
 type Config struct {
-	GitForges []GitForgeConfig `validate:"required,min=1" toml:"git_forges"`
-	RSSServer RSSServerConfig  `validate:"required"       toml:"rss_server"`
-	Debug     bool             `validate:"required"       toml:"debug"`
-	SingleRun bool             `validate:"required"       toml:"single_run"`
+	// dive here tells validator to validate each element in our slice
+	GitForges []GitForgeConfig `validate:"required,min=1,dive" toml:"git_forges"`
+	RSSServer RSSServerConfig  `validate:"required"            toml:"rss_server"`
+	Debug     bool             `                               toml:"debug"`
+	SingleRun bool             `                               toml:"single_run"`
 }
 
 // This type both holds and validates the config for a GitForge
@@ -42,11 +43,7 @@ func NewConfig(cl configLoader) (Config, error) {
 
 	cfgData, err := cl.LoadConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf(
-			"could not load config TOML file %s: %w",
-			defaultConfigPath,
-			err,
-		)
+		return Config{}, fmt.Errorf("could not load config TOML file: %w", err)
 	}
 
 	var cfg Config

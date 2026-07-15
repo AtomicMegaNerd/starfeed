@@ -107,7 +107,7 @@ func (f *FreshRSS) LoadFeeds(
 	f.mtx.Lock()
 	defer f.mtx.Unlock()
 	f.feeds = newFeeds
-	slog.Info("Loaded existing feeds from FreshRSS", "numFeeds", len(f.feeds))
+	f.logger.Info("Loaded existing feeds from FreshRSS", "numFeeds", len(f.feeds))
 
 	return nil
 }
