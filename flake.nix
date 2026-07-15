@@ -32,7 +32,6 @@
               pkgs.gotestsum
               pkgs.go-task
               pkgs.goreleaser
-
             ];
           };
         }
