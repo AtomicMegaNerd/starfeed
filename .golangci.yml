@@ -7,12 +7,4 @@ linters:
   settings:
     lll:
       line-length: 100
-      tab-width: 1
-formatters:
-  enable:
-    - golines
-  settings:
-    golines:
-      max-len: 100
-      # Shorten single-line comments.
-      shorten-comments: true
+      tab-width: 4
