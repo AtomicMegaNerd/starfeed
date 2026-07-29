@@ -4,11 +4,13 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/atomicmeganerd/starfeed/testutils"
 )
 
 func TestConfig_NewConfig(t *testing.T) {
+	expectedRunInterval := 24 * time.Hour
 	testCases := []struct {
 		name            string
 		mockCfgData     func() []byte
@@ -22,6 +24,7 @@ func TestConfig_NewConfig(t *testing.T) {
 				return []byte(`
 debug = true
 single_run = true
+run_interval = "24h"
 
 [[git_forges]]
 type = "github"
@@ -37,8 +40,9 @@ token = "freshrss_token_12345"
 `)
 			},
 			expectedConfig: Config{
-				Debug:     true,
-				SingleRun: true,
+				Debug:       true,
+				SingleRun:   true,
+				RunInterval: duration(expectedRunInterval),
 				GitForges: []GitForgeConfig{
 					{
 						Type:  "github",
@@ -62,6 +66,7 @@ token = "freshrss_token_12345"
 				return []byte(`
 debug = false
 single_run = false
+run_interval = "24h"
 
 [[git_forges]]
 type = "forgejo"
@@ -77,8 +82,9 @@ token = "freshrss_token_12345"
 `)
 			},
 			expectedConfig: Config{
-				Debug:     false,
-				SingleRun: false,
+				Debug:       false,
+				SingleRun:   false,
+				RunInterval: duration(expectedRunInterval),
 				GitForges: []GitForgeConfig{
 					{
 						Type:  "forgejo",
@@ -102,6 +108,7 @@ token = "freshrss_token_12345"
 				return []byte(`
 debug = true
 single_run = false
+run_interval = "24h"
 
 [[git_forges]]
 type = "github"
@@ -123,8 +130,9 @@ token = "freshrss_token_12345"
 `)
 			},
 			expectedConfig: Config{
-				Debug:     true,
-				SingleRun: false,
+				Debug:       true,
+				SingleRun:   false,
+				RunInterval: duration(expectedRunInterval),
 				GitForges: []GitForgeConfig{
 					{
 						Type:  "github",
@@ -154,6 +162,7 @@ token = "freshrss_token_12345"
 				return []byte(`
 debug = true
 single_run = true
+run_interval = "24h"
 
 [rss_server]
 name = "freshrss"
@@ -170,6 +179,7 @@ token = "freshrss_token_12345"
 				return []byte(`
 debug = true
 single_run = true
+run_interval = "24h"
 
 git_forges = []
 
@@ -188,6 +198,7 @@ token = "freshrss_token_12345"
 				return []byte(`
 debug = true
 single_run = true
+run_interval = "24h"
 
 [[git_forges]]
 type = "gitlab"
@@ -210,6 +221,7 @@ token = "freshrss_token_12345"
 				return []byte(`
 debug = true
 single_run = true
+run_interval = "24h"
 
 [[git_forges]]
 type = "github"
@@ -232,6 +244,7 @@ token = "freshrss_token_12345"
 				return []byte(`
 debug = true
 single_run = true
+run_interval = "24h"
 
 [[git_forges]]
 type = "github"
@@ -254,6 +267,7 @@ token = "freshrss_token_12345"
 				return []byte(`
 debug = true
 single_run = true
+run_interval = "24h"
 
 [[git_forges]]
 type = "github"
@@ -276,6 +290,7 @@ token = "freshrss_token_12345"
 				return []byte(`
 debug = true
 single_run = true
+run_interval = "24h"
 
 [[git_forges]]
 type = "github"
@@ -298,6 +313,7 @@ token = "freshrss_token_12345"
 				return []byte(`
 debug = true
 single_run = true
+run_interval = "24h"
 
 [[git_forges]]
 type = "github"
@@ -320,6 +336,7 @@ token = "freshrss_token_12345"
 				return []byte(`
 debug = true
 single_run = true
+run_interval = "24h"
 
 [[git_forges]]
 type = "github"
@@ -342,6 +359,7 @@ token = "freshrss_token_12345"
 				return []byte(`
 debug = true
 single_run = true
+run_interval = "24h"
 
 [[git_forges]]
 type = "github"
@@ -364,6 +382,8 @@ token = "short"
 				return []byte(`
 debug = true
 single_run = true
+run_interval = "24h"
+
 unknown_field = "value"
 
 [[git_forges]]
@@ -391,6 +411,311 @@ single_run = true
 `)
 			},
 			expectErr: true,
+		},
+		{
+			name: "missing run_interval",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
+			},
+			expectErr: true,
+		},
+		{
+			name: "valid run_interval 1h30m",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+run_interval = "1h30m"
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
+			},
+			expectedConfig: Config{
+				Debug:       true,
+				SingleRun:   true,
+				RunInterval: duration(90 * time.Minute),
+				GitForges: []GitForgeConfig{
+					{
+						Type:  "github",
+						Name:  "GitHub",
+						Fqdn:  "github.com",
+						Token: "ghp_1234567890abcdef",
+					},
+				},
+				RSSServer: RSSServerConfig{
+					Name:  "freshrss",
+					URL:   "http://freshrss:80",
+					User:  "testuser",
+					Token: "freshrss_token_12345",
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "valid run_interval 48h",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = false
+single_run = false
+run_interval = "48h"
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
+			},
+			expectedConfig: Config{
+				Debug:       false,
+				SingleRun:   false,
+				RunInterval: duration(48 * time.Hour),
+				GitForges: []GitForgeConfig{
+					{
+						Type:  "github",
+						Name:  "GitHub",
+						Fqdn:  "github.com",
+						Token: "ghp_1234567890abcdef",
+					},
+				},
+				RSSServer: RSSServerConfig{
+					Name:  "freshrss",
+					URL:   "http://freshrss:80",
+					User:  "testuser",
+					Token: "freshrss_token_12345",
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "invalid run_interval below minimum 30m",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+run_interval = "30m"
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
+			},
+			expectErr: true,
+		},
+		{
+			name: "invalid run_interval not a duration",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+run_interval = "not-a-duration"
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
+			},
+			expectErr: true,
+		},
+		{
+			name: "invalid run_interval empty string",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+run_interval = ""
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
+			},
+			expectErr: true,
+		},
+		{
+			name: "invalid run_interval below minimum",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+run_interval = "30m"
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
+			},
+			expectErr: true,
+		},
+		{
+			name: "invalid run_interval above maximum",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+run_interval = "169h"
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
+			},
+			expectErr: true,
+		},
+		{
+			name: "valid run_interval at minimum boundary",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+run_interval = "1h"
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
+			},
+			expectedConfig: Config{
+				Debug:       true,
+				SingleRun:   true,
+				RunInterval: duration(1 * time.Hour),
+				GitForges: []GitForgeConfig{
+					{
+						Type:  "github",
+						Name:  "GitHub",
+						Fqdn:  "github.com",
+						Token: "ghp_1234567890abcdef",
+					},
+				},
+				RSSServer: RSSServerConfig{
+					Name:  "freshrss",
+					URL:   "http://freshrss:80",
+					User:  "testuser",
+					Token: "freshrss_token_12345",
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "valid run_interval at maximum boundary",
+			mockCfgData: func() []byte {
+				return []byte(`
+debug = true
+single_run = true
+run_interval = "168h"
+
+[[git_forges]]
+type = "github"
+name = "GitHub"
+fqdn = "github.com"
+token = "ghp_1234567890abcdef"
+
+[rss_server]
+name = "freshrss"
+url = "http://freshrss:80"
+user = "testuser"
+token = "freshrss_token_12345"
+`)
+			},
+			expectedConfig: Config{
+				Debug:       true,
+				SingleRun:   true,
+				RunInterval: duration(168 * time.Hour),
+				GitForges: []GitForgeConfig{
+					{
+						Type:  "github",
+						Name:  "GitHub",
+						Fqdn:  "github.com",
+						Token: "ghp_1234567890abcdef",
+					},
+				},
+				RSSServer: RSSServerConfig{
+					Name:  "freshrss",
+					URL:   "http://freshrss:80",
+					User:  "testuser",
+					Token: "freshrss_token_12345",
+				},
+			},
+			expectErr: false,
 		},
 		{
 			name: "config loader error",

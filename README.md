@@ -42,6 +42,7 @@ point to the file location. If unset, it defaults to `./starfeed.toml`.
 ```toml
 debug=true
 single_run=true
+run_interval="24h"
 
 [[git_forges]]
 type = "github"
@@ -64,19 +65,22 @@ token = "FRESHRSS_TOKEN"
 
 ### Configuration Fields
 
-| Field              | Description                                                        |
-| ------------------ | ------------------------------------------------------------------ |
-| `debug`            | Enable debug logging (`true`/`false`).                             |
-| `single_run`       | Run once and exit (`true`) or run on a 24-hour interval (`false`). |
-| `git_forges`       | List of Git Forge configurations. At least one is required.        |
-| `git_forges.type`  | Forge type: `github` or `forgejo`.                                 |
-| `git_forges.name`  | Display name for the forge.                                        |
-| `git_forges.fqdn`  | Fully qualified domain name (e.g. `github.com`, `codeberg.org`).   |
-| `git_forges.token` | API token with permission to read starred repos.                   |
-| `rss_server.name`  | RSS server type: `freshrss`.                                       |
-| `rss_server.url`   | URL of the FreshRSS instance.                                      |
-| `rss_server.user`  | FreshRSS username/email.                                           |
-| `rss_server.token` | FreshRSS API token.                                                |
+| Field              | Description                                                            |
+| ------------------ | ---------------------------------------------------------------------- |
+| `debug`            | Enable debug logging (`true`/`false`).                                 |
+| `single_run`       | Run once and exit (`true`) or run on an interval (`false`).            |
+| `run_interval`     | How often to run when not in `single_run` mode. Must be a string       |
+|                    | that can be parsed by time.ParseDuration and must be between 1 and 168 |
+|                    | hours (1 week)                                                         |
+| `git_forges`       | List of Git Forge configurations. At least one is required.            |
+| `git_forges.type`  | Forge type: `github` or `forgejo`.                                     |
+| `git_forges.name`  | Display name for the forge.                                            |
+| `git_forges.fqdn`  | Fully qualified domain name (e.g. `github.com`, `codeberg.org`).       |
+| `git_forges.token` | API token with permission to read starred repos.                       |
+| `rss_server.name`  | RSS server type: `freshrss`.                                           |
+| `rss_server.url`   | URL of the FreshRSS instance.                                          |
+| `rss_server.user`  | FreshRSS username/email.                                               |
+| `rss_server.token` | FreshRSS API token.                                                    |
 
 <!-- prettier-ignore -->
 > [!IMPORTANT]

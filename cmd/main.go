@@ -57,7 +57,7 @@ func run() error {
 	// Setup our ticker for our timed execution. This will send a time.Time value to the ticker.C
 	// every 24 hours.
 	// NOTE: This is a bounded (size 1) async channel
-	ticker := time.NewTicker(24 * time.Hour)
+	ticker := time.NewTicker(cfg.Interval())
 	defer ticker.Stop()
 
 	runnerSlice, err := buildRunners(ctx, cfg, logger, client)
@@ -97,7 +97,7 @@ func run() error {
 				logger.Error("Error executing runners", "error", err)
 				return err
 			}
-			logger.Info("Sleeping for 24 hours...", "nextRun", t.Add(24*time.Hour))
+			logger.Info("Sleeping...", "nextRun", t.Add(24*time.Hour))
 		}
 	}
 }
@@ -130,12 +130,12 @@ func buildRunners(
 	runnerSlice := make([]starfeedRunner, 0)
 	// For each GitForge in our config let's create a new runner
 	for _, forgeCfg := range cfg.GitForges {
-		gitForge := gitforge.NewGitForge(
+		forge := gitforge.NewGitForge(
 			forgeCfg.Type, forgeCfg.Name, forgeCfg.Fqdn, forgeCfg.Token, logger, client,
 		)
-		releasesRunner := runners.NewSyncFeedsRunner(gitForge, rssServer, logger)
+		runner := runners.NewSyncFeedsRunner(forge, rssServer, logger)
 		logger.Info("Successfully registered runner for gitForge", "name", forgeCfg.Name)
-		runnerSlice = append(runnerSlice, releasesRunner)
+		runnerSlice = append(runnerSlice, runner)
 	}
 	return runnerSlice, nil
 }
