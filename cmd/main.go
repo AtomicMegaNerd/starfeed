@@ -66,21 +66,20 @@ func run() error {
 		return err
 	}
 
-	// Always run once...
+	// We always want to run on startup, and if we are in SingleRun mode we will terminate
+	// the app after running the workflow once. SingleRun is useful for development and testing.
 	if err := executeRunners(ctx, runnerSlice); err != nil {
 		logger.Error("Error executing runners", "error", err)
 		return err
 	}
-
 	if cfg.SingleRun {
 		logger.Info("Cancelling as we are in single run mode...")
 		return nil
 	}
 
-	// The comments below were written by me the human as I try to better understand how Go
-	// uses channels and select in this context.
 	for {
-		// Select will block until one of the two signals are received.
+		// Select will block until one of the two signals are received. The goroutine is parked
+		// until one of the below channels sends a message.
 		select {
 		// If the signal handler closes the private channel, the fact the channel was closed will
 		// wake up this goroutine and trigger this clause. Done() here is a getter for the private
@@ -90,15 +89,15 @@ func run() error {
 		case <-ctx.Done():
 			logger.Info("Exiting...")
 			return nil
-		// ticker.C receives a time.Time value here but we ignore it because our logs will
-		// already capture the timestamp when we execute. But it is good to recognize that
-		// the ticker channel is sent this data.
-		case <-ticker.C:
+			// ticker.C receives a time.Time value here but we ignore it because our logs will
+			// already capture the timestamp when we execute. But it is good to recognize that
+			// the ticker channel is sent this data.
+		case t := <-ticker.C:
 			if err := executeRunners(ctx, runnerSlice); err != nil {
 				logger.Error("Error executing runners", "error", err)
 				return err
 			}
-			logger.Info("Sleeping for 24 hours...")
+			logger.Info("Sleeping for 24 hours...", "nextRun", t.Add(24*time.Hour))
 		}
 	}
 }
