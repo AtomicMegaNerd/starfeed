@@ -24,11 +24,19 @@ var (
 )
 
 func main() {
+	// Return an error to the operating system if run returns an error
+	if err := run(); err != nil {
+		os.Exit(1)
+	}
+}
+
+// Return errors so we can return an error to the OS in main
+func run() error {
 	// The configuration is loaded from the environment
 	cfg, err := config.NewConfig(config.ConfigLoader{})
 	if err != nil {
-		slog.Error("Failed to load configuration", "error", err)
-		os.Exit(1)
+		slog.Default().Error("Error loading configuration", "error", err)
+		return err
 	}
 
 	client := &http.Client{Timeout: 60 * time.Second}
@@ -39,53 +47,40 @@ func main() {
 	logger.Info("***********************************************")
 	logger.Debug("Debug mode enabled")
 
-	// Register signal handling. This will setup a private channel in our ctx object will
+	// Register signal handling. This will setup a private channel in our ctx object which will
 	// be closed if one of these signals is received. This is easy to understand...
+	// NOTE: the channel in ctx is one-shot and is a synchronization channel (meaning no actual
+	// data is sent).
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	// Setup our ticker for our timed execution. This will send a time.Time value to the ticker.C
 	// every 24 hours.
+	// NOTE: This is a bounded (size 1) async channel
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 
-	// Try to authenticate to the target RSS server
-	rssServer := rss.NewFreshRSS(
-		cfg.RSSServer.Name, cfg.RSSServer.User, cfg.RSSServer.URL, logger, client,
-	)
-	if err := rssServer.Authenticate(ctx, cfg.RSSServer.Token); err != nil {
-		logger.Error("Error authenticating to FreshRSS", "error", err)
-		os.Exit(1)
-	}
-	logger.Info(
-		"Successfully authenticated to RSS Server", "rssServer", cfg.RSSServer.URL,
-	)
-
-	// For each GitForge in our config let's create a new runner
-	runnerSlice := make([]starfeedRunner, 0)
-	for _, forgeCfg := range cfg.GitForges {
-		gitForge := gitforge.NewGitForge(
-			forgeCfg.Type, forgeCfg.Name, forgeCfg.Fqdn, forgeCfg.Token, logger, client,
-		)
-		releasesRunner := runners.NewSyncFeedsRunner(gitForge, rssServer, logger)
-		logger.Info("Successfully registered runner for gitForge", "name", forgeCfg.Name)
-		runnerSlice = append(runnerSlice, releasesRunner)
+	runnerSlice, err := buildRunners(ctx, cfg, logger, client)
+	if err != nil {
+		logger.Error("Error executing runners", "error", err)
+		return err
 	}
 
 	// Always run once...
 	if err := executeRunners(ctx, runnerSlice); err != nil {
 		logger.Error("Error executing runners", "error", err)
-		os.Exit(1)
+		return err
 	}
 
 	if cfg.SingleRun {
 		logger.Info("Cancelling as we are in single run mode...")
-		return
+		return nil
 	}
 
 	// The comments below were written by me the human as I try to better understand how Go
 	// uses channels and select in this context.
 	for {
+		// Select will block until one of the two signals are received.
 		select {
 		// If the signal handler closes the private channel, the fact the channel was closed will
 		// wake up this goroutine and trigger this clause. Done() here is a getter for the private
@@ -94,22 +89,56 @@ func main() {
 		// the clause.
 		case <-ctx.Done():
 			logger.Info("Exiting...")
-			return
+			return nil
 		// ticker.C receives a time.Time value here but we ignore it because our logs will
 		// already capture the timestamp when we execute. But it is good to recognize that
 		// the ticker channel is sent this data.
 		case <-ticker.C:
 			if err := executeRunners(ctx, runnerSlice); err != nil {
 				logger.Error("Error executing runners", "error", err)
-				os.Exit(1)
+				return err
 			}
 			logger.Info("Sleeping for 24 hours...")
 		}
 	}
 }
 
+// Defining an interface here for any Runner that we want to add to our runnerSlice
 type starfeedRunner interface {
 	Run(ctx context.Context) error
+}
+
+// This function builds our runner objects. We have one shared rssServer but we can have
+// multiple git forges so we return one runner per git forge.
+func buildRunners(
+	ctx context.Context,
+	cfg config.Config,
+	logger *slog.Logger,
+	client *http.Client,
+) ([]starfeedRunner, error) {
+	rssServer := rss.NewFreshRSS(
+		cfg.RSSServer.Name, cfg.RSSServer.User, cfg.RSSServer.URL, logger, client,
+	)
+	// Try to authenticate to the target RSS server
+	if err := rssServer.Authenticate(ctx, cfg.RSSServer.Token); err != nil {
+		logger.Error("Error authenticating to FreshRSS", "error", err)
+		return nil, err
+	}
+	logger.Info(
+		"Successfully authenticated to RSS Server", "rssServer", cfg.RSSServer.URL,
+	)
+
+	runnerSlice := make([]starfeedRunner, 0)
+	// For each GitForge in our config let's create a new runner
+	for _, forgeCfg := range cfg.GitForges {
+		gitForge := gitforge.NewGitForge(
+			forgeCfg.Type, forgeCfg.Name, forgeCfg.Fqdn, forgeCfg.Token, logger, client,
+		)
+		releasesRunner := runners.NewSyncFeedsRunner(gitForge, rssServer, logger)
+		logger.Info("Successfully registered runner for gitForge", "name", forgeCfg.Name)
+		runnerSlice = append(runnerSlice, releasesRunner)
+	}
+	return runnerSlice, nil
 }
 
 // Here we execute the runners in parallel...
@@ -123,19 +152,17 @@ func executeRunners(ctx context.Context, runners []starfeedRunner) error {
 	return errGroup.Wait()
 }
 
+// This configures the logger for our application setting the level to debug
+// if specified.
 func getLogger(debug bool) *slog.Logger {
+	level := slog.LevelInfo
 	if debug {
-		return slog.New(
-			tint.NewTextHandler(
-				os.Stderr,
-				&tint.Options{Level: slog.LevelDebug, TimeFormat: time.RFC3339},
-			),
-		)
+		level = slog.LevelDebug
 	}
 	return slog.New(
 		tint.NewTextHandler(
 			os.Stderr,
-			&tint.Options{Level: slog.LevelInfo, TimeFormat: time.RFC3339},
+			&tint.Options{Level: level, TimeFormat: time.RFC3339},
 		),
 	)
 }

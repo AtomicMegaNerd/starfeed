@@ -4,7 +4,15 @@ linters:
   default: standard
   enable:
     - lll
+    - gocognit
   settings:
     lll:
       line-length: 100
       tab-width: 4
+    gocognit:
+      min-complexity: 10
+  exclusions:
+    rules:
+      - path: _test\.go$
+        linters:
+          - gocognit
