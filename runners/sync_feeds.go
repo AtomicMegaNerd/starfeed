@@ -2,9 +2,10 @@ package runners
 
 import (
 	"context"
-	"golang.org/x/sync/errgroup"
 	"log/slog"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // RepoRSSPublisher is a struct that manages the main workflow of the application.
