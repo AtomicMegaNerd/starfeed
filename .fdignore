@@ -1,5 +1,6 @@
 !.env
 !starfeed.toml
+!.pre-commit-config.yaml
 **/*.png
 **/*.jpg
 **/*.jpeg

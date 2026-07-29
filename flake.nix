@@ -25,31 +25,30 @@
           src = ./.;
           hooks = {
             nixfmt.enable = true;
-            yamllint = {
+            yaml-lint = {
               enable = true;
-              name = "yamllint";
+              name = "yaml lint";
               entry = "yamllint --strict";
               language = "system";
               types = [ "yaml" ];
             };
             gimports = {
               enable = true;
-              name = "goimports";
+              name = "go fix imports";
               entry = "goimports -w";
               language = "system";
               types = [ "go" ];
             };
-
             golines = {
               enable = true;
-              name = "golines";
+              name = "go format";
               entry = "golines -w";
               language = "system";
               types = [ "go" ];
             };
-            golangci-lint = {
+            go-lint = {
               enable = true;
-              name = "golangci-lint";
+              name = "go lint";
               entry = "golangci-lint run --fix";
               language = "system";
               types = [ "go" ];
@@ -60,6 +59,20 @@
               entry = "go fix";
               language = "system";
               types = [ "go" ];
+            };
+            md-lint = {
+              enable = true;
+              name = "markdown lint";
+              entry = "markdownlint-cli2";
+              language = "system";
+              types = [ "markdown" ];
+            };
+            md-format = {
+              enable = true;
+              name = "markdown format";
+              entry = "oxfmt";
+              language = "system";
+              types = [ "markdown" ];
             };
           };
         };
