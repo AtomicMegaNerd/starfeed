@@ -78,8 +78,10 @@ token = "FRESHRSS_TOKEN"
 | `rss_server.user`  | FreshRSS username/email.                                           |
 | `rss_server.token` | FreshRSS API token.                                                |
 
-> [!note]Note The TOML config contains secrets and must not be committed to version control or
-> included in Docker images. It should be mounted into the container as a volume.
+<!-- prettier-ignore -->
+> [!IMPORTANT]
+> The TOML config contains secrets and must not be committed to version control or included in
+> Docker images. It should be mounted into the container as a volume.
 
 ---
 
@@ -92,7 +94,6 @@ Create an `.envrc` file (already in `.gitignore`).
 
 ```bash
 use flake
-
 source .env
 ```
 
@@ -208,7 +209,6 @@ I really want to get these items done.
 
 These are less important and may or may not happen.
 
-- [ ] Migrate to [codeberg](https://codeberg.org) or another host?
 - [ ] Support other RSS backends?
 - [ ] Support other Git Forges (Gitea, Bitbucket, Gitlab)?
 - [ ] Create RSS feeds for notifications that we can serve up from this daemon.

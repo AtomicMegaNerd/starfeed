@@ -9,6 +9,8 @@ const (
 	defaultConfigPath = "./starfeed.toml"
 )
 
+// This object is responsible for loading the config file for the application. This concrete
+// version loads from disk at the defined path.
 type ConfigLoader struct{}
 
 func (cl ConfigLoader) LoadConfig() ([]byte, error) {
