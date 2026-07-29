@@ -6,7 +6,12 @@
   };
 
   outputs =
-    { nixpkgs, git-hooks, ... }:
+    {
+      self,
+      nixpkgs,
+      git-hooks,
+      ...
+    }:
     let
       systems = [
         "x86_64-linux"
@@ -20,37 +25,53 @@
           src = ./.;
           hooks = {
             nixfmt.enable = true;
-            format = {
+            yamllint = {
               enable = true;
-              name = "Format Go code";
-              entry = "task format";
+              name = "yamllint";
+              entry = "yamllint --strict";
               language = "system";
-              pass_filenames = false;
+              types = [ "yaml" ];
             };
-            check-deps = {
+            gimports = {
               enable = true;
-              name = "Check Go dependencies";
-              entry = "task check-deps";
+              name = "goimports";
+              entry = "goimports -w";
               language = "system";
-              pass_filenames = false;
+              types = [ "go" ];
             };
-            lint = {
+
+            golines = {
               enable = true;
-              name = "Lint Go code";
-              entry = "task lint";
+              name = "golines";
+              entry = "golines -w";
               language = "system";
-              pass_filenames = false;
+              types = [ "go" ];
+            };
+            golangci-lint = {
+              enable = true;
+              name = "golangci-lint";
+              entry = "golangci-lint run --fix";
+              language = "system";
+              types = [ "go" ];
+            };
+            go-fix = {
+              enable = true;
+              name = "go fix";
+              entry = "go fix";
+              language = "system";
+              types = [ "go" ];
             };
           };
         };
       });
-      devShells = nixpkgs.lib.genAttrs systems (
-        system:
-        let
-          pkgs = import nixpkgs { inherit system; };
-        in
-        {
-          default = pkgs.mkShell {
+      devShells = nixpkgs.lib.genAttrs systems (system: {
+        default =
+          let
+            pkgs = import nixpkgs { inherit system; };
+            inherit (self.checks.${system}.pre-commit-check) shellHook enabledPackages;
+          in
+          pkgs.mkShell {
+            inherit shellHook;
             # The packages we need for this project
             buildInputs = [
               # Go tools
@@ -62,9 +83,9 @@
               pkgs.gotestsum
               pkgs.go-task
               pkgs.goreleaser
-            ];
+            ]
+            ++ enabledPackages;
           };
-        }
-      );
+      });
     };
 }

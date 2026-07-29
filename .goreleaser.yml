@@ -1,4 +1,5 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+---
 version: 2
 
 builds:
@@ -36,7 +37,8 @@ dockers_v2:
       - linux/amd64
       - linux/arm64
     labels:
-      "org.opencontainers.image.description": "Starfeed subscribes to RSS feeds for starred GitHub repos"
+      "org.opencontainers.image.description": >
+        Starfeed subscribes to RSS feeds for starred GitHub repos
       "org.opencontainers.image.name": "{{.ProjectName}}"
       "org.opencontainers.image.revision": "{{.FullCommit}}"
       "org.opencontainers.image.version": "{{.Version}}"

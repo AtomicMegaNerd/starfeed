@@ -48,6 +48,7 @@ func DoAPIRequest(
 		return data, res.Header, nil
 	}
 
+	// If we do have an error we can still try to return the data
 	return data, res.Header, HTTPError{
 		URL:        reqURL,
 		StatusCode: res.StatusCode,
