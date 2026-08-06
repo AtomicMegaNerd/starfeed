@@ -116,32 +116,43 @@ func buildRunners(
 	logger *slog.Logger,
 	client *http.Client,
 ) ([]starfeedRunner, error) {
+	// We build a shared RSS server that we publish too. All runners share it.
+	rssServerName := cfg.RSSServer.Name
+	rssServerLogger := logger.With("rssServer", rssServerName)
 	rssServer := rss.NewFreshRSS(
-		cfg.RSSServer.User, cfg.RSSServer.URL, logger, client,
+		cfg.RSSServer.User, cfg.RSSServer.URL, rssServerLogger, client,
 	)
-	// Try to authenticate to the target RSS server
+	// Try to authenticate to the shared RSS server
 	if err := rssServer.Authenticate(ctx, cfg.RSSServer.Token); err != nil {
-		return nil, fmt.Errorf("error authenticating to freshrss: %w", err)
+		return nil, fmt.Errorf("error authenticating to freshrss %s: %w", rssServerName, err)
 	}
-	logger.Info(
-		"Successfully authenticated to RSS Server", "rssServer", cfg.RSSServer.URL,
-	)
+	rssServerLogger.Info("Successfully authenticated to RSS Server")
 
-	runnerSlice := make([]starfeedRunner, 0)
-	// For each GitForge in our config let's create a new runner
-	for _, forgeCfg := range cfg.GitForges {
+	// For each GitForge in our config let's create a new runner. Each will share a single RSS
+	// target but query starred repo from each configured GitForge.
+	runnerSlice := make([]starfeedRunner, len(cfg.GitForges))
+	for ix, forgeCfg := range cfg.GitForges {
+		forgeName := forgeCfg.Name
 		forge := gitforge.NewGitForge(
-			forgeCfg.Type, forgeCfg.Fqdn, forgeCfg.Token, logger, client,
+			forgeCfg.Type,
+			forgeCfg.Fqdn,
+			forgeCfg.Token,
+			logger.With("gitForge", forgeName),
+			client,
 		)
+
+		// The category we publish in RSS  is always equal to the name of the GitForge
+		category := rss.FeedCategory(forgeName)
+		syncLogger := logger.With("gitForge", forgeName, "rssServer", rssServerName)
 		runner := runners.NewSyncFeedsRunner(
 			forge,
-			forgeCfg.Name,
 			rssServer,
-			cfg.RSSServer.Name,
-			logger,
+			category,
+			syncLogger,
 		)
-		logger.Info("Successfully registered runner for gitForge", "name", forgeCfg.Name)
-		runnerSlice = append(runnerSlice, runner)
+
+		runnerSlice[ix] = runner
+		syncLogger.Info("Successfully registered runner")
 	}
 	return runnerSlice, nil
 }

@@ -13,26 +13,23 @@ import (
 
 // SyncFeedsRunner is a struct that manages the main workflow of the application.
 type SyncFeedsRunner struct {
-	gitForge     GitForge
-	feedCategory rss.FeedCategory
-	rssServer    RssServer
-	logger       *slog.Logger
+	gitForge  GitForge
+	category  rss.FeedCategory
+	rssServer RssServer
+	logger    *slog.Logger
 }
 
 func NewSyncFeedsRunner(
 	gitForge GitForge,
-	gitForgeName string,
 	rssServer RssServer,
-	rssServerName string,
+	category rss.FeedCategory,
 	logger *slog.Logger,
 ) SyncFeedsRunner {
-	logger = logger.With("gitForge", gitForgeName, "rssServer", rssServerName)
 	return SyncFeedsRunner{
-		gitForge: gitForge,
-		// The feedCategory in FreshRSS is always set to the name of the GitForge
-		feedCategory: rss.FeedCategory(gitForgeName),
-		rssServer:    rssServer,
-		logger:       logger,
+		gitForge:  gitForge,
+		rssServer: rssServer,
+		category:  category,
+		logger:    logger,
 	}
 }
 
@@ -52,17 +49,17 @@ func (r SyncFeedsRunner) Run(ctx context.Context) error {
 		var err error
 		starredFeeds, err = r.gitForge.LoadFeeds(loadCtx)
 		if err != nil {
-			return fmt.Errorf("error loading feeds from gitforge %s: %w", r.feedCategory, err)
+			return fmt.Errorf("error loading feeds from gitforge %s: %w", r.category, err)
 		}
 		return nil
 	})
 	eg.Go(func() error {
 		var err error
-		rssFeeds, err = r.rssServer.LoadFeeds(loadCtx, r.feedCategory)
+		rssFeeds, err = r.rssServer.LoadFeeds(loadCtx, r.category)
 		if err != nil {
 			return fmt.Errorf(
 				"error loading feeds from rss server from category %s: %w",
-				r.feedCategory,
+				r.category,
 				err,
 			)
 		}
@@ -105,7 +102,7 @@ func (r SyncFeedsRunner) addNewReleaseFeeds(
 				ctx,
 				feedURL,
 				rss.FeedName(repoName.String()),
-				r.feedCategory,
+				r.category,
 			)
 		})
 	}

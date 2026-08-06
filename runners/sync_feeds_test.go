@@ -245,11 +245,12 @@ func TestSyncFeeds(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 
+			category := rss.FeedCategory(testutils.GitHubName)
 			runner := NewSyncFeedsRunner(
 				tc.gitForge,
-				testutils.GitHubName,
 				tc.rssServer,
-				testutils.FreshRSSName,
+
+				category,
 				logger,
 			)
 
