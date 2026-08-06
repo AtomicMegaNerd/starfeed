@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-	"sync"
 
 	"github.com/atomicmeganerd/starfeed/common"
 	"golang.org/x/sync/errgroup"
@@ -17,6 +16,10 @@ import (
 
 // This regex will match if there is a next page in the response headers
 var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
+
+const (
+	gitForgeTaskLimit = 5
+)
 
 type GitForge struct {
 	name           string
@@ -62,18 +65,23 @@ func (g *GitForge) LoadFeeds(
 
 	// We aren't using errors here but errgroup gives us SetLimit
 	eg := &errgroup.Group{}
-	eg.SetLimit(5)
+	eg.SetLimit(gitForgeTaskLimit)
 
-	feeds := make(map[string]string, 0)
-	ch := make(chan GitRepo, 5)
+	// This is the list of feeds that we will return to the caller
+	feeds := make(map[string]string)
+
+	// Repos that have release feeds will be sent to this channel. Repos sent to this channel will
+	// then be added to the feeds map. There is no need for a buffered channel here as the
+	// consumer basically does nothing except writing to a map
+	repoChan := make(chan GitRepo)
 
 	// Check each repo to make sure it has valid entries in its ATOM feed for releases
 	// This can be done in parallel to make it much faster. Send each release repo to the channel
 	for _, repo := range repos {
 		eg.Go(func() error {
 			logger := g.logger.With(
-				"feed", repo.FeedURL,
 				"repo", repo.Name,
+				"feed", repo.FeedURL,
 			)
 
 			if !g.repoHasReleaseFeed(ctx, repo) {
@@ -81,30 +89,27 @@ func (g *GitForge) LoadFeeds(
 				return nil
 			}
 
-			g.logger.Info("Added feed for repo to feeds map")
-			ch <- repo
-
+			repoChan <- repo
+			g.logger.Info("Adding feed for repo to feeds map")
 			return nil
 		})
 	}
 
-	// Because we have 1 collector Go-routine there is no race here.
-	wg := sync.WaitGroup{}
-	wg.Go(func() {
-		for repo := range ch {
-			feeds[repo.Name] = repo.FeedURL
-		}
-	})
+	// Here we can close the channel as soon the errGroup go routines are done sending repos
+	// to the channel
+	go func() {
+		_ = eg.Wait()
+		close(repoChan)
+	}()
 
-	// We don't get an error, see comment above
-	_ = eg.Wait()
-	close(ch)
-	wg.Wait()
+	// This for loop consumes each message that is received. It blocks if the channel is open
+	// but is waiting for a message. When the channel is closed the range is complete and the
+	// for loop terminates.
+	for repo := range repoChan {
+		feeds[repo.Name] = repo.FeedURL
+	}
 
-	g.logger.Info(
-		"Successfully added all feeds to feeds map",
-		"numFeeds", len(feeds),
-	)
+	g.logger.Info("Successfully added all feeds to feeds map", "numFeeds", len(feeds))
 	return feeds, nil
 }
 
