@@ -10,23 +10,23 @@ import (
 )
 
 type MockGitForge struct {
-	ExpectedError error
-	ExpectedFeeds gitforge.StarredRepoMap
-	ExpectedName  string
+	ExpectedLoadError error
+	ExpectedFeeds     gitforge.StarredRepoMap
 }
 
 func (m *MockGitForge) LoadFeeds(ctx context.Context) (gitforge.StarredRepoMap, error) {
-	return m.ExpectedFeeds, m.ExpectedError
+	return m.ExpectedFeeds, m.ExpectedLoadError
 }
 
 func (m *MockGitForge) Name() string {
-	return m.ExpectedName
+	return ""
 }
 
 type MockRssServer struct {
-	ExpectedError error
-	ExpectedFeeds rss.RSSFeedSet
-	ExpectedName  string
+	ExpectedLoadError   error
+	ExpectedAddError    error
+	ExpectedRemoveError error
+	ExpectedFeeds       rss.RSSFeedSet
 
 	// These need to be atomic because we call the real RSS server with multiple goroutines. It
 	// has no state to protect but this mock does
@@ -37,7 +37,7 @@ type MockRssServer struct {
 func (m *MockRssServer) LoadFeeds(
 	ctx context.Context, category string,
 ) (rss.RSSFeedSet, error) {
-	return m.ExpectedFeeds, m.ExpectedError
+	return m.ExpectedFeeds, m.ExpectedLoadError
 }
 
 func (m *MockRssServer) AddFeed(
@@ -45,19 +45,19 @@ func (m *MockRssServer) AddFeed(
 	feedURL common.FeedURL,
 	name, category string,
 ) error {
-	if m.ExpectedError == nil {
+	if m.ExpectedAddError == nil {
 		m.NumAdded.Add(1)
 	}
-	return m.ExpectedError
+	return m.ExpectedAddError
 }
 
 func (m *MockRssServer) RemoveFeed(ctx context.Context, feedURL common.FeedURL) error {
-	if m.ExpectedError == nil {
+	if m.ExpectedRemoveError == nil {
 		m.NumRemoved.Add(1)
 	}
-	return m.ExpectedError
+	return m.ExpectedRemoveError
 }
 
 func (m *MockRssServer) Name() string {
-	return m.ExpectedName
+	return ""
 }

@@ -109,7 +109,7 @@ func (p SyncFeedsRunner) removeStaleFeeds(
 	// with our GitForge by design. This means we will not delete feeds that have nothing
 	// to do with this GitForge.
 	for feed := range rssServerFeeds {
-		// if the feed is still in the gitForge map it is still stared and should not be
+		// if the feed is still in the gitForge map it is still starred and should not be
 		// removed.
 		if _, exists := starredRepoFeeds[feed]; exists {
 			continue

@@ -101,7 +101,7 @@ func (g *GitForge) LoadFeeds(
 	_ = eg.Wait()
 	close(repoChan)
 
-	// Wait for the consumer to receive all messages from the consumer
+	// Wait for the consumer to receive all messages from the producers
 	wg.Wait()
 
 	g.logger.Info("Successfully added all feeds to feeds map", "numFeeds", len(starredFeeds))
