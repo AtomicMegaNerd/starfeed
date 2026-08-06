@@ -287,8 +287,7 @@ func TestLoadFeeds(t *testing.T) {
 				mockClient,
 			)
 
-			err := f.LoadFeeds(ctx)
-			feeds := f.Feeds()
+			feeds, err := f.LoadFeeds(ctx)
 
 			if tc.expectError {
 				if err == nil {

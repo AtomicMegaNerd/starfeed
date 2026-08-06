@@ -6,26 +6,22 @@ import (
 )
 
 type MockGitForge struct {
-	ExpectedError     error
-	ExpectedFeeds     map[string]string
-	ExpectedRepoStale bool
-	ExpectedName      string
+	ExpectedError         error
+	ExpectedFeeds         map[string]string
+	ExpectedIsReleaseFeed bool
+	ExpectedName          string
 }
 
-func (m *MockGitForge) LoadFeeds(ctx context.Context) error {
-	return m.ExpectedError
-}
-
-func (m *MockGitForge) Feeds() map[string]string {
-	return m.ExpectedFeeds
+func (m *MockGitForge) LoadFeeds(ctx context.Context) (map[string]string, error) {
+	return m.ExpectedFeeds, m.ExpectedError
 }
 
 func (m *MockGitForge) Name() string {
 	return m.ExpectedName
 }
 
-func (m *MockGitForge) IsRepoFeedStale(feedURL string) bool {
-	return m.ExpectedRepoStale
+func (m *MockGitForge) IsReleaseFeed(feedURL string) bool {
+	return m.ExpectedIsReleaseFeed
 }
 
 type MockRssServer struct {
@@ -37,8 +33,8 @@ type MockRssServer struct {
 	mu            sync.Mutex
 }
 
-func (m *MockRssServer) LoadFeeds(ctx context.Context) error {
-	return m.ExpectedError
+func (m *MockRssServer) LoadFeeds(ctx context.Context) (map[string]struct{}, error) {
+	return m.ExpectedFeeds, m.ExpectedError
 }
 
 func (m *MockRssServer) AddFeed(ctx context.Context, feedURL, name, category string) error {
@@ -57,10 +53,6 @@ func (m *MockRssServer) RemoveFeed(ctx context.Context, feedURL string) error {
 		m.mu.Unlock()
 	}
 	return m.ExpectedError
-}
-
-func (m *MockRssServer) Feeds() map[string]struct{} {
-	return m.ExpectedFeeds
 }
 
 func (m *MockRssServer) Name() string {

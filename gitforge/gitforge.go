@@ -6,7 +6,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log/slog"
-	"maps"
 	"net/http"
 	"regexp"
 	"strings"
@@ -20,14 +19,12 @@ import (
 var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
 type GitForge struct {
-	name             string
-	fetchRepoURL     string
-	feeds            map[string]string
-	isReleasePattern *regexp.Regexp
-	headers          http.Header
-	logger           *slog.Logger
-	client           *http.Client
-	mtx              sync.RWMutex
+	name           string
+	fetchRepoURL   string
+	relFeedPattern *regexp.Regexp
+	headers        http.Header
+	logger         *slog.Logger
+	client         *http.Client
 }
 
 func NewGitForge(
@@ -38,8 +35,7 @@ func NewGitForge(
 	return &GitForge{
 		name:         name,
 		fetchRepoURL: buildStarredRepoUrl(forgeType, fqdn),
-		feeds:        make(map[string]string, 0),
-		isReleasePattern: regexp.MustCompile(
+		relFeedPattern: regexp.MustCompile(
 			fmt.Sprintf(
 				`^https://%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
 				regexp.QuoteMeta(fqdn),
@@ -57,50 +53,59 @@ func NewGitForge(
 
 func (g *GitForge) LoadFeeds(
 	ctx context.Context,
-) error {
-	// Clear the feeds map before reloading...
-	g.mtx.Lock()
-	g.feeds = make(map[string]string, 0)
-	g.mtx.Unlock()
-
+) (map[string]string, error) {
 	// Get all repos
 	repos, err := g.fetchStarredRepos(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// We aren't using errors here but errgroup gives us SetLimit
 	eg := &errgroup.Group{}
 	eg.SetLimit(5)
 
+	feeds := make(map[string]string, 0)
+	ch := make(chan GitRepo, 5)
+
 	// Check each repo to make sure it has valid entries in its ATOM feed for releases
-	// This can be done in parallel to make it much faster
+	// This can be done in parallel to make it much faster. Send each release repo to the channel
 	for _, repo := range repos {
 		eg.Go(func() error {
 			logger := g.logger.With(
 				"feed", repo.FeedURL,
 				"repo", repo.Name,
 			)
+
 			if !g.repoHasReleaseFeed(ctx, repo) {
 				logger.Warn("Repo does not have valid release feed")
 				return nil
 			}
 
-			g.mtx.Lock()
-			g.feeds[repo.FeedURL] = repo.Name
-			g.mtx.Unlock()
 			g.logger.Info("Added feed for repo to feeds map")
+			ch <- repo
+
 			return nil
 		})
 	}
+
+	// Because we have 1 collector Go-routine there is no race here.
+	wg := sync.WaitGroup{}
+	wg.Go(func() {
+		for repo := range ch {
+			feeds[repo.Name] = repo.FeedURL
+		}
+	})
+
 	// We don't get an error, see comment above
 	_ = eg.Wait()
+	close(ch)
+	wg.Wait()
 
 	g.logger.Info(
 		"Successfully added all feeds to feeds map",
-		"numFeeds", len(g.feeds),
+		"numFeeds", len(feeds),
 	)
-	return nil
+	return feeds, nil
 }
 
 func (g *GitForge) fetchStarredRepos(
@@ -148,27 +153,13 @@ func (g *GitForge) fetchStarredRepos(
 	}
 }
 
-func (g *GitForge) Feeds() map[string]string {
-	g.mtx.RLock()
-	defer g.mtx.RUnlock()
-	feedsCopy := maps.Clone(g.feeds)
-	return feedsCopy
-}
-
 func (g *GitForge) Name() string {
 	return g.name
 }
 
-func (g *GitForge) IsRepoFeedStale(feedUrl string) bool {
-	// First of all, if the repo exists it canot be stale
-	g.mtx.RLock()
-	defer g.mtx.RUnlock()
-	if _, exists := g.feeds[feedUrl]; exists {
-		return false
-	}
-
+func (g *GitForge) IsReleaseFeed(feedUrl string) bool {
 	// If the repo does not exist but matches the regex for this gitforge it is stale
-	return g.isReleasePattern.MatchString(feedUrl)
+	return g.relFeedPattern.MatchString(feedUrl)
 }
 
 func (g *GitForge) repoHasReleaseFeed(

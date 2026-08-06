@@ -5,16 +5,14 @@ import (
 )
 
 type GitForge interface {
-	LoadFeeds(ctx context.Context) error
-	Feeds() map[string]string
-	IsRepoFeedStale(feedURL string) bool
+	LoadFeeds(ctx context.Context) (map[string]string, error)
+	IsReleaseFeed(feedURL string) bool
 	Name() string
 }
 
 type RssServer interface {
-	LoadFeeds(ctx context.Context) error
+	LoadFeeds(ctx context.Context) (map[string]struct{}, error)
 	AddFeed(ctx context.Context, feedURL, name, category string) error
 	RemoveFeed(ctx context.Context, feedURL string) error
-	Feeds() map[string]struct{}
 	Name() string
 }

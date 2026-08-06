@@ -6,11 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 
 	"github.com/atomicmeganerd/starfeed/common"
 )
@@ -19,13 +17,9 @@ type FreshRSS struct {
 	name    string
 	user    string
 	url     string
-	feeds   map[string]struct{}
 	logger  *slog.Logger
 	headers http.Header
 	client  *http.Client
-	// Because we share this instance with multiple runners we have to
-	// protect the feeds set
-	mtx sync.RWMutex
 }
 
 func NewFreshRSS(
@@ -40,7 +34,6 @@ func NewFreshRSS(
 		user:    user,
 		url:     url,
 		logger:  logger.With("rssServer", name),
-		feeds:   make(map[string]struct{}, 0),
 		headers: headers,
 		client:  client,
 	}
@@ -85,46 +78,33 @@ func (f *FreshRSS) Authenticate(
 
 func (f *FreshRSS) LoadFeeds(
 	ctx context.Context,
-) error {
-	newFeeds := make(map[string]struct{}, 0)
+) (map[string]struct{}, error) {
+	newFeeds := make(map[string]struct{})
 	loadUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.url,
 	)
 	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, loadUrl, nil, f.headers, f.client)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Parse the response
 	feeds := &RSSFeedList{}
 	if err = json.Unmarshal(res, &feeds); err != nil {
-		return err
+		return nil, err
 	}
 	for _, feed := range feeds.Feeds {
 		newFeeds[feed.URL] = struct{}{}
 	}
 
-	f.mtx.Lock()
-	defer f.mtx.Unlock()
-	f.feeds = newFeeds
-	f.logger.Info("Loaded existing feeds from FreshRSS", "numFeeds", len(f.feeds))
-
-	return nil
+	f.logger.Info("Loaded existing feeds from FreshRSS", "numFeeds", len(newFeeds))
+	return newFeeds, nil
 }
 
 func (f *FreshRSS) AddFeed(
 	ctx context.Context,
 	feedURL, name, category string,
 ) error {
-	// Check if feed exists already
-	f.mtx.RLock()
-	_, exists := f.feeds[feedURL]
-	f.mtx.RUnlock()
-
-	if exists {
-		f.logger.Debug("Not adding feed as it is already in FreshRSS", "feed", name)
-		return nil
-	}
 
 	addUrl := fmt.Sprintf("%s/api/greader.php/reader/api/0/subscription/quickadd", f.url)
 	formData := url.Values{
@@ -170,13 +150,6 @@ func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
 
 	f.logger.Info("Removed feed", "feed", feedURL)
 	return nil
-}
-
-func (f *FreshRSS) Feeds() map[string]struct{} {
-	f.mtx.RLock()
-	defer f.mtx.RUnlock()
-	feedsCopy := maps.Clone(f.feeds)
-	return feedsCopy
 }
 
 func (f *FreshRSS) Name() string {

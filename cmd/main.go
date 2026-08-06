@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -62,7 +63,7 @@ func run() error {
 
 	runnerSlice, err := buildRunners(ctx, cfg, logger, client)
 	if err != nil {
-		logger.Error("Error executing runners", "error", err)
+		logger.Error("Error building runners", "error", err)
 		return err
 	}
 
@@ -120,8 +121,7 @@ func buildRunners(
 	)
 	// Try to authenticate to the target RSS server
 	if err := rssServer.Authenticate(ctx, cfg.RSSServer.Token); err != nil {
-		logger.Error("Error authenticating to FreshRSS", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("error authenticating to freshrss: %w", err)
 	}
 	logger.Info(
 		"Successfully authenticated to RSS Server", "rssServer", cfg.RSSServer.URL,

@@ -28,7 +28,7 @@ func TestSyncFeeds(t *testing.T) {
 				ExpectedFeeds: map[string]string{
 					"https://github.com/user/new-repo/releases.atom": "new-repo",
 				},
-				ExpectedRepoStale: false,
+				ExpectedIsReleaseFeed: false,
 			},
 			rssServer: &MockRssServer{
 				ExpectedFeeds: map[string]struct{}{
@@ -82,8 +82,8 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "RemoveFeed fails",
 			gitForge: &MockGitForge{
-				ExpectedFeeds:     map[string]string{},
-				ExpectedRepoStale: true,
+				ExpectedFeeds:         map[string]string{},
+				ExpectedIsReleaseFeed: true,
 			},
 			rssServer: &MockRssServer{
 				ExpectedFeeds: map[string]struct{}{
@@ -122,8 +122,8 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "Multiple feeds to remove concurrently",
 			gitForge: &MockGitForge{
-				ExpectedFeeds:     map[string]string{},
-				ExpectedRepoStale: true,
+				ExpectedFeeds:         map[string]string{},
+				ExpectedIsReleaseFeed: true,
 			},
 			rssServer: &MockRssServer{
 				ExpectedFeeds: map[string]struct{}{
@@ -221,8 +221,8 @@ func TestRemoveStaleFeed(t *testing.T) {
 				ExpectedError: tc.expectedErr,
 			}
 			gitForge := &MockGitForge{
-				ExpectedFeeds:     tc.starredRepoMap,
-				ExpectedRepoStale: tc.repoIsStale,
+				ExpectedFeeds:         tc.starredRepoMap,
+				ExpectedIsReleaseFeed: tc.repoIsStale,
 			}
 
 			runner := &SyncFeedsRunner{
@@ -232,7 +232,7 @@ func TestRemoveStaleFeed(t *testing.T) {
 			}
 
 			g := &errgroup.Group{}
-			runner.removeStaleFeeds(ctx, g)
+			runner.removeStaleFeeds(ctx, gitForge.ExpectedFeeds, rssServer.ExpectedFeeds, g)
 			err := g.Wait()
 
 			if tc.expectedErr != nil {
