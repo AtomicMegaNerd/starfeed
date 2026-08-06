@@ -92,7 +92,7 @@ func (p SyncFeedsRunner) addNewReleaseFeeds(
 			continue
 		}
 		eg.Go(func() error {
-			return p.rssServer.AddFeed(ctx, feedURL, string(repoName), p.gitForge.Name())
+			return p.rssServer.AddFeed(ctx, feedURL, repoName.String(), p.gitForge.Name())
 		})
 	}
 }
