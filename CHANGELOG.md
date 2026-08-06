@@ -14,6 +14,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Used channels when checking repos for release feeds as it seemed the simplest way.
 - Added Named Types for the FeedURL and RepoName to prevent mixing them up in our maps and in our
   methods.
+- Tidied up the interfaces to make them smaller.
 
 ## [v0.5.1] - 2026-07-29
 
