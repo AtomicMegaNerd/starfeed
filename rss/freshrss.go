@@ -76,10 +76,11 @@ func (f *FreshRSS) Authenticate(
 	return nil
 }
 
+// Load all feeds that are under the given category.
 func (f *FreshRSS) LoadFeeds(
-	ctx context.Context,
-) (map[string]struct{}, error) {
-	newFeeds := make(map[string]struct{})
+	ctx context.Context, category string,
+) (RSSFeedSet, error) {
+	newFeeds := make(RSSFeedSet)
 	loadUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.url,
 	)
@@ -93,22 +94,36 @@ func (f *FreshRSS) LoadFeeds(
 	if err = json.Unmarshal(res, &feeds); err != nil {
 		return nil, err
 	}
+
 	for _, feed := range feeds.Feeds {
-		newFeeds[feed.URL] = struct{}{}
+		// Only add feeds that are from the category that we care about
+		for _, catStruct := range feed.Categories {
+			if catStruct.Label == category {
+				newFeeds[feed.URL] = struct{}{}
+			}
+		}
 	}
 
-	f.logger.Info("Loaded existing feeds from FreshRSS", "numFeeds", len(newFeeds))
+	numFeeds := len(newFeeds)
+	if numFeeds == 0 {
+		f.logger.Warn("Warning, no feeds found in our RSS server", "numFeeds", numFeeds)
+	} else {
+		f.logger.Info(
+			"Loaded existing feeds from FreshRSS", "numFeeds", numFeeds, "category", category,
+		)
+	}
 	return newFeeds, nil
 }
 
 func (f *FreshRSS) AddFeed(
 	ctx context.Context,
-	feedURL, name, category string,
+	feedURL common.FeedURL,
+	name, category string,
 ) error {
 
 	addUrl := fmt.Sprintf("%s/api/greader.php/reader/api/0/subscription/quickadd", f.url)
 	formData := url.Values{
-		"quickadd": {feedURL},
+		"quickadd": {feedURL.String()},
 	}
 	res, _, err := common.DoAPIRequest(
 		ctx, http.MethodPost, addUrl, []byte(formData.Encode()), f.headers, f.client,
@@ -131,7 +146,7 @@ func (f *FreshRSS) AddFeed(
 	return nil
 }
 
-func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL string) error {
+func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL common.FeedURL) error {
 	editUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit",
 		f.url,

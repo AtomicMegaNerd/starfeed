@@ -2,17 +2,20 @@ package runners
 
 import (
 	"context"
-	"sync"
+	"sync/atomic"
+
+	"github.com/atomicmeganerd/starfeed/common"
+	"github.com/atomicmeganerd/starfeed/gitforge"
+	"github.com/atomicmeganerd/starfeed/rss"
 )
 
 type MockGitForge struct {
-	ExpectedError         error
-	ExpectedFeeds         map[string]string
-	ExpectedIsReleaseFeed bool
-	ExpectedName          string
+	ExpectedError error
+	ExpectedFeeds gitforge.StarredRepoMap
+	ExpectedName  string
 }
 
-func (m *MockGitForge) LoadFeeds(ctx context.Context) (map[string]string, error) {
+func (m *MockGitForge) LoadFeeds(ctx context.Context) (gitforge.StarredRepoMap, error) {
 	return m.ExpectedFeeds, m.ExpectedError
 }
 
@@ -20,37 +23,37 @@ func (m *MockGitForge) Name() string {
 	return m.ExpectedName
 }
 
-func (m *MockGitForge) IsReleaseFeed(feedURL string) bool {
-	return m.ExpectedIsReleaseFeed
-}
-
 type MockRssServer struct {
 	ExpectedError error
-	ExpectedFeeds map[string]struct{}
+	ExpectedFeeds rss.RSSFeedSet
 	ExpectedName  string
-	AddedFeeds    []string
-	RemovedFeeds  []string
-	mu            sync.Mutex
+
+	// These need to be atomic because we call the real RSS server with multiple goroutines. It
+	// has no state to protect but this mock does
+	NumAdded   atomic.Int32
+	NumRemoved atomic.Int32
 }
 
-func (m *MockRssServer) LoadFeeds(ctx context.Context) (map[string]struct{}, error) {
+func (m *MockRssServer) LoadFeeds(
+	ctx context.Context, category string,
+) (rss.RSSFeedSet, error) {
 	return m.ExpectedFeeds, m.ExpectedError
 }
 
-func (m *MockRssServer) AddFeed(ctx context.Context, feedURL, name, category string) error {
+func (m *MockRssServer) AddFeed(
+	ctx context.Context,
+	feedURL common.FeedURL,
+	name, category string,
+) error {
 	if m.ExpectedError == nil {
-		m.mu.Lock()
-		m.AddedFeeds = append(m.AddedFeeds, feedURL)
-		m.mu.Unlock()
+		m.NumAdded.Add(1)
 	}
 	return m.ExpectedError
 }
 
-func (m *MockRssServer) RemoveFeed(ctx context.Context, feedURL string) error {
+func (m *MockRssServer) RemoveFeed(ctx context.Context, feedURL common.FeedURL) error {
 	if m.ExpectedError == nil {
-		m.mu.Lock()
-		m.RemovedFeeds = append(m.RemovedFeeds, feedURL)
-		m.mu.Unlock()
+		m.NumRemoved.Add(1)
 	}
 	return m.ExpectedError
 }

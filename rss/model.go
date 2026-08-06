@@ -1,5 +1,9 @@
 package rss
 
+import "github.com/atomicmeganerd/starfeed/common"
+
+type RSSFeedSet map[common.FeedURL]struct{}
+
 type FreshRSSAddFeedResponse struct {
 	NumResults int    `json:"numResults"`
 	Query      string `json:"query"`
@@ -12,5 +16,10 @@ type RSSFeedList struct {
 }
 
 type RSSFeed struct {
-	URL string `json:"url"`
+	URL        common.FeedURL    `json:"url"`
+	Categories []RSSFeedCategory `json:"categories"`
+}
+
+type RSSFeedCategory struct {
+	Label string `json:"label"`
 }

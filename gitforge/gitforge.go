@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/atomicmeganerd/starfeed/common"
 	"golang.org/x/sync/errgroup"
@@ -17,17 +18,12 @@ import (
 // This regex will match if there is a next page in the response headers
 var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
-const (
-	gitForgeTaskLimit = 5
-)
-
 type GitForge struct {
-	name           string
-	fetchRepoURL   string
-	relFeedPattern *regexp.Regexp
-	headers        http.Header
-	logger         *slog.Logger
-	client         *http.Client
+	name         string
+	fetchRepoURL string
+	headers      http.Header
+	logger       *slog.Logger
+	client       *http.Client
 }
 
 func NewGitForge(
@@ -38,13 +34,7 @@ func NewGitForge(
 	return &GitForge{
 		name:         name,
 		fetchRepoURL: buildStarredRepoUrl(forgeType, fqdn),
-		relFeedPattern: regexp.MustCompile(
-			fmt.Sprintf(
-				`^https://%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
-				regexp.QuoteMeta(fqdn),
-			),
-		),
-		headers: buildHeaders(forgeType, token),
+		headers:      buildHeaders(forgeType, token),
 		logger: logger.With(
 			slog.Group("gitforge",
 				"name", name,
@@ -56,61 +46,66 @@ func NewGitForge(
 
 func (g *GitForge) LoadFeeds(
 	ctx context.Context,
-) (map[string]string, error) {
-	// Get all repos
-	repos, err := g.fetchStarredRepos(ctx)
+) (StarredRepoMap, error) {
+	// Get all starredRepos
+	starredRepos, err := g.fetchStarredRepos(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// We aren't using errors here but errgroup gives us SetLimit
 	eg := &errgroup.Group{}
-	eg.SetLimit(gitForgeTaskLimit)
+	eg.SetLimit(5)
 
-	// This is the list of feeds that we will return to the caller
-	feeds := make(map[string]string)
+	// This is the list of starredFeeds that we will return to the caller
+	starredFeeds := make(StarredRepoMap)
 
 	// Repos that have release feeds will be sent to this channel. Repos sent to this channel will
 	// then be added to the feeds map. There is no need for a buffered channel here as the
-	// consumer basically does nothing except writing to a map
+	// consumer basically does nothing except writing to a map.
 	repoChan := make(chan GitRepo)
+
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		// This for loop consumes each message that is received. It blocks if the channel is open
+		// but is waiting for a message. When the channel is closed the range is complete and the
+		// for loop terminates.
+		for repo := range repoChan {
+			starredFeeds[repo.FeedURL] = repo.Name
+			g.logger.Debug("Added feed to map", "repo", repo.Name, "feed", repo.FeedURL)
+		}
+	})
 
 	// Check each repo to make sure it has valid entries in its ATOM feed for releases
 	// This can be done in parallel to make it much faster. Send each release repo to the channel
-	for _, repo := range repos {
+	for _, repo := range starredRepos {
 		eg.Go(func() error {
 			logger := g.logger.With(
 				"repo", repo.Name,
 				"feed", repo.FeedURL,
 			)
 
-			if !g.repoHasReleaseFeed(ctx, repo) {
-				logger.Warn("Repo does not have valid release feed")
+			if g.repoHasReleaseFeed(ctx, repo) {
+				logger.Debug("Trying to send repo to channel")
+				repoChan <- repo
+				logger.Info("Adding feed for repo to feeds map")
 				return nil
 			}
 
-			repoChan <- repo
-			g.logger.Info("Adding feed for repo to feeds map")
+			logger.Warn("Repo does not have valid release feed")
 			return nil
 		})
 	}
 
-	// Here we can close the channel as soon the errGroup go routines are done sending repos
-	// to the channel
-	go func() {
-		_ = eg.Wait()
-		close(repoChan)
-	}()
+	// When the producers are done, close the channel
+	_ = eg.Wait()
+	close(repoChan)
 
-	// This for loop consumes each message that is received. It blocks if the channel is open
-	// but is waiting for a message. When the channel is closed the range is complete and the
-	// for loop terminates.
-	for repo := range repoChan {
-		feeds[repo.Name] = repo.FeedURL
-	}
+	// Wait for the consumer to receive all messages from the consumer
+	wg.Wait()
 
-	g.logger.Info("Successfully added all feeds to feeds map", "numFeeds", len(feeds))
-	return feeds, nil
+	g.logger.Info("Successfully added all feeds to feeds map", "numFeeds", len(starredFeeds))
+	return starredFeeds, nil
 }
 
 func (g *GitForge) fetchStarredRepos(
@@ -144,8 +139,10 @@ func (g *GitForge) fetchStarredRepos(
 		}
 
 		for ix := range repos {
-			repos[ix].FeedURL = fmt.Sprintf(
-				"%s/releases.atom", repos[ix].RepoURL,
+			repos[ix].FeedURL = common.FeedURL(
+				fmt.Sprintf(
+					"%s/releases.atom", repos[ix].RepoURL,
+				),
 			)
 		}
 		allRepos = append(allRepos, repos...)
@@ -162,18 +159,20 @@ func (g *GitForge) Name() string {
 	return g.name
 }
 
-func (g *GitForge) IsReleaseFeed(feedUrl string) bool {
-	// If the repo does not exist but matches the regex for this gitforge it is stale
-	return g.relFeedPattern.MatchString(feedUrl)
-}
-
 func (g *GitForge) repoHasReleaseFeed(
 	ctx context.Context,
 	repo GitRepo,
 ) bool {
 	logger := g.logger.With("repo", repo.Name, "feed", repo.FeedURL)
 	logger.Debug("Checking if repo has release feed")
-	data, _, err := common.DoAPIRequest(ctx, http.MethodGet, repo.FeedURL, nil, g.headers, g.client)
+	data, _, err := common.DoAPIRequest(
+		ctx,
+		http.MethodGet,
+		repo.FeedURL.String(),
+		nil,
+		g.headers,
+		g.client,
+	)
 	if err != nil {
 		return false
 	}

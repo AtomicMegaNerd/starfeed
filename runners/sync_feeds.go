@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/atomicmeganerd/starfeed/gitforge"
+	"github.com/atomicmeganerd/starfeed/rss"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -33,39 +35,40 @@ func NewSyncFeedsRunner(
 // starred.
 func (p SyncFeedsRunner) Run(ctx context.Context) error {
 
-	var gitForgeFeeds map[string]string
-	var rssServerFeeds map[string]struct{}
+	var starredFeeds gitforge.StarredRepoMap
+	var rssFeeds rss.RSSFeedSet
 
 	p.logger.Info("Starting publish releases workflow")
 	start := time.Now()
 
-	// First load the feeds from each
+	// First load the feeds from each source in a separate goroutine for speed
 	eg, loadCtx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
 		var err error
-		gitForgeFeeds, err = p.gitForge.LoadFeeds(loadCtx)
+		starredFeeds, err = p.gitForge.LoadFeeds(loadCtx)
 		if err != nil {
-			return err
+			return fmt.Errorf("error loading feeds from gitforge %s: %w", p.gitForge.Name(), err)
 		}
 		return nil
 	})
 	eg.Go(func() error {
 		var err error
-		rssServerFeeds, err = p.rssServer.LoadFeeds(loadCtx)
+		rssFeeds, err = p.rssServer.LoadFeeds(loadCtx, p.gitForge.Name())
 		if err != nil {
-			return err
+			return fmt.Errorf("error loading feeds from rss server %s: %w", p.rssServer.Name(), err)
 		}
 		return nil
 	})
 	if err := eg.Wait(); err != nil {
-		return fmt.Errorf("error loading the feeds from git or rss: %w", err)
+		return err
 	}
 
-	// Then perform the sync to RSS
+	// Then perform the sync to RSS server adding new release feeds and removing
+	// old stale feeds
 	eg, syncCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(10)
-	p.addNewReleaseFeeds(syncCtx, gitForgeFeeds, eg)
-	p.removeStaleFeeds(syncCtx, gitForgeFeeds, rssServerFeeds, eg)
+	p.addNewReleaseFeeds(syncCtx, starredFeeds, rssFeeds, eg)
+	p.removeStaleFeeds(syncCtx, starredFeeds, rssFeeds, eg)
 	if err := eg.Wait(); err != nil {
 		return fmt.Errorf("error updating feeds: %w", err)
 	}
@@ -79,40 +82,47 @@ func (p SyncFeedsRunner) Run(ctx context.Context) error {
 
 func (p SyncFeedsRunner) addNewReleaseFeeds(
 	ctx context.Context,
-	gitForgeFeeds map[string]string,
+	starredRepoFeeds gitforge.StarredRepoMap,
+	rssServerFeeds rss.RSSFeedSet,
 	eg *errgroup.Group,
 ) {
-	for feedURL, repoName := range gitForgeFeeds {
+	for feedURL, repoName := range starredRepoFeeds {
+		// Don't add feeds that are already in FreshRSS a second time
+		if _, exists := rssServerFeeds[feedURL]; exists {
+			continue
+		}
 		eg.Go(func() error {
-			return p.rssServer.AddFeed(ctx, feedURL, repoName, p.gitForge.Name())
+			return p.rssServer.AddFeed(ctx, feedURL, string(repoName), p.gitForge.Name())
 		})
 	}
 }
 
+// Remove feeds that did belong to the current GitForge but are no longer in the list of starred
+// release feeds
 func (p SyncFeedsRunner) removeStaleFeeds(
 	ctx context.Context,
-	gitForgeFeeds map[string]string,
-	rssServerFeeds map[string]struct{},
+	starredRepoFeeds gitforge.StarredRepoMap,
+	rssServerFeeds rss.RSSFeedSet,
 	eg *errgroup.Group,
 ) {
+	// This will only contain the list of feeds that are in the category associated
+	// with our GitForge by design. This means we will not delete feeds that have nothing
+	// to do with this GitForge.
 	for feed := range rssServerFeeds {
-		if p.isRepoFeedStale(gitForgeFeeds, feed) {
-			eg.Go(func() error {
-				p.logger.Info(
-					"Removing feed from RSS Server as it is no longer starred", "feed", feed,
-				)
-				return p.rssServer.RemoveFeed(ctx, feed)
-			})
+		// if the feed is still in the gitForge map it is still stared and should not be
+		// removed.
+		if _, exists := starredRepoFeeds[feed]; exists {
+			continue
 		}
+		eg.Go(func() error {
+			p.logger.Info(
+				"Removing feed from RSS Server as it is no longer starred",
+				"feed",
+				feed,
+				"gitForge",
+				p.gitForge.Name(),
+			)
+			return p.rssServer.RemoveFeed(ctx, feed)
+		})
 	}
-}
-
-func (p SyncFeedsRunner) isRepoFeedStale(gitForgeFeeds map[string]string, feedUrl string) bool {
-	// First of all, if the repo exists it canot be stale
-	if _, exists := gitForgeFeeds[feedUrl]; exists {
-		return false
-	}
-
-	// If the repo does not exist but matches the regex for this gitforge it is stale
-	return p.gitForge.IsReleaseFeed(feedUrl)
 }

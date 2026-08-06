@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/testutils"
 )
 
@@ -216,22 +217,34 @@ func TestLoadFeeds(t *testing.T) {
 
 	testCases := []struct {
 		name            string
+		gitForge        string
 		responses       []http.Response
-		expectedFeedMap map[string]struct{}
+		expectedFeedMap RSSFeedSet
 		expectError     bool
 	}{
 		{
-			name: "Successful feed retrieval",
+			name:     "Successful feed retrieval",
+			gitForge: "GitHub",
 			responses: []http.Response{
 				{
 					Body: io.NopCloser(strings.NewReader(`
 						{
 							"subscriptions": [
 								{
-									"url": "http://localhost/feeds/123"
+									"url": "http://localhost/feeds/123",
+									"categories": [
+										{
+											"label": "GitHub"
+										}
+									]
 								},
 								{
-									"url": "http://localhost/feeds/456"
+									"url": "http://localhost/feeds/456",
+									"categories": [
+										{
+											"label": "GitHub"
+										}
+									]
 								}
 							]
 						}`),
@@ -240,7 +253,7 @@ func TestLoadFeeds(t *testing.T) {
 					Status:     testutils.StatusOKString,
 				},
 			},
-			expectedFeedMap: map[string]struct{}{
+			expectedFeedMap: RSSFeedSet{
 				"http://localhost/feeds/123": {},
 				"http://localhost/feeds/456": {},
 			},
@@ -255,7 +268,7 @@ func TestLoadFeeds(t *testing.T) {
 					Status:     testutils.StatusUnauthorizedString,
 				},
 			},
-			expectedFeedMap: map[string]struct{}{},
+			expectedFeedMap: RSSFeedSet{},
 			expectError:     true,
 		},
 		{
@@ -267,7 +280,7 @@ func TestLoadFeeds(t *testing.T) {
 					Status:     testutils.StatusOKString,
 				},
 			},
-			expectedFeedMap: map[string]struct{}{},
+			expectedFeedMap: RSSFeedSet{},
 			expectError:     true,
 		},
 	}
@@ -287,7 +300,7 @@ func TestLoadFeeds(t *testing.T) {
 				mockClient,
 			)
 
-			feeds, err := f.LoadFeeds(ctx)
+			feeds, err := f.LoadFeeds(ctx, tc.gitForge)
 
 			if tc.expectError {
 				if err == nil {
@@ -316,7 +329,7 @@ func TestRemoveFeed(t *testing.T) {
 
 	testCases := []struct {
 		name        string
-		feedURL     string
+		feedURL     common.FeedURL
 		responses   []http.Response
 		expectError bool
 	}{

@@ -51,7 +51,7 @@ func TestFetchStarredRepos(t *testing.T) {
 					Body: io.NopCloser(
 						strings.NewReader(`[
 							{
-								"name": "` + repo1.Name + `",
+								"name": "` + repo1.Name.String() + `",
 								"html_url": "` + repo1.RepoURL + `"
 							}
 						]`,
@@ -70,11 +70,11 @@ func TestFetchStarredRepos(t *testing.T) {
 				{
 					Body: io.NopCloser(strings.NewReader(`[
 						{
-							"name": "` + repo1.Name + `",
+							"name": "` + repo1.Name.String() + `",
 							"html_url": "` + repo1.RepoURL + `"
 						},
 						{
-							"name": "` + repo2.Name + `",
+							"name": "` + repo2.Name.String() + `",
 							"html_url": "` + repo2.RepoURL + `"
 						}
 						]`),
@@ -90,11 +90,11 @@ func TestFetchStarredRepos(t *testing.T) {
 				{
 					Body: io.NopCloser(strings.NewReader(`[
 						{
-							"name": "` + repo3.Name + `",
+							"name": "` + repo3.Name.String() + `",
 							"html_url": "` + repo3.RepoURL + `"
 						},
 						{
-							"name": "` + repo4.Name + `",
+							"name": "` + repo4.Name.String() + `",
 							"html_url": "` + repo4.RepoURL + `"
 						}
 						]`),
