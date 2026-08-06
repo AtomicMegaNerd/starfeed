@@ -10,12 +10,15 @@ import (
 
 type GitForge interface {
 	LoadFeeds(ctx context.Context) (gitforge.StarredRepoMap, error)
-	Name() string
 }
 
 type RssServer interface {
-	LoadFeeds(ctx context.Context, category string) (rss.RSSFeedSet, error)
-	AddFeed(ctx context.Context, feedURL common.FeedURL, name, category string) error
+	LoadFeeds(ctx context.Context, category rss.FeedCategory) (rss.RSSFeedSet, error)
+	AddFeed(
+		ctx context.Context,
+		feedURL common.FeedURL,
+		name rss.FeedName,
+		category rss.FeedCategory,
+	) error
 	RemoveFeed(ctx context.Context, feedURL common.FeedURL) error
-	Name() string
 }

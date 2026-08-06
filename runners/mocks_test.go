@@ -18,10 +18,6 @@ func (m *MockGitForge) LoadFeeds(ctx context.Context) (gitforge.StarredRepoMap, 
 	return m.ExpectedFeeds, m.ExpectedLoadError
 }
 
-func (m *MockGitForge) Name() string {
-	return ""
-}
-
 type MockRssServer struct {
 	ExpectedLoadError   error
 	ExpectedAddError    error
@@ -35,7 +31,7 @@ type MockRssServer struct {
 }
 
 func (m *MockRssServer) LoadFeeds(
-	ctx context.Context, category string,
+	ctx context.Context, category rss.FeedCategory,
 ) (rss.RSSFeedSet, error) {
 	return m.ExpectedFeeds, m.ExpectedLoadError
 }
@@ -43,7 +39,8 @@ func (m *MockRssServer) LoadFeeds(
 func (m *MockRssServer) AddFeed(
 	ctx context.Context,
 	feedURL common.FeedURL,
-	name, category string,
+	name rss.FeedName,
+	category rss.FeedCategory,
 ) error {
 	if m.ExpectedAddError == nil {
 		m.NumAdded.Add(1)
@@ -56,8 +53,4 @@ func (m *MockRssServer) RemoveFeed(ctx context.Context, feedURL common.FeedURL) 
 		m.NumRemoved.Add(1)
 	}
 	return m.ExpectedRemoveError
-}
-
-func (m *MockRssServer) Name() string {
-	return ""
 }

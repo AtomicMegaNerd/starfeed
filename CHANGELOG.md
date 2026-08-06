@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.0] - 2026-08-06
+
+### Changed
+
+- Architectural changes where I got rid of the state in `gitforge.GitForge` and `rss.FreshRSS` and
+  the mutexes that went with them. State now lives in the runner and is not saved between runs.
+- Used channels when checking repos for release feeds as it seemed the simplest way.
+- Added Named Types for the FeedURL and RepoName to prevent mixing them up in our maps and in our
+  methods.
+
 ## [v0.5.1] - 2026-07-29
 
 ### Added

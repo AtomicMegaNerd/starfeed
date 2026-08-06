@@ -19,7 +19,6 @@ import (
 var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
 type GitForge struct {
-	name         string
 	fetchRepoURL string
 	headers      http.Header
 	logger       *slog.Logger
@@ -27,20 +26,15 @@ type GitForge struct {
 }
 
 func NewGitForge(
-	forgeType, name, fqdn, token string,
+	forgeType, fqdn, token string,
 	logger *slog.Logger,
 	client *http.Client,
 ) *GitForge {
 	return &GitForge{
-		name:         name,
 		fetchRepoURL: buildStarredRepoUrl(forgeType, fqdn),
 		headers:      buildHeaders(forgeType, token),
-		logger: logger.With(
-			slog.Group("gitforge",
-				"name", name,
-			),
-		),
-		client: client,
+		logger:       logger,
+		client:       client,
 	}
 }
 
@@ -125,16 +119,14 @@ func (g *GitForge) fetchStarredRepos(
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error %w getting raw data from gitforge: %s url: %s",
-				err, g.name, nextPageURL,
+				"error %w getting raw data from gitforge url: %s", err, nextPageURL,
 			)
 		}
 
 		repos := make([]GitRepo, 0)
 		if err := json.Unmarshal(data, &repos); err != nil {
 			return nil, fmt.Errorf(
-				"error %w parsing JSON response from gitforge %s",
-				err, g.name,
+				"error %w parsing JSON response from gitforge", err,
 			)
 		}
 
@@ -153,10 +145,6 @@ func (g *GitForge) fetchStarredRepos(
 			return allRepos, nil
 		}
 	}
-}
-
-func (g *GitForge) Name() string {
-	return g.name
 }
 
 func (g *GitForge) repoHasReleaseFeed(

@@ -149,7 +149,6 @@ func TestFetchStarredRepos(t *testing.T) {
 			mockClient := &http.Client{Transport: &mockTransport}
 			gh := NewGitForge(
 				GitHubForgeType,
-				testutils.GitHubName,
 				testutils.GitHubFqdn,
 				testutils.GitHubToken,
 				testutils.TestLogger(t),
@@ -303,7 +302,6 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 
 			gh := NewGitForge(
 				GitHubForgeType,
-				testutils.GitHubName,
 				testutils.GitHubFqdn,
 				testutils.GitHubToken,
 				testutils.TestLogger(t),

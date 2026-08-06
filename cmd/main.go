@@ -56,7 +56,7 @@ func run() error {
 	defer stop()
 
 	// Setup our ticker for our timed execution. This will send a time.Time value to the ticker.C
-	// every 24 hours.
+	// is set by the interval setting in the Config.
 	// NOTE: This is a bounded (size 1) async channel
 	ticker := time.NewTicker(cfg.Interval())
 	defer ticker.Stop()
@@ -98,7 +98,7 @@ func run() error {
 				logger.Error("Error executing runners", "error", err)
 				return err
 			}
-			logger.Info("Sleeping...", "nextRun", t.Add(24*time.Hour))
+			logger.Info("Sleeping...", "nextRun", t.Add(cfg.Interval()))
 		}
 	}
 }
@@ -117,7 +117,7 @@ func buildRunners(
 	client *http.Client,
 ) ([]starfeedRunner, error) {
 	rssServer := rss.NewFreshRSS(
-		cfg.RSSServer.Name, cfg.RSSServer.User, cfg.RSSServer.URL, logger, client,
+		cfg.RSSServer.User, cfg.RSSServer.URL, logger, client,
 	)
 	// Try to authenticate to the target RSS server
 	if err := rssServer.Authenticate(ctx, cfg.RSSServer.Token); err != nil {
@@ -131,9 +131,15 @@ func buildRunners(
 	// For each GitForge in our config let's create a new runner
 	for _, forgeCfg := range cfg.GitForges {
 		forge := gitforge.NewGitForge(
-			forgeCfg.Type, forgeCfg.Name, forgeCfg.Fqdn, forgeCfg.Token, logger, client,
+			forgeCfg.Type, forgeCfg.Fqdn, forgeCfg.Token, logger, client,
 		)
-		runner := runners.NewSyncFeedsRunner(forge, rssServer, logger)
+		runner := runners.NewSyncFeedsRunner(
+			forge,
+			forgeCfg.Name,
+			rssServer,
+			cfg.RSSServer.Name,
+			logger,
+		)
 		logger.Info("Successfully registered runner for gitForge", "name", forgeCfg.Name)
 		runnerSlice = append(runnerSlice, runner)
 	}

@@ -14,7 +14,6 @@ import (
 )
 
 type FreshRSS struct {
-	name    string
 	user    string
 	url     string
 	logger  *slog.Logger
@@ -23,17 +22,16 @@ type FreshRSS struct {
 }
 
 func NewFreshRSS(
-	name, user, url string,
+	user, url string,
 	logger *slog.Logger,
 	client *http.Client,
 ) *FreshRSS {
 	headers := http.Header{}
 	headers.Set("Content-type", "application/x-www-form-urlencoded")
 	return &FreshRSS{
-		name:    name,
 		user:    user,
 		url:     url,
-		logger:  logger.With("rssServer", name),
+		logger:  logger,
 		headers: headers,
 		client:  client,
 	}
@@ -78,7 +76,7 @@ func (f *FreshRSS) Authenticate(
 
 // Load all feeds that are under the given category.
 func (f *FreshRSS) LoadFeeds(
-	ctx context.Context, category string,
+	ctx context.Context, category FeedCategory,
 ) (RSSFeedSet, error) {
 	newFeeds := make(RSSFeedSet)
 	loadUrl := fmt.Sprintf(
@@ -106,7 +104,7 @@ func (f *FreshRSS) LoadFeeds(
 
 	numFeeds := len(newFeeds)
 	if numFeeds == 0 {
-		f.logger.Warn("Warning, no feeds found in our RSS server", "numFeeds", numFeeds)
+		f.logger.Warn("No feeds found in our RSS server", "numFeeds", numFeeds)
 	} else {
 		f.logger.Info(
 			"Loaded existing feeds from FreshRSS", "numFeeds", numFeeds, "category", category,
@@ -118,7 +116,8 @@ func (f *FreshRSS) LoadFeeds(
 func (f *FreshRSS) AddFeed(
 	ctx context.Context,
 	feedURL common.FeedURL,
-	name, category string,
+	name FeedName,
+	category FeedCategory,
 ) error {
 
 	addUrl := fmt.Sprintf("%s/api/greader.php/reader/api/0/subscription/quickadd", f.url)
@@ -138,7 +137,7 @@ func (f *FreshRSS) AddFeed(
 	}
 
 	// Add the sub to the category
-	if err = f.addFeedToCategory(ctx, feedResponse.StreamId, name, category); err != nil {
+	if err = f.addFeedToCategory(ctx, name, category, feedResponse.StreamId); err != nil {
 		return err
 	}
 
@@ -167,13 +166,11 @@ func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL common.FeedURL) error
 	return nil
 }
 
-func (f *FreshRSS) Name() string {
-	return f.name
-}
-
 func (f *FreshRSS) addFeedToCategory(
 	ctx context.Context,
-	streamId, name, category string,
+	name FeedName,
+	category FeedCategory,
+	streamId string,
 ) error {
 	addCategoryUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit",
@@ -182,7 +179,7 @@ func (f *FreshRSS) addFeedToCategory(
 	formData := url.Values{
 		"ac": {"edit"},
 		"s":  {streamId},
-		"t":  {name},
+		"t":  {name.String()},
 		"a":  {fmt.Sprintf("user/%s/label/%s", f.user, category)},
 	}
 

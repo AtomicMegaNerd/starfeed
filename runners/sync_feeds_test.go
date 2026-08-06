@@ -247,7 +247,9 @@ func TestSyncFeeds(t *testing.T) {
 
 			runner := NewSyncFeedsRunner(
 				tc.gitForge,
+				testutils.GitHubName,
 				tc.rssServer,
+				testutils.FreshRSSName,
 				logger,
 			)
 

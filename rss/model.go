@@ -4,6 +4,18 @@ import "github.com/atomicmeganerd/starfeed/common"
 
 type RSSFeedSet map[common.FeedURL]struct{}
 
+type FeedName string
+
+func (n FeedName) String() string {
+	return string(n)
+}
+
+type FeedCategory string
+
+func (c FeedCategory) String() string {
+	return string(c)
+}
+
 type FreshRSSAddFeedResponse struct {
 	NumResults int    `json:"numResults"`
 	Query      string `json:"query"`
@@ -21,5 +33,5 @@ type RSSFeed struct {
 }
 
 type RSSFeedCategory struct {
-	Label string `json:"label"`
+	Label FeedCategory `json:"label"`
 }
