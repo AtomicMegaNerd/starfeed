@@ -13,6 +13,8 @@ import (
 	"github.com/atomicmeganerd/starfeed/common"
 )
 
+// Client struct is for connecting to FreshRSS servers. You can then Load/Add/Remove RSS
+// feeds too/from the server.
 type Client struct {
 	user    string
 	url     string

@@ -18,6 +18,8 @@ import (
 // This regex will match if there is a next page in the response headers
 var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
+// Client struct represents a GitForge. We can load RSS feeds for all starred repos that belong
+// to this Git Forge.
 type Client struct {
 	fetchRepoURL string
 	headers      http.Header
