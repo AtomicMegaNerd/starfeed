@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/testutils"
 )
 
@@ -52,7 +53,7 @@ func TestFetchStarredRepos(t *testing.T) {
 						strings.NewReader(`[
 							{
 								"name": "` + repo1.Name.String() + `",
-								"html_url": "` + repo1.RepoURL + `"
+								"html_url": "` + repo1.RepoURL.String() + `"
 							}
 						]`,
 						),
@@ -71,11 +72,11 @@ func TestFetchStarredRepos(t *testing.T) {
 					Body: io.NopCloser(strings.NewReader(`[
 						{
 							"name": "` + repo1.Name.String() + `",
-							"html_url": "` + repo1.RepoURL + `"
+							"html_url": "` + repo1.RepoURL.String() + `"
 						},
 						{
 							"name": "` + repo2.Name.String() + `",
-							"html_url": "` + repo2.RepoURL + `"
+							"html_url": "` + repo2.RepoURL.String() + `"
 						}
 						]`),
 					),
@@ -91,11 +92,11 @@ func TestFetchStarredRepos(t *testing.T) {
 					Body: io.NopCloser(strings.NewReader(`[
 						{
 							"name": "` + repo3.Name.String() + `",
-							"html_url": "` + repo3.RepoURL + `"
+							"html_url": "` + repo3.RepoURL.String() + `"
 						},
 						{
 							"name": "` + repo4.Name.String() + `",
-							"html_url": "` + repo4.RepoURL + `"
+							"html_url": "` + repo4.RepoURL.String() + `"
 						}
 						]`),
 					),
@@ -204,8 +205,8 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 
 	testCases := []struct {
 		name             string
-		repoURL          string
-		feedURL          string
+		repoURL          GitRepoURL
+		feedURL          common.FeedURL
 		responses        []http.Response
 		expectHasEntries bool
 		expectError      bool
@@ -308,7 +309,10 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 				mockClient,
 			)
 
-			repo := GitRepo{RepoURL: tc.repoURL}
+			repo := GitRepo{
+				RepoURL: tc.repoURL,
+				FeedURL: tc.feedURL,
+			}
 			hasEntries := gh.repoHasReleaseFeed(ctx, repo)
 
 			if tc.expectHasEntries != hasEntries {

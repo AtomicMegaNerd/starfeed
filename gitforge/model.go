@@ -17,13 +17,19 @@ func (r GitRepoName) String() string {
 	return string(r)
 }
 
+type GitRepoURL string
+
+func (u GitRepoURL) String() string {
+	return string(u)
+}
+
 type StarredRepoMap map[common.FeedURL]GitRepoName
 
 // This object represents a Git repo in a supported Git Host that is starred and that we want to
 // get the Atom feed for.
 type GitRepo struct {
 	Name    GitRepoName    `json:"name"`
-	RepoURL string         `json:"html_url"`
+	RepoURL GitRepoURL     `json:"html_url"`
 	FeedURL common.FeedURL `json:"feed_url"`
 }
 
