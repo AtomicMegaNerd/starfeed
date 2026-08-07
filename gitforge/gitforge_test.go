@@ -147,7 +147,7 @@ func TestFetchStarredRepos(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
-			gh := NewGitForge(
+			gh := NewClient(
 				GitHubForgeType,
 				testutils.GitHubFqdn,
 				testutils.GitHubToken,
@@ -300,7 +300,7 @@ func TestCheckReleaseFeedExistsAndHasEntries(t *testing.T) {
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			gh := NewGitForge(
+			gh := NewClient(
 				GitHubForgeType,
 				testutils.GitHubFqdn,
 				testutils.GitHubToken,

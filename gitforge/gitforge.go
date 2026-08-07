@@ -18,19 +18,19 @@ import (
 // This regex will match if there is a next page in the response headers
 var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
-type GitForge struct {
+type Client struct {
 	fetchRepoURL string
 	headers      http.Header
 	logger       *slog.Logger
 	client       *http.Client
 }
 
-func NewGitForge(
+func NewClient(
 	forgeType, fqdn, token string,
 	logger *slog.Logger,
 	client *http.Client,
-) GitForge {
-	return GitForge{
+) Client {
+	return Client{
 		fetchRepoURL: buildStarredRepoUrl(forgeType, fqdn),
 		headers:      buildHeaders(forgeType, token),
 		logger:       logger,
@@ -38,10 +38,10 @@ func NewGitForge(
 	}
 }
 
-func (g GitForge) LoadFeeds(
+func (c Client) LoadFeeds(
 	ctx context.Context,
 ) (StarredRepoMap, error) {
-	starredRepos, err := g.fetchStarredRepos(ctx)
+	starredRepos, err := c.fetchStarredRepos(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -57,12 +57,12 @@ func (g GitForge) LoadFeeds(
 	eg.SetLimit(5)
 	for _, repo := range starredRepos {
 		eg.Go(func() error {
-			logger := g.logger.With(
+			logger := c.logger.With(
 				"repo", repo.Name,
 				"feed", repo.FeedURL,
 			)
 
-			if g.repoHasReleaseFeed(ctx, repo) {
+			if c.repoHasReleaseFeed(ctx, repo) {
 				mu.Lock()
 				starredFeeds[repo.FeedURL] = repo.Name
 				mu.Unlock()
@@ -77,24 +77,24 @@ func (g GitForge) LoadFeeds(
 
 	_ = eg.Wait()
 
-	g.logger.Info("Successfully added all feeds to feeds map", "numFeeds", len(starredFeeds))
+	c.logger.Info("Successfully added all feeds to feeds map", "numFeeds", len(starredFeeds))
 	return starredFeeds, nil
 }
 
-func (g GitForge) fetchStarredRepos(
+func (c Client) fetchStarredRepos(
 	ctx context.Context,
 ) ([]GitRepo, error) {
 	allRepos := make([]GitRepo, 0)
-	nextPageURL := g.fetchRepoURL
+	nextPageURL := c.fetchRepoURL
 	for {
-		g.logger.Debug("Fetching starred repos", "url", nextPageURL)
+		c.logger.Debug("Fetching starred repos", "url", nextPageURL)
 		data, respHeaders, err := common.DoAPIRequest(
 			ctx,
 			http.MethodGet,
 			nextPageURL,
 			nil,
-			g.headers,
-			g.client,
+			c.headers,
+			c.client,
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -118,27 +118,27 @@ func (g GitForge) fetchStarredRepos(
 		}
 		allRepos = append(allRepos, repos...)
 
-		nextPageURL = g.parseNextPageURL(respHeaders)
+		nextPageURL = c.parseNextPageURL(respHeaders)
 		if nextPageURL == "" {
-			g.logger.Info("Finished loading starred repos", "numRepos", len(allRepos))
+			c.logger.Info("Finished loading starred repos", "numRepos", len(allRepos))
 			return allRepos, nil
 		}
 	}
 }
 
-func (g GitForge) repoHasReleaseFeed(
+func (c Client) repoHasReleaseFeed(
 	ctx context.Context,
 	repo GitRepo,
 ) bool {
-	logger := g.logger.With("repo", repo.Name, "feed", repo.FeedURL)
+	logger := c.logger.With("repo", repo.Name, "feed", repo.FeedURL)
 	logger.Debug("Checking if repo has release feed")
 	data, _, err := common.DoAPIRequest(
 		ctx,
 		http.MethodGet,
 		repo.FeedURL.String(),
 		nil,
-		g.headers,
-		g.client,
+		c.headers,
+		c.client,
 	)
 	if err != nil {
 		return false
@@ -154,13 +154,13 @@ func (g GitForge) repoHasReleaseFeed(
 	return false
 }
 
-func (g GitForge) parseNextPageURL(respHeaders http.Header) string {
+func (c Client) parseNextPageURL(respHeaders http.Header) string {
 	linkHeader := respHeaders.Get("Link")
 	if linkHeader == "" {
 		return ""
 	}
 
-	g.logger.Debug("linkHeader found", "linkHeader", linkHeader)
+	c.logger.Debug("linkHeader found", "linkHeader", linkHeader)
 	links := strings.SplitSeq(linkHeader, ",")
 	for link := range links {
 		matches := nextPagePattern.FindStringSubmatch(link)

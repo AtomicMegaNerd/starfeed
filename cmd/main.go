@@ -119,7 +119,7 @@ func buildRunners(
 	// We build a shared RSS server that we publish too. All runners share it.
 	rssServerName := cfg.RSSServer.Name
 	rssServerLogger := logger.With("rssServer", rssServerName)
-	rssServer := rss.NewFreshRSS(
+	rssServer := rss.NewClient(
 		cfg.RSSServer.User, cfg.RSSServer.URL, rssServerLogger, client,
 	)
 	// Try to authenticate to the shared RSS server
@@ -133,7 +133,7 @@ func buildRunners(
 	runnerSlice := make([]starfeedRunner, len(cfg.GitForges))
 	for ix, forgeCfg := range cfg.GitForges {
 		forgeName := forgeCfg.Name
-		forge := gitforge.NewGitForge(
+		forge := gitforge.NewClient(
 			forgeCfg.Type,
 			forgeCfg.Fqdn,
 			forgeCfg.Token,

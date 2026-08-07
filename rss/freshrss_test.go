@@ -66,7 +66,7 @@ func TestAuthenticate(t *testing.T) {
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewFreshRSS(
+			f := NewClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
@@ -190,7 +190,7 @@ func TestAddFeed(t *testing.T) {
 			)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewFreshRSS(
+			f := NewClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
@@ -290,7 +290,7 @@ func TestLoadFeeds(t *testing.T) {
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewFreshRSS(
+			f := NewClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
@@ -362,7 +362,7 @@ func TestRemoveFeed(t *testing.T) {
 			mockTransport := testutils.NewMockRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewFreshRSS(
+			f := NewClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),

@@ -13,7 +13,7 @@ import (
 	"github.com/atomicmeganerd/starfeed/common"
 )
 
-type FreshRSS struct {
+type Client struct {
 	user    string
 	url     string
 	logger  *slog.Logger
@@ -21,14 +21,14 @@ type FreshRSS struct {
 	client  *http.Client
 }
 
-func NewFreshRSS(
+func NewClient(
 	user, url string,
 	logger *slog.Logger,
 	client *http.Client,
-) *FreshRSS {
+) *Client {
 	headers := http.Header{}
 	headers.Set("Content-type", "application/x-www-form-urlencoded")
-	return &FreshRSS{
+	return &Client{
 		user:    user,
 		url:     url,
 		logger:  logger,
@@ -38,20 +38,20 @@ func NewFreshRSS(
 }
 
 // This function will authenticate to FreshRSS.
-func (f *FreshRSS) Authenticate(
+func (c *Client) Authenticate(
 	ctx context.Context,
 	token string,
 ) error {
-	reqURL := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", f.url)
-	f.logger.Debug("Authenticating to FreshRSS", "url", reqURL)
+	reqURL := fmt.Sprintf("%s/api/greader.php/accounts/ClientLogin", c.url)
+	c.logger.Debug("Authenticating to FreshRSS", "url", reqURL)
 	formData := []byte(
 		url.Values{
-			"Email":  {f.user},
+			"Email":  {c.user},
 			"Passwd": {token},
 		}.Encode(),
 	)
 	data, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, reqURL, formData, f.headers, f.client,
+		ctx, http.MethodPost, reqURL, formData, c.headers, c.client,
 	)
 	if err != nil {
 		return fmt.Errorf("error authenticating to freshrss: %w, url: %s", err, reqURL)
@@ -70,19 +70,19 @@ func (f *FreshRSS) Authenticate(
 	}
 
 	// We can set all required headers after we authenticate
-	f.headers.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", authToken))
+	c.headers.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", authToken))
 	return nil
 }
 
 // Load all feeds that are under the given category.
-func (f *FreshRSS) LoadFeeds(
+func (c *Client) LoadFeeds(
 	ctx context.Context, category FeedCategory,
 ) (*common.Set[common.FeedURL], error) {
 	newFeeds := common.NewSet[common.FeedURL]()
 	loadUrl := fmt.Sprintf(
-		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.url,
+		"%s/api/greader.php/reader/api/0/subscription/list?output=json", c.url,
 	)
-	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, loadUrl, nil, f.headers, f.client)
+	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, loadUrl, nil, c.headers, c.client)
 	if err != nil {
 		return nil, err
 	}
@@ -104,28 +104,28 @@ func (f *FreshRSS) LoadFeeds(
 
 	numFeeds := newFeeds.Len()
 	if numFeeds == 0 {
-		f.logger.Warn("No feeds found in our RSS server", "numFeeds", numFeeds)
+		c.logger.Warn("No feeds found in our RSS server", "numFeeds", numFeeds)
 	} else {
-		f.logger.Info(
+		c.logger.Info(
 			"Loaded existing feeds from FreshRSS", "numFeeds", numFeeds, "category", category,
 		)
 	}
 	return newFeeds, nil
 }
 
-func (f *FreshRSS) AddFeed(
+func (c *Client) AddFeed(
 	ctx context.Context,
 	feedURL common.FeedURL,
 	name FeedName,
 	category FeedCategory,
 ) error {
 
-	addUrl := fmt.Sprintf("%s/api/greader.php/reader/api/0/subscription/quickadd", f.url)
+	addUrl := fmt.Sprintf("%s/api/greader.php/reader/api/0/subscription/quickadd", c.url)
 	formData := url.Values{
 		"quickadd": {feedURL.String()},
 	}
 	res, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, addUrl, []byte(formData.Encode()), f.headers, f.client,
+		ctx, http.MethodPost, addUrl, []byte(formData.Encode()), c.headers, c.client,
 	)
 	if err != nil {
 		return err
@@ -137,18 +137,18 @@ func (f *FreshRSS) AddFeed(
 	}
 
 	// Add the sub to the category
-	if err = f.addFeedToCategory(ctx, name, category, feedResponse.StreamId); err != nil {
+	if err = c.addFeedToCategory(ctx, name, category, feedResponse.StreamId); err != nil {
 		return err
 	}
 
-	f.logger.Info("Successfully added feed", "feed", feedURL)
+	c.logger.Info("Successfully added feed", "feed", feedURL)
 	return nil
 }
 
-func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL common.FeedURL) error {
+func (c *Client) RemoveFeed(ctx context.Context, feedURL common.FeedURL) error {
 	editUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit",
-		f.url,
+		c.url,
 	)
 	formData := url.Values{
 		"ac": {"unsubscribe"},
@@ -157,16 +157,16 @@ func (f *FreshRSS) RemoveFeed(ctx context.Context, feedURL common.FeedURL) error
 
 	// We do not care about the response
 	if _, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, editUrl, []byte(formData.Encode()), f.headers, f.client,
+		ctx, http.MethodPost, editUrl, []byte(formData.Encode()), c.headers, c.client,
 	); err != nil {
 		return err
 	}
 
-	f.logger.Info("Removed feed", "feed", feedURL)
+	c.logger.Info("Removed feed", "feed", feedURL)
 	return nil
 }
 
-func (f *FreshRSS) addFeedToCategory(
+func (c *Client) addFeedToCategory(
 	ctx context.Context,
 	name FeedName,
 	category FeedCategory,
@@ -174,17 +174,17 @@ func (f *FreshRSS) addFeedToCategory(
 ) error {
 	addCategoryUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit",
-		f.url,
+		c.url,
 	)
 	formData := url.Values{
 		"ac": {"edit"},
 		"s":  {streamId},
 		"t":  {name.String()},
-		"a":  {fmt.Sprintf("user/%s/label/%s", f.user, category)},
+		"a":  {fmt.Sprintf("user/%s/label/%s", c.user, category)},
 	}
 
 	if _, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, addCategoryUrl, []byte(formData.Encode()), f.headers, f.client,
+		ctx, http.MethodPost, addCategoryUrl, []byte(formData.Encode()), c.headers, c.client,
 	); err != nil {
 		return err
 	}
