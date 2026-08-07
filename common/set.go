@@ -22,6 +22,8 @@ func NewSet[E comparable](items ...E) *Set[E] {
 	return &set
 }
 
+// Compares two sets. If they are both nil return true. If one is nil and not the other return
+// false. If the lengths are not the same or if the elements are not all the same return false.
 func (s *Set[E]) Equal(other *Set[E]) bool {
 	if s == nil && other == nil {
 		return true
