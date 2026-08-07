@@ -26,7 +26,7 @@ func (u GitRepoURL) String() string {
 	return string(u)
 }
 
-type StarredRepoMap map[common.FeedURL]GitRepoResult
+type FeedResultMap map[common.FeedURL]GitRepoResult
 
 // This object holds the result of our query. We need to distinguish between repos that have
 // the following states:

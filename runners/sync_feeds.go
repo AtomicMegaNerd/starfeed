@@ -38,7 +38,7 @@ func NewSyncFeedsRunner(
 // to FreshRSS. It also removes any stale release feeds from FreshRSS if they are no longer
 // starred.
 func (r SyncFeedsRunner) Run(ctx context.Context) error {
-	var starredFeeds gitforge.StarredRepoMap
+	var gitForgeFeedResults gitforge.FeedResultMap
 	var rssFeeds *common.Set[common.FeedURL]
 
 	r.logger.Info("Starting publish releases workflow")
@@ -48,7 +48,7 @@ func (r SyncFeedsRunner) Run(ctx context.Context) error {
 	eg, loadCtx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
 		var err error
-		starredFeeds, err = r.gitForge.LoadFeeds(loadCtx)
+		gitForgeFeedResults, err = r.gitForge.LoadFeeds(loadCtx)
 		if err != nil {
 			return fmt.Errorf("error loading feeds from gitforge %s: %w", r.category, err)
 		}
@@ -74,8 +74,8 @@ func (r SyncFeedsRunner) Run(ctx context.Context) error {
 	// old stale feeds
 	eg, syncCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(10)
-	r.addNewReleaseFeeds(syncCtx, starredFeeds, rssFeeds, eg)
-	r.removeStaleFeeds(syncCtx, starredFeeds, rssFeeds, eg)
+	r.addNewReleaseFeeds(syncCtx, gitForgeFeedResults, rssFeeds, eg)
+	r.removeStaleFeeds(syncCtx, gitForgeFeedResults, rssFeeds, eg)
 	if err := eg.Wait(); err != nil {
 		return fmt.Errorf("error updating feeds: %w", err)
 	}
@@ -89,11 +89,11 @@ func (r SyncFeedsRunner) Run(ctx context.Context) error {
 
 func (r SyncFeedsRunner) addNewReleaseFeeds(
 	ctx context.Context,
-	starredRepoFeeds gitforge.StarredRepoMap,
+	gitForgeFeedResults gitforge.FeedResultMap,
 	rssServerFeeds *common.Set[common.FeedURL],
 	eg *errgroup.Group,
 ) {
-	for feedURL, repoResult := range starredRepoFeeds {
+	for feedURL, repoResult := range gitForgeFeedResults {
 		// Don't add feeds that are already in FreshRSS a second time or do not have entries or
 		// querying them failed.
 		if rssServerFeeds.Contains(feedURL) || !repoResult.IsOK() {
@@ -114,7 +114,7 @@ func (r SyncFeedsRunner) addNewReleaseFeeds(
 
 func (r SyncFeedsRunner) removeStaleFeeds(
 	ctx context.Context,
-	starredRepoFeeds gitforge.StarredRepoMap,
+	gitForgeFeedResults gitforge.FeedResultMap,
 	rssServerFeeds *common.Set[common.FeedURL],
 	eg *errgroup.Group,
 ) {
@@ -123,7 +123,7 @@ func (r SyncFeedsRunner) removeStaleFeeds(
 	// to do with this GitForge.
 	for feed := range rssServerFeeds.All() {
 		// Get the result for this query if there is one
-		repoResult, exists := starredRepoFeeds[feed]
+		repoResult, exists := gitForgeFeedResults[feed]
 
 		// If the entry is in the map but we could not query the release feed let us not remove it
 		// from FreshRSS. If it is stale we could query the release feed but did not find one.

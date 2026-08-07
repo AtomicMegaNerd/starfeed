@@ -9,7 +9,7 @@ import (
 )
 
 type GitForge interface {
-	LoadFeeds(ctx context.Context) (gitforge.StarredRepoMap, error)
+	LoadFeeds(ctx context.Context) (gitforge.FeedResultMap, error)
 }
 
 type RssServer interface {

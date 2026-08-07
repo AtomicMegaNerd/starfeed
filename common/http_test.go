@@ -127,7 +127,7 @@ func TestDoAPIRequest(t *testing.T) {
 					Header:     tc.respHeaders,
 				},
 			}
-			mockTransport := testutils.NewMockRoundTripper(responses)
+			mockTransport := testutils.NewMockMultiResponseRoundTripper(responses)
 			client := &http.Client{Transport: &mockTransport}
 
 			body, respHeaders, err := DoAPIRequest(

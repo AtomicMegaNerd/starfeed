@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/testutils"
 )
 
@@ -25,11 +26,10 @@ var (
 )
 
 func TestLoadFeeds(t *testing.T) {
-
 	testCases := []struct {
 		name          string
 		mocks         []testutils.MockRoutedResponse
-		expectedFeeds StarredRepoMap
+		expectedFeeds FeedResultMap
 	}{
 		{
 			name: "Single repo with valid feed",
@@ -65,7 +65,7 @@ func TestLoadFeeds(t *testing.T) {
 					},
 				},
 			},
-			expectedFeeds: StarredRepoMap{
+			expectedFeeds: FeedResultMap{
 				repo1.FeedURL: GitRepoResult{
 					RepoName:          repo1.Name,
 					RelFeedHasEntries: true,
@@ -118,7 +118,7 @@ func TestLoadFeeds(t *testing.T) {
 					},
 				},
 			},
-			expectedFeeds: StarredRepoMap{
+			expectedFeeds: FeedResultMap{
 				repo1.FeedURL: GitRepoResult{
 					RepoName:          repo1.Name,
 					RelFeedHasEntries: true,
@@ -170,6 +170,113 @@ func TestLoadFeeds(t *testing.T) {
 			},
 			expectedFeeds: nil,
 		},
+		{
+			name: "Pagination across multiple pages",
+			mocks: []testutils.MockRoutedResponse{
+				{
+					UrlPattern: `api\.github\.com/user/starred\?per_page=100$`,
+					MaxMatches: 1,
+					Response: http.Response{
+						Header: http.Header{
+							"Link": []string{
+								`<https://api.github.com/user/starred?page=2>; rel="next"`,
+							},
+						},
+						Body: io.NopCloser(strings.NewReader(`[
+							{
+								"name": "` + repo1.Name.String() + `",
+								"html_url": "` + repo1.RepoURL.String() + `"
+							}
+						]`)),
+						Status:     testutils.StatusOKString,
+						StatusCode: http.StatusOK,
+					},
+				},
+				{
+					UrlPattern: `page=2`,
+					Response: http.Response{
+						Body: io.NopCloser(strings.NewReader(`[
+							{
+								"name": "` + repo2.Name.String() + `",
+								"html_url": "` + repo2.RepoURL.String() + `"
+							}
+						]`)),
+						Status:     testutils.StatusOKString,
+						StatusCode: http.StatusOK,
+					},
+				},
+				{
+					UrlPattern: repo1.Name.String() + `/releases\.atom`,
+					Response: http.Response{
+						StatusCode: http.StatusOK,
+						Body: io.NopCloser(strings.NewReader(`
+							<feed xmlns="http://www.w3.org/2005/Atom">
+								<entry>
+									<title>Release 1</title>
+									<id>1</id>
+								</entry>
+							</feed>
+						`)),
+					},
+				},
+				{
+					UrlPattern: repo2.Name.String() + `/releases\.atom`,
+					Response: http.Response{
+						StatusCode: http.StatusOK,
+						Body: io.NopCloser(strings.NewReader(`
+							<feed xmlns="http://www.w3.org/2005/Atom">
+								<entry>
+									<title>Release 2</title>
+									<id>2</id>
+								</entry>
+							</feed>
+						`)),
+					},
+				},
+			},
+			expectedFeeds: FeedResultMap{
+				repo1.FeedURL: GitRepoResult{
+					RepoName:          repo1.Name,
+					RelFeedHasEntries: true,
+				},
+				repo2.FeedURL: GitRepoResult{
+					RepoName:          repo2.Name,
+					RelFeedHasEntries: true,
+				},
+			},
+		},
+		{
+			name: "Repo with failing release feed",
+			mocks: []testutils.MockRoutedResponse{
+				{
+					UrlPattern: `api\.github\.com/user/starred`,
+					Response: http.Response{
+						Body: io.NopCloser(strings.NewReader(`[
+							{
+								"name": "` + repo1.Name.String() + `",
+								"html_url": "` + repo1.RepoURL.String() + `"
+							}
+						]`)),
+						Status:     testutils.StatusOKString,
+						StatusCode: http.StatusOK,
+					},
+				},
+				{
+					UrlPattern: repo1.Name.String() + `/releases\.atom`,
+					Response: http.Response{
+						StatusCode: http.StatusNotFound,
+						Status:     testutils.StatusNotFoundString,
+						Body:       io.NopCloser(strings.NewReader("")),
+					},
+				},
+			},
+			expectedFeeds: FeedResultMap{
+				repo1.FeedURL: GitRepoResult{
+					RepoName: repo1.Name,
+					Err:      common.HTTPError{StatusCode: http.StatusNotFound},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -177,10 +284,10 @@ func TestLoadFeeds(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
 
-			mockTransport := testutils.NewMockURLSelectedRoundTripper(tc.mocks)
+			mockTransport := testutils.NewMockRoutedResponseRoundTripper(tc.mocks)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			gh := NewClient(
+			gh := NewGitForgeClient(
 				GitHubForgeType,
 				testutils.GitHubFqdn,
 				testutils.GitHubToken,

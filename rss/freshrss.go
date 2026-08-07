@@ -13,9 +13,9 @@ import (
 	"github.com/atomicmeganerd/starfeed/common"
 )
 
-// Client struct is for connecting to FreshRSS servers. You can then Load/Add/Remove RSS
+// FreshRSSClient struct is for connecting to FreshRSS servers. You can then Load/Add/Remove RSS
 // feeds too/from the server.
-type Client struct {
+type FreshRSSClient struct {
 	user    string
 	url     string
 	logger  *slog.Logger
@@ -23,14 +23,14 @@ type Client struct {
 	client  *http.Client
 }
 
-func NewClient(
+func NewFreshRSSClient(
 	user, url string,
 	logger *slog.Logger,
 	client *http.Client,
-) *Client {
+) *FreshRSSClient {
 	headers := http.Header{}
 	headers.Set("Content-type", "application/x-www-form-urlencoded")
-	return &Client{
+	return &FreshRSSClient{
 		user:    user,
 		url:     url,
 		logger:  logger,
@@ -40,7 +40,7 @@ func NewClient(
 }
 
 // This function will authenticate to FreshRSS.
-func (c *Client) Authenticate(
+func (c *FreshRSSClient) Authenticate(
 	ctx context.Context,
 	token string,
 ) error {
@@ -77,7 +77,7 @@ func (c *Client) Authenticate(
 }
 
 // Load all feeds that are under the given category.
-func (c *Client) LoadFeeds(
+func (c *FreshRSSClient) LoadFeeds(
 	ctx context.Context, category FeedCategory,
 ) (*common.Set[common.FeedURL], error) {
 	newFeeds := common.NewSet[common.FeedURL]()
@@ -115,7 +115,7 @@ func (c *Client) LoadFeeds(
 	return newFeeds, nil
 }
 
-func (c *Client) AddFeed(
+func (c *FreshRSSClient) AddFeed(
 	ctx context.Context,
 	feedURL common.FeedURL,
 	name FeedName,
@@ -147,7 +147,7 @@ func (c *Client) AddFeed(
 	return nil
 }
 
-func (c *Client) RemoveFeed(ctx context.Context, feedURL common.FeedURL) error {
+func (c *FreshRSSClient) RemoveFeed(ctx context.Context, feedURL common.FeedURL) error {
 	editUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit",
 		c.url,
@@ -168,7 +168,7 @@ func (c *Client) RemoveFeed(ctx context.Context, feedURL common.FeedURL) error {
 	return nil
 }
 
-func (c *Client) addFeedToCategory(
+func (c *FreshRSSClient) addFeedToCategory(
 	ctx context.Context,
 	name FeedName,
 	category FeedCategory,

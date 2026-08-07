@@ -18,21 +18,21 @@ import (
 // This regex will match if there is a next page in the response headers
 var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
-// Client struct represents a GitForge. We can load RSS feeds for all starred repos that belong
-// to this Git Forge.
-type Client struct {
+// GitForgeClient struct represents a GitForge. We can load RSS feeds for all starred repos that
+// belong to this Git Forge.
+type GitForgeClient struct {
 	fetchRepoURL string
 	headers      http.Header
 	logger       *slog.Logger
 	client       *http.Client
 }
 
-func NewClient(
+func NewGitForgeClient(
 	forgeType, fqdn, token string,
 	logger *slog.Logger,
 	client *http.Client,
-) Client {
-	return Client{
+) GitForgeClient {
+	return GitForgeClient{
 		fetchRepoURL: buildStarredRepoUrl(forgeType, fqdn),
 		headers:      buildHeaders(forgeType, token),
 		logger:       logger,
@@ -40,15 +40,15 @@ func NewClient(
 	}
 }
 
-func (c Client) LoadFeeds(
+func (c GitForgeClient) LoadFeeds(
 	ctx context.Context,
-) (StarredRepoMap, error) {
+) (FeedResultMap, error) {
 	starredRepos, err := c.fetchStarredRepos(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	starredFeeds := make(StarredRepoMap)
+	starredFeeds := make(FeedResultMap)
 
 	// Check each repo to make sure it has valid entries in its ATOM feed for releases
 	// This can be done in parallel to make it much faster.
@@ -77,7 +77,7 @@ func (c Client) LoadFeeds(
 	return starredFeeds, nil
 }
 
-func (c Client) fetchStarredRepos(
+func (c GitForgeClient) fetchStarredRepos(
 	ctx context.Context,
 ) ([]GitRepo, error) {
 	allRepos := make([]GitRepo, 0)
@@ -122,7 +122,7 @@ func (c Client) fetchStarredRepos(
 	}
 }
 
-func (c Client) repoHasReleaseFeed(
+func (c GitForgeClient) repoHasReleaseFeed(
 	ctx context.Context,
 	repo GitRepo,
 ) GitRepoResult {
@@ -157,7 +157,7 @@ func (c Client) repoHasReleaseFeed(
 	return result
 }
 
-func (c Client) parseNextPageURL(respHeaders http.Header) string {
+func (c GitForgeClient) parseNextPageURL(respHeaders http.Header) string {
 	linkHeader := respHeaders.Get("Link")
 	if linkHeader == "" {
 		return ""

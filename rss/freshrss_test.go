@@ -63,10 +63,10 @@ func TestAuthenticate(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.responses[0].Status, func(t *testing.T) {
 			t.Parallel()
-			mockTransport := testutils.NewMockRoundTripper(tc.responses)
+			mockTransport := testutils.NewMockMultiResponseRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewClient(
+			f := NewFreshRSSClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
@@ -187,10 +187,10 @@ func TestAddFeed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			mockTransport := testutils.NewMockURLSelectedRoundTripper(tc.mocks)
+			mockTransport := testutils.NewMockRoutedResponseRoundTripper(tc.mocks)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewClient(
+			f := NewFreshRSSClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
@@ -287,10 +287,10 @@ func TestLoadFeeds(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			mockTransport := testutils.NewMockRoundTripper(tc.responses)
+			mockTransport := testutils.NewMockMultiResponseRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewClient(
+			f := NewFreshRSSClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
@@ -359,10 +359,10 @@ func TestRemoveFeed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			mockTransport := testutils.NewMockRoundTripper(tc.responses)
+			mockTransport := testutils.NewMockMultiResponseRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewClient(
+			f := NewFreshRSSClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),

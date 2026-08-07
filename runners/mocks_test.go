@@ -10,12 +10,12 @@ import (
 )
 
 type MockGitForge struct {
-	ExpectedLoadError error
-	ExpectedFeeds     gitforge.StarredRepoMap
+	ExpectedLoadError      error
+	ExpectedFeeedResultMap gitforge.FeedResultMap
 }
 
-func (m *MockGitForge) LoadFeeds(ctx context.Context) (gitforge.StarredRepoMap, error) {
-	return m.ExpectedFeeds, m.ExpectedLoadError
+func (m *MockGitForge) LoadFeeds(ctx context.Context) (gitforge.FeedResultMap, error) {
+	return m.ExpectedFeeedResultMap, m.ExpectedLoadError
 }
 
 type MockRssServer struct {

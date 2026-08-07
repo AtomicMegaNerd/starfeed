@@ -25,7 +25,7 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "success- adds new feeds and removes stale feeds",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: gitforge.StarredRepoMap{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
 					"https://github.com/user/new-repo/releases.atom": gitforge.GitRepoResult{
 						RepoName:          "new-repo",
 						RelFeedHasEntries: true,
@@ -44,7 +44,7 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "No feeds to sync",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: gitforge.StarredRepoMap{},
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{},
 			},
 			rssServer: &MockRssServer{
 				ExpectedFeeds: common.NewSet[common.FeedURL](),
@@ -64,7 +64,7 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "RssServer LoadFeeds fails",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: gitforge.StarredRepoMap{},
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{},
 			},
 			rssServer: &MockRssServer{
 				ExpectedLoadError: errors.New("failed to load from rss server"),
@@ -74,7 +74,7 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "AddFeed fails",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: gitforge.StarredRepoMap{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
 					"https://github.com/user/repo/releases.atom": gitforge.GitRepoResult{
 						RepoName:          "repo",
 						RelFeedHasEntries: true,
@@ -89,7 +89,7 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "RemoveFeed fails",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: gitforge.StarredRepoMap{},
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{},
 			},
 			rssServer: &MockRssServer{
 				ExpectedFeeds: common.NewSet[common.FeedURL](
@@ -112,7 +112,7 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "Multiple feeds to add concurrently",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: gitforge.StarredRepoMap{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
 					"https://github.com/user/repo1/releases.atom": gitforge.GitRepoResult{
 						RepoName:          "repo1",
 						RelFeedHasEntries: true,
@@ -144,7 +144,7 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "Multiple feeds to remove concurrently",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: gitforge.StarredRepoMap{},
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{},
 			},
 			rssServer: &MockRssServer{
 				ExpectedFeeds: common.NewSet[common.FeedURL](
@@ -161,7 +161,7 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "All feeds already exist - no changes needed",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: gitforge.StarredRepoMap{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
 					"https://github.com/user/repo1/releases.atom": gitforge.GitRepoResult{
 						RepoName:          "repo1",
 						RelFeedHasEntries: true,
@@ -185,7 +185,7 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "Mix of adds, removes, and existing feeds",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: gitforge.StarredRepoMap{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
 					"https://github.com/user/existing/releases.atom": gitforge.GitRepoResult{
 						RepoName:          "existing",
 						RelFeedHasEntries: true,
@@ -214,7 +214,7 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "Only adds - no stale feeds",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: gitforge.StarredRepoMap{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
 					"https://github.com/user/new1/releases.atom": gitforge.GitRepoResult{
 						RepoName:          "new1",
 						RelFeedHasEntries: true,
@@ -239,7 +239,7 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "Only removes - no new feeds",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: gitforge.StarredRepoMap{},
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{},
 			},
 			rssServer: &MockRssServer{
 				ExpectedFeeds: common.NewSet[common.FeedURL](
@@ -255,7 +255,7 @@ func TestSyncFeeds(t *testing.T) {
 		{
 			name: "Large number of feeds",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: gitforge.StarredRepoMap{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
 					"https://github.com/user/repo1/releases.atom": gitforge.GitRepoResult{
 						RepoName:          "repo1",
 						RelFeedHasEntries: true,
