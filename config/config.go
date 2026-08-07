@@ -39,11 +39,6 @@ type RSSServerConfig struct {
 	Token string `validate:"required,min=10"` // WARNING: This is a secret
 }
 
-// This interface lets us mock our ConfigLoader for testing
-type configLoader interface {
-	LoadConfig() ([]byte, error)
-}
-
 func NewConfig(cl configLoader) (Config, error) {
 	validate := validator.New()
 

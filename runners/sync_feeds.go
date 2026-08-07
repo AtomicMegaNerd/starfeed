@@ -12,17 +12,32 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+type gitForge interface {
+	LoadFeeds(ctx context.Context) (gitforge.FeedResultMap, error)
+}
+
+type rssServer interface {
+	LoadFeeds(ctx context.Context, category rss.FeedCategory) (*common.Set[common.FeedURL], error)
+	AddFeed(
+		ctx context.Context,
+		feedURL common.FeedURL,
+		name rss.FeedName,
+		category rss.FeedCategory,
+	) error
+	RemoveFeed(ctx context.Context, feedURL common.FeedURL) error
+}
+
 // SyncFeedsRunner is a struct that manages the main workflow of the application.
 type SyncFeedsRunner struct {
-	gitForge  GitForge
+	gitForge  gitForge
 	category  rss.FeedCategory
-	rssServer RssServer
+	rssServer rssServer
 	logger    *slog.Logger
 }
 
 func NewSyncFeedsRunner(
-	gitForge GitForge,
-	rssServer RssServer,
+	gitForge gitForge,
+	rssServer rssServer,
 	category rss.FeedCategory,
 	logger *slog.Logger,
 ) SyncFeedsRunner {

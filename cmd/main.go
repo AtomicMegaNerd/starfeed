@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -11,11 +10,7 @@ import (
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/config"
-	"github.com/atomicmeganerd/starfeed/gitforge"
-	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/runners"
-	"github.com/lmittmann/tint"
-	"golang.org/x/sync/errgroup"
 )
 
 // This is injected by the CI/CD to tag the binary
@@ -41,7 +36,7 @@ func run() error {
 	}
 
 	client := &http.Client{Timeout: 60 * time.Second}
-	logger := getLogger(cfg.Debug)
+	logger := buildLogger(cfg.Debug)
 
 	logger.Info("***********************************************")
 	logger.Info(" Welcome to Starfeed", "version", version, "commit", commit)
@@ -69,7 +64,7 @@ func run() error {
 
 	// We always want to run on startup, and if we are in SingleRun mode we will terminate
 	// the app after running the workflow once. SingleRun is useful for development and testing.
-	if err := executeRunners(ctx, runnerSlice); err != nil {
+	if err := runners.ExecuteRunners(ctx, runnerSlice); err != nil {
 		logger.Error("Error executing runners", "error", err)
 		return err
 	}
@@ -94,91 +89,11 @@ func run() error {
 			// already capture the timestamp when we execute. But it is good to recognize that
 			// the ticker channel is sent this data.
 		case t := <-ticker.C:
-			if err := executeRunners(ctx, runnerSlice); err != nil {
+			if err := runners.ExecuteRunners(ctx, runnerSlice); err != nil {
 				logger.Error("Error executing runners", "error", err)
 				return err
 			}
 			logger.Info("Sleeping...", "nextRun", t.Add(cfg.Interval()))
 		}
 	}
-}
-
-// Defining an interface here for any Runner that we want to add to our runnerSlice
-type starfeedRunner interface {
-	Run(ctx context.Context) error
-}
-
-// This function builds our runner objects. We have one shared rssServer but we can have
-// multiple git forges so we return one runner per git forge.
-func buildRunners(
-	ctx context.Context,
-	cfg config.Config,
-	logger *slog.Logger,
-	client *http.Client,
-) ([]starfeedRunner, error) {
-	// We build a shared RSS server that we publish too. All runners share it.
-	rssServerName := cfg.RSSServer.Name
-	rssServerLogger := logger.With("rssServer", rssServerName)
-	rssServer := rss.NewFreshRSSClient(
-		cfg.RSSServer.User, cfg.RSSServer.URL, rssServerLogger, client,
-	)
-	// Try to authenticate to the shared RSS server
-	if err := rssServer.Authenticate(ctx, cfg.RSSServer.Token); err != nil {
-		return nil, fmt.Errorf("error authenticating to freshrss %s: %w", rssServerName, err)
-	}
-	rssServerLogger.Info("Successfully authenticated to RSS Server")
-
-	// For each GitForge in our config let's create a new runner. Each will share a single RSS
-	// target but query starred repo from each configured GitForge.
-	runnerSlice := make([]starfeedRunner, len(cfg.GitForges))
-	for ix, forgeCfg := range cfg.GitForges {
-		forgeName := forgeCfg.Name
-		forge := gitforge.NewGitForgeClient(
-			forgeCfg.Type,
-			forgeCfg.Fqdn,
-			forgeCfg.Token,
-			logger.With("gitForge", forgeName),
-			client,
-		)
-
-		// The category we publish in RSS  is always equal to the name of the GitForge
-		category := rss.FeedCategory(forgeName)
-		syncLogger := logger.With("gitForge", forgeName, "rssServer", rssServerName)
-		runner := runners.NewSyncFeedsRunner(
-			forge,
-			rssServer,
-			category,
-			syncLogger,
-		)
-
-		runnerSlice[ix] = runner
-		syncLogger.Info("Successfully registered runner")
-	}
-	return runnerSlice, nil
-}
-
-// Here we execute the runners in parallel...
-func executeRunners(ctx context.Context, runners []starfeedRunner) error {
-	errGroup, runnerCtx := errgroup.WithContext(ctx)
-	for _, runner := range runners {
-		errGroup.Go(func() error {
-			return runner.Run(runnerCtx)
-		})
-	}
-	return errGroup.Wait()
-}
-
-// This configures the logger for our application setting the level to debug
-// if specified.
-func getLogger(debug bool) *slog.Logger {
-	level := slog.LevelInfo
-	if debug {
-		level = slog.LevelDebug
-	}
-	return slog.New(
-		tint.NewTextHandler(
-			os.Stderr,
-			&tint.Options{Level: level, TimeFormat: time.RFC3339},
-		),
-	)
 }

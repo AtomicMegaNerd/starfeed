@@ -31,6 +31,11 @@ func (d *duration) UnmarshalText(text []byte) error {
 	return nil
 }
 
+// This interface lets us mock our ConfigLoader for testing
+type configLoader interface {
+	LoadConfig() ([]byte, error)
+}
+
 // This object is responsible for loading the config file for the application. This concrete
 // version loads from disk at the defined path.
 type ConfigLoader struct{}
