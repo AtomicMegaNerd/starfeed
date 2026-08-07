@@ -16,6 +16,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   methods.
 - Tidied up the interfaces to make them smaller.
 
+### Fixed
+
+- We now will not remove an RSS feed from FreshRSS if querying the feed fails due to network issue
+  or outage on the current Git Forge.
+
 ## [v0.5.1] - 2026-07-29
 
 ### Added
