@@ -47,21 +47,25 @@ func (mtr *MockMultiResponseRoundTripper) GetNumCalls() int {
 
 // This is a mock round tripper that can be used to mock http responses based on the URL
 // of the request. We will use regex patterns to match the URL of the requests.
+type MockRoutedResponse struct {
+	Response   http.Response
+	UrlPattern string
+	Err        error
+}
 type MockURLSelectedRoundTripper struct {
-	response         []http.Response
-	urlRegexPatterns []string
+	responses []MockRoutedResponse
 }
 
 func NewMockURLSelectedRoundTripper(
-	responses []http.Response, urls []string,
+	responses []MockRoutedResponse,
 ) MockURLSelectedRoundTripper {
-	return MockURLSelectedRoundTripper{responses, urls}
+	return MockURLSelectedRoundTripper{responses: responses}
 }
 
-func (ust *MockURLSelectedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	for ix, url := range ust.urlRegexPatterns {
-		if matches, _ := regexp.MatchString(url, req.URL.String()); matches {
-			return &ust.response[ix], nil
+func (t MockURLSelectedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	for _, resp := range t.responses {
+		if matches, _ := regexp.MatchString(resp.UrlPattern, req.URL.String()); matches {
+			return &resp.Response, resp.Err
 		}
 	}
 	return nil, errors.New("no response found for url")

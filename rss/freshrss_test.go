@@ -93,16 +93,17 @@ func TestAuthenticate(t *testing.T) {
 func TestAddFeed(t *testing.T) {
 
 	testCases := []struct {
-		name             string
-		responses        []http.Response
-		urlRegexPatterns []string
-		expectError      bool
+		name        string
+		mocks       []testutils.MockRoutedResponse
+		expectError bool
 	}{
 		{
 			name: "Successful feed addition",
-			responses: []http.Response{
+			mocks: []testutils.MockRoutedResponse{
 				{
-					Body: io.NopCloser(strings.NewReader(`
+					UrlPattern: ".*quickadd",
+					Response: http.Response{
+						Body: io.NopCloser(strings.NewReader(`
 					{
 						"query": "http://localhost/feeds/123",
 						"numResults": 1,
@@ -110,71 +111,73 @@ func TestAddFeed(t *testing.T) {
 						"streamName": "name"
 					}
 					`)),
-					StatusCode: http.StatusOK,
-					Status:     testutils.StatusOKString,
+						StatusCode: http.StatusOK,
+						Status:     testutils.StatusOKString,
+					},
 				},
 				{
-					Status:     testutils.StatusOKString,
-					StatusCode: http.StatusOK,
+					UrlPattern: ".*edit",
+					Response: http.Response{
+						Status:     testutils.StatusOKString,
+						StatusCode: http.StatusOK,
+					},
 				},
-			},
-			urlRegexPatterns: []string{
-				".*quickadd",
-				".*edit",
 			},
 			expectError: false,
 		},
 		{
 			name: "Failed feed addition on step 1",
-			responses: []http.Response{
+			mocks: []testutils.MockRoutedResponse{
 				{
-					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
-					StatusCode: http.StatusUnauthorized,
-					Status:     testutils.StatusUnauthorizedString,
+					UrlPattern: ".*quickadd",
+					Response: http.Response{
+						Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
+						StatusCode: http.StatusUnauthorized,
+						Status:     testutils.StatusUnauthorizedString,
+					},
 				},
-			},
-			urlRegexPatterns: []string{
-				".*quickadd",
 			},
 			expectError: true,
 		},
 		{
 			name: "Failed feed addition on step 2",
-			responses: []http.Response{
+			mocks: []testutils.MockRoutedResponse{
 				{
-					Body: io.NopCloser(strings.NewReader(`
+					UrlPattern: ".*quickadd",
+					Response: http.Response{
+						Body: io.NopCloser(strings.NewReader(`
 					{
 						"query": "http://localhost/feeds/123",
 						"numResults": 1,
 						"streamId": "feed/http://localhost/feeds/123",
 						"streamName": "name"
 					}`)),
-					StatusCode: http.StatusOK,
-					Status:     testutils.StatusOKString,
+						StatusCode: http.StatusOK,
+						Status:     testutils.StatusOKString,
+					},
 				},
 				{
-					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
-					StatusCode: http.StatusBadRequest,
-					Status:     "400 Bad Request",
+					UrlPattern: ".*edit",
+					Response: http.Response{
+						Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
+						StatusCode: http.StatusBadRequest,
+						Status:     "400 Bad Request",
+					},
 				},
-			},
-			urlRegexPatterns: []string{
-				".*quickadd",
-				".*edit",
 			},
 			expectError: true,
 		},
 		{
 			name: "Failed feed with invalid response",
-			responses: []http.Response{
+			mocks: []testutils.MockRoutedResponse{
 				{
-					Body:       io.NopCloser(strings.NewReader(`Invalid response`)),
-					StatusCode: http.StatusOK,
-					Status:     testutils.StatusOKString,
+					UrlPattern: ".*quickadd",
+					Response: http.Response{
+						Body:       io.NopCloser(strings.NewReader(`Invalid response`)),
+						StatusCode: http.StatusOK,
+						Status:     testutils.StatusOKString,
+					},
 				},
-			},
-			urlRegexPatterns: []string{
-				".*quickadd",
 			},
 			expectError: true,
 		},
@@ -184,10 +187,7 @@ func TestAddFeed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			mockTransport := testutils.NewMockURLSelectedRoundTripper(
-				tc.responses,
-				tc.urlRegexPatterns,
-			)
+			mockTransport := testutils.NewMockURLSelectedRoundTripper(tc.mocks)
 			mockClient := &http.Client{Transport: &mockTransport}
 
 			f := NewClient(

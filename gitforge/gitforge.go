@@ -58,21 +58,15 @@ func (c Client) LoadFeeds(
 	eg := &errgroup.Group{}
 	eg.SetLimit(5)
 	for _, repo := range starredRepos {
+		logger := c.logger.With("repoName", repo.Name, "feeedURL", repo.FeedURL)
 		eg.Go(func() error {
-			logger := c.logger.With(
-				"repo", repo.Name,
-				"feed", repo.FeedURL,
-			)
-
-			if c.repoHasReleaseFeed(ctx, repo) {
-				mu.Lock()
-				starredFeeds[repo.FeedURL] = repo.Name
-				mu.Unlock()
-				logger.Info("Added feed for repo to feeds map")
-				return nil
+			result := c.repoHasReleaseFeed(ctx, repo)
+			if result.IsOK() {
+				logger.Info("Repo has valid release feed")
 			}
-
-			logger.Warn("Repo does not have valid release feed")
+			mu.Lock()
+			starredFeeds[repo.FeedURL] = result
+			mu.Unlock()
 			return nil
 		})
 	}
@@ -131,7 +125,10 @@ func (c Client) fetchStarredRepos(
 func (c Client) repoHasReleaseFeed(
 	ctx context.Context,
 	repo GitRepo,
-) bool {
+) GitRepoResult {
+
+	result := GitRepoResult{RepoName: repo.Name}
+
 	logger := c.logger.With("repo", repo.Name, "feed", repo.FeedURL)
 	logger.Debug("Checking if repo has release feed")
 	data, _, err := common.DoAPIRequest(
@@ -143,17 +140,21 @@ func (c Client) repoHasReleaseFeed(
 		c.client,
 	)
 	if err != nil {
-		return false
+		result.Err = err
+		return result
 	}
 	relFeed := &AtomFeed{}
 	if err = xml.Unmarshal(data, relFeed); err != nil {
-		return false
+		result.Err = err
+		return result
 	}
 	if len(relFeed.Entries) >= 1 {
 		logger.Debug("Repo feed is valid")
-		return true
+		result.RelFeedHasEntries = true
+		return result
 	}
-	return false
+
+	return result
 }
 
 func (c Client) parseNextPageURL(respHeaders http.Header) string {

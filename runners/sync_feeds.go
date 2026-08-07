@@ -93,16 +93,19 @@ func (r SyncFeedsRunner) addNewReleaseFeeds(
 	rssServerFeeds *common.Set[common.FeedURL],
 	eg *errgroup.Group,
 ) {
-	for feedURL, repoName := range starredRepoFeeds {
-		// Don't add feeds that are already in FreshRSS a second time
-		if rssServerFeeds.Contains(feedURL) {
+	for feedURL, repoResult := range starredRepoFeeds {
+		// Don't add feeds that are already in FreshRSS a second time or do not have entries or
+		// querying them failed.
+		if rssServerFeeds.Contains(feedURL) || !repoResult.IsOK() {
 			continue
 		}
+
+		// If the feed is valid spawn a gorountie to subscribe to it
 		eg.Go(func() error {
 			return r.rssServer.AddFeed(
 				ctx,
 				feedURL,
-				rss.FeedName(repoName.String()),
+				rss.FeedName(repoResult.RepoName.String()),
 				r.category,
 			)
 		})
@@ -119,11 +122,17 @@ func (r SyncFeedsRunner) removeStaleFeeds(
 	// with our GitForge by design. This means we will not delete feeds that have nothing
 	// to do with this GitForge.
 	for feed := range rssServerFeeds.All() {
-		// if the feed is still in the gitForge map it is still starred and should not be
-		// removed.
-		if _, exists := starredRepoFeeds[feed]; exists {
+		// Get the result for this query if there is one
+		repoResult, exists := starredRepoFeeds[feed]
+
+		// If the entry is in the map but we could not query the release feed let us not remove it
+		// from FreshRSS. If it is stale we could query the release feed but did not find one.
+		// If the result is not Stale it means the feed is still valid or the query failed for some
+		// other reason.
+		if exists && !repoResult.IsStale() {
 			continue
 		}
+
 		eg.Go(func() error {
 			r.logger.Info(
 				"Removing feed from RSS Server as it is no longer starred",
