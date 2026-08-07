@@ -22,6 +22,27 @@ func NewSet[E comparable](items ...E) *Set[E] {
 	return &set
 }
 
+func (s *Set[E]) Equal(other *Set[E]) bool {
+	if s == nil && other == nil {
+		return true
+	}
+
+	if s == nil || other == nil {
+		return false
+	}
+
+	if s.Len() != other.Len() {
+		return false
+	}
+
+	for elem := range s.elems {
+		if _, ok := other.elems[elem]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 // Add an element to the Set
 func (s *Set[E]) Add(item E) {
 	// Just in-case someone doesn't listen and use NewSet()
