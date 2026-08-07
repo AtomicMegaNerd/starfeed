@@ -10,8 +10,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Architectural changes where I got rid of the state in `gitforge.GitForge` and `rss.FreshRSS` and
-  the mutexes that went with them. State now lives in the runner and is not saved between runs.
-- Used channels when checking repos for release feeds as it seemed the simplest way.
+  the extra mutexes that went with them. State now lives in the runner and is not saved between
+  runs.
 - Added Named Types for the FeedURL and RepoName to prevent mixing them up in our maps and in our
   methods.
 - Tidied up the interfaces to make them smaller.
