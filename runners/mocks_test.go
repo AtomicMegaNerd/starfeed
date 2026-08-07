@@ -22,7 +22,7 @@ type MockRssServer struct {
 	ExpectedLoadError   error
 	ExpectedAddError    error
 	ExpectedRemoveError error
-	ExpectedFeeds       rss.RSSFeedSet
+	ExpectedFeeds       *common.Set[common.FeedURL]
 
 	// These need to be atomic because we call the real RSS server with multiple goroutines. It
 	// has no state to protect but this mock does
@@ -32,7 +32,10 @@ type MockRssServer struct {
 
 func (m *MockRssServer) LoadFeeds(
 	ctx context.Context, category rss.FeedCategory,
-) (rss.RSSFeedSet, error) {
+) (*common.Set[common.FeedURL], error) {
+	if m.ExpectedFeeds == nil {
+		m.ExpectedFeeds = common.NewSet[common.FeedURL]()
+	}
 	return m.ExpectedFeeds, m.ExpectedLoadError
 }
 

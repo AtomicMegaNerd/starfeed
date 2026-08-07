@@ -13,7 +13,7 @@ type GitForge interface {
 }
 
 type RssServer interface {
-	LoadFeeds(ctx context.Context, category rss.FeedCategory) (rss.RSSFeedSet, error)
+	LoadFeeds(ctx context.Context, category rss.FeedCategory) (*common.Set[common.FeedURL], error)
 	AddFeed(
 		ctx context.Context,
 		feedURL common.FeedURL,

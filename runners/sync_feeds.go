@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/gitforge"
 	"github.com/atomicmeganerd/starfeed/rss"
 	"golang.org/x/sync/errgroup"
@@ -38,7 +39,7 @@ func NewSyncFeedsRunner(
 // starred.
 func (r SyncFeedsRunner) Run(ctx context.Context) error {
 	var starredFeeds gitforge.StarredRepoMap
-	var rssFeeds rss.RSSFeedSet
+	var rssFeeds *common.Set[common.FeedURL]
 
 	r.logger.Info("Starting publish releases workflow")
 	start := time.Now()
@@ -89,12 +90,12 @@ func (r SyncFeedsRunner) Run(ctx context.Context) error {
 func (r SyncFeedsRunner) addNewReleaseFeeds(
 	ctx context.Context,
 	starredRepoFeeds gitforge.StarredRepoMap,
-	rssServerFeeds rss.RSSFeedSet,
+	rssServerFeeds *common.Set[common.FeedURL],
 	eg *errgroup.Group,
 ) {
 	for feedURL, repoName := range starredRepoFeeds {
 		// Don't add feeds that are already in FreshRSS a second time
-		if _, exists := rssServerFeeds[feedURL]; exists {
+		if rssServerFeeds.Contains(feedURL) {
 			continue
 		}
 		eg.Go(func() error {
@@ -111,13 +112,13 @@ func (r SyncFeedsRunner) addNewReleaseFeeds(
 func (r SyncFeedsRunner) removeStaleFeeds(
 	ctx context.Context,
 	starredRepoFeeds gitforge.StarredRepoMap,
-	rssServerFeeds rss.RSSFeedSet,
+	rssServerFeeds *common.Set[common.FeedURL],
 	eg *errgroup.Group,
 ) {
 	// This will only contain the list of feeds that are in the category associated
 	// with our GitForge by design. This means we will not delete feeds that have nothing
 	// to do with this GitForge.
-	for feed := range rssServerFeeds {
+	for feed := range rssServerFeeds.All() {
 		// if the feed is still in the gitForge map it is still starred and should not be
 		// removed.
 		if _, exists := starredRepoFeeds[feed]; exists {

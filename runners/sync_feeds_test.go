@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/gitforge"
 	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/testutils"
@@ -29,9 +30,9 @@ func TestSyncFeeds(t *testing.T) {
 				},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: rss.RSSFeedSet{
-					"https://github.com/user/old-repo/releases.atom": {},
-				},
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/old-repo/releases.atom",
+				),
 			},
 			expectAdded:   1,
 			expectRemoved: 1,
@@ -43,7 +44,7 @@ func TestSyncFeeds(t *testing.T) {
 				ExpectedFeeds: gitforge.StarredRepoMap{},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: rss.RSSFeedSet{},
+				ExpectedFeeds: common.NewSet[common.FeedURL](),
 			},
 			expectError: false,
 		},
@@ -53,7 +54,7 @@ func TestSyncFeeds(t *testing.T) {
 				ExpectedLoadError: errors.New("failed to load from git forge"),
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: rss.RSSFeedSet{},
+				ExpectedFeeds: common.NewSet[common.FeedURL](),
 			},
 			expectError: true,
 		},
@@ -85,9 +86,9 @@ func TestSyncFeeds(t *testing.T) {
 				ExpectedFeeds: gitforge.StarredRepoMap{},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: rss.RSSFeedSet{
-					"https://github.com/user/old-repo/releases.atom": {},
-				},
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/old-repo/releases.atom",
+				),
 				ExpectedRemoveError: errors.New("failed to remove feed"),
 			},
 			expectError: true,
@@ -114,7 +115,7 @@ func TestSyncFeeds(t *testing.T) {
 				},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: rss.RSSFeedSet{},
+				ExpectedFeeds: common.NewSet[common.FeedURL](),
 			},
 			expectAdded: 5,
 			expectError: false,
@@ -125,13 +126,13 @@ func TestSyncFeeds(t *testing.T) {
 				ExpectedFeeds: gitforge.StarredRepoMap{},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: rss.RSSFeedSet{
-					"https://github.com/user/old1/releases.atom": {},
-					"https://github.com/user/old2/releases.atom": {},
-					"https://github.com/user/old3/releases.atom": {},
-					"https://github.com/user/old4/releases.atom": {},
-					"https://github.com/user/old5/releases.atom": {},
-				},
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/old1/releases.atom",
+					"https://github.com/user/old2/releases.atom",
+					"https://github.com/user/old3/releases.atom",
+					"https://github.com/user/old4/releases.atom",
+					"https://github.com/user/old5/releases.atom",
+				),
 			},
 			expectRemoved: 5,
 			expectError:   false,
@@ -145,10 +146,10 @@ func TestSyncFeeds(t *testing.T) {
 				},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: rss.RSSFeedSet{
-					"https://github.com/user/repo1/releases.atom": {},
-					"https://github.com/user/repo2/releases.atom": {},
-				},
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/repo1/releases.atom",
+					"https://github.com/user/repo2/releases.atom",
+				),
 			},
 			expectAdded:   0,
 			expectRemoved: 0,
@@ -164,11 +165,11 @@ func TestSyncFeeds(t *testing.T) {
 				},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: rss.RSSFeedSet{
-					"https://github.com/user/existing/releases.atom": {},
-					"https://github.com/user/stale1/releases.atom":   {},
-					"https://github.com/user/stale2/releases.atom":   {},
-				},
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/existing/releases.atom",
+					"https://github.com/user/stale1/releases.atom",
+					"https://github.com/user/stale2/releases.atom",
+				),
 			},
 			expectAdded:   2,
 			expectRemoved: 2,
@@ -184,7 +185,7 @@ func TestSyncFeeds(t *testing.T) {
 				},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: rss.RSSFeedSet{},
+				ExpectedFeeds: common.NewSet[common.FeedURL](),
 			},
 			expectAdded:   3,
 			expectRemoved: 0,
@@ -196,11 +197,11 @@ func TestSyncFeeds(t *testing.T) {
 				ExpectedFeeds: gitforge.StarredRepoMap{},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: rss.RSSFeedSet{
-					"https://github.com/user/stale1/releases.atom": {},
-					"https://github.com/user/stale2/releases.atom": {},
-					"https://github.com/user/stale3/releases.atom": {},
-				},
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/stale1/releases.atom",
+					"https://github.com/user/stale2/releases.atom",
+					"https://github.com/user/stale3/releases.atom",
+				),
 			},
 			expectAdded:   0,
 			expectRemoved: 3,
@@ -233,7 +234,7 @@ func TestSyncFeeds(t *testing.T) {
 				},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: rss.RSSFeedSet{},
+				ExpectedFeeds: common.NewSet[common.FeedURL](),
 			},
 			expectAdded:   20,
 			expectRemoved: 0,

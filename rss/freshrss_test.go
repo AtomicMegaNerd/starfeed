@@ -217,7 +217,7 @@ func TestLoadFeeds(t *testing.T) {
 		name            string
 		gitForge        string
 		responses       []http.Response
-		expectedFeedMap RSSFeedSet
+		expectedFeedMap *common.Set[common.FeedURL]
 		expectError     bool
 	}{
 		{
@@ -251,10 +251,10 @@ func TestLoadFeeds(t *testing.T) {
 					Status:     testutils.StatusOKString,
 				},
 			},
-			expectedFeedMap: RSSFeedSet{
-				"http://localhost/feeds/123": {},
-				"http://localhost/feeds/456": {},
-			},
+			expectedFeedMap: common.NewSet[common.FeedURL](
+				"http://localhost/feeds/123",
+				"http://localhost/feeds/456",
+			),
 			expectError: false,
 		},
 		{
@@ -266,7 +266,7 @@ func TestLoadFeeds(t *testing.T) {
 					Status:     testutils.StatusUnauthorizedString,
 				},
 			},
-			expectedFeedMap: RSSFeedSet{},
+			expectedFeedMap: common.NewSet[common.FeedURL](),
 			expectError:     true,
 		},
 		{
@@ -278,7 +278,7 @@ func TestLoadFeeds(t *testing.T) {
 					Status:     testutils.StatusOKString,
 				},
 			},
-			expectedFeedMap: RSSFeedSet{},
+			expectedFeedMap: common.NewSet[common.FeedURL](),
 			expectError:     true,
 		},
 	}
@@ -308,12 +308,12 @@ func TestLoadFeeds(t *testing.T) {
 					t.Errorf("Expected no error but got %v", err)
 				}
 
-				if len(feeds) != len(tc.expectedFeedMap) {
-					t.Errorf("Expected %d feeds but got %d", len(tc.expectedFeedMap), len(feeds))
+				if feeds.Len() != tc.expectedFeedMap.Len() {
+					t.Errorf("Expected %d feeds but got %d", tc.expectedFeedMap.Len(), feeds.Len())
 				}
 
-				for feed := range feeds {
-					if _, ok := tc.expectedFeedMap[feed]; !ok {
+				for feed := range feeds.All() {
+					if !tc.expectedFeedMap.Contains(feed) {
 						t.Errorf("Unexpected feed %s", feed)
 					}
 				}

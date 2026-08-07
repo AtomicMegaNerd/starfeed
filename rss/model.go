@@ -2,8 +2,6 @@ package rss
 
 import "github.com/atomicmeganerd/starfeed/common"
 
-type RSSFeedSet map[common.FeedURL]struct{}
-
 type FeedName string
 
 func (n FeedName) String() string {

@@ -77,8 +77,8 @@ func (f *FreshRSS) Authenticate(
 // Load all feeds that are under the given category.
 func (f *FreshRSS) LoadFeeds(
 	ctx context.Context, category FeedCategory,
-) (RSSFeedSet, error) {
-	newFeeds := make(RSSFeedSet)
+) (*common.Set[common.FeedURL], error) {
+	newFeeds := common.NewSet[common.FeedURL]()
 	loadUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/list?output=json", f.url,
 	)
@@ -88,21 +88,21 @@ func (f *FreshRSS) LoadFeeds(
 	}
 
 	// Parse the response
-	feeds := &RSSFeedList{}
-	if err = json.Unmarshal(res, &feeds); err != nil {
+	feedList := &RSSFeedList{}
+	if err = json.Unmarshal(res, &feedList); err != nil {
 		return nil, err
 	}
 
-	for _, feed := range feeds.Feeds {
+	for _, feed := range feedList.Feeds {
 		// Only add feeds that are from the category that we care about
 		for _, catStruct := range feed.Categories {
 			if catStruct.Label == category {
-				newFeeds[feed.URL] = struct{}{}
+				newFeeds.Add(feed.URL)
 			}
 		}
 	}
 
-	numFeeds := len(newFeeds)
+	numFeeds := newFeeds.Len()
 	if numFeeds == 0 {
 		f.logger.Warn("No feeds found in our RSS server", "numFeeds", numFeeds)
 	} else {

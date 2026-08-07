@@ -29,8 +29,8 @@ func NewGitForge(
 	forgeType, fqdn, token string,
 	logger *slog.Logger,
 	client *http.Client,
-) *GitForge {
-	return &GitForge{
+) GitForge {
+	return GitForge{
 		fetchRepoURL: buildStarredRepoUrl(forgeType, fqdn),
 		headers:      buildHeaders(forgeType, token),
 		logger:       logger,
@@ -38,7 +38,7 @@ func NewGitForge(
 	}
 }
 
-func (g *GitForge) LoadFeeds(
+func (g GitForge) LoadFeeds(
 	ctx context.Context,
 ) (StarredRepoMap, error) {
 	// Get all starredRepos
@@ -102,7 +102,7 @@ func (g *GitForge) LoadFeeds(
 	return starredFeeds, nil
 }
 
-func (g *GitForge) fetchStarredRepos(
+func (g GitForge) fetchStarredRepos(
 	ctx context.Context,
 ) ([]GitRepo, error) {
 	allRepos := make([]GitRepo, 0)
@@ -147,7 +147,7 @@ func (g *GitForge) fetchStarredRepos(
 	}
 }
 
-func (g *GitForge) repoHasReleaseFeed(
+func (g GitForge) repoHasReleaseFeed(
 	ctx context.Context,
 	repo GitRepo,
 ) bool {
@@ -175,7 +175,7 @@ func (g *GitForge) repoHasReleaseFeed(
 	return false
 }
 
-func (g *GitForge) parseNextPageURL(respHeaders http.Header) string {
+func (g GitForge) parseNextPageURL(respHeaders http.Header) string {
 	linkHeader := respHeaders.Get("Link")
 	if linkHeader == "" {
 		return ""
