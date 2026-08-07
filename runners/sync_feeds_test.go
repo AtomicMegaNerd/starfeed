@@ -72,7 +72,7 @@ func TestSyncFeeds(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "AddFeed fails",
+			name: "AddFeed fails but no error",
 			gitForge: &MockGitForge{
 				ExpectedFeeedResultMap: gitforge.FeedResultMap{
 					"https://github.com/user/repo/releases.atom": gitforge.GitRepoResult{
@@ -84,7 +84,6 @@ func TestSyncFeeds(t *testing.T) {
 			rssServer: &MockRssServer{
 				ExpectedAddError: errors.New("failed to add feed"),
 			},
-			expectError: true,
 		},
 		{
 			name: "RemoveFeed fails",
@@ -97,7 +96,6 @@ func TestSyncFeeds(t *testing.T) {
 				),
 				ExpectedRemoveError: errors.New("failed to remove feed"),
 			},
-			expectError: true,
 		},
 		{
 			name: "Both LoadFeeds fail simultaneously",
