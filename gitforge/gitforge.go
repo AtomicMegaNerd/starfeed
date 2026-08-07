@@ -51,6 +51,8 @@ func (g GitForge) LoadFeeds(
 	// Check each repo to make sure it has valid entries in its ATOM feed for releases
 	// This can be done in parallel to make it much faster.
 	mu := sync.Mutex{}
+	// We only use a errgroup here to get SetLimit. None of our goroutines can throw an
+	// error. I just like this better than using the weighted semaphore.
 	eg := &errgroup.Group{}
 	eg.SetLimit(5)
 	for _, repo := range starredRepos {
@@ -64,7 +66,7 @@ func (g GitForge) LoadFeeds(
 				mu.Lock()
 				starredFeeds[repo.FeedURL] = repo.Name
 				mu.Unlock()
-				logger.Info("Addedfeed for repo to feeds map")
+				logger.Info("Added feed for repo to feeds map")
 				return nil
 			}
 

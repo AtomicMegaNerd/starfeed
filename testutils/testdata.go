@@ -10,7 +10,6 @@ const (
 	CodebergFqdn  = "codeberg.org"
 	CodebergToken = "cb_abcdefghijklmnopqrstuvwxyz"
 	// FreshRSS
-	FreshRSSName  = "freshrss"
 	FreshRSSURL   = "http://freshrss.example.com"
 	FreshRSSUser  = "testuser@email.com"
 	FreshRSSToken = "freshrss_token456"

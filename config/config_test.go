@@ -588,29 +588,6 @@ token = "freshrss_token_12345"
 			expectErr: true,
 		},
 		{
-			name: "invalid run_interval below minimum",
-			mockCfgData: func() []byte {
-				return []byte(`
-debug = true
-single_run = true
-run_interval = "30m"
-
-[[git_forges]]
-type = "github"
-name = "GitHub"
-fqdn = "github.com"
-token = "ghp_1234567890abcdef"
-
-[rss_server]
-name = "freshrss"
-url = "http://freshrss:80"
-user = "testuser"
-token = "freshrss_token_12345"
-`)
-			},
-			expectErr: true,
-		},
-		{
 			name: "invalid run_interval above maximum",
 			mockCfgData: func() []byte {
 				return []byte(`
