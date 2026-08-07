@@ -253,6 +253,44 @@ func TestSyncFeeds(t *testing.T) {
 			expectError:   false,
 		},
 		{
+			name: "5xx on release feed must not remove existing feed",
+			gitForge: &MockGitForge{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
+					"https://github.com/user/repo/releases.atom": gitforge.GitRepoResult{
+						RepoName: "repo",
+						Err:      common.HTTPError{StatusCode: 500},
+					},
+				},
+			},
+			rssServer: &MockRssServer{
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/repo/releases.atom",
+				),
+			},
+			expectAdded:   0,
+			expectRemoved: 0,
+			expectError:   false,
+		},
+		{
+			name: "Network error on release feed must not remove existing feed",
+			gitForge: &MockGitForge{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
+					"https://github.com/user/repo/releases.atom": gitforge.GitRepoResult{
+						RepoName: "repo",
+						Err:      errors.New("connection reset"),
+					},
+				},
+			},
+			rssServer: &MockRssServer{
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/repo/releases.atom",
+				),
+			},
+			expectAdded:   0,
+			expectRemoved: 0,
+			expectError:   false,
+		},
+		{
 			name: "Large number of feeds",
 			gitForge: &MockGitForge{
 				ExpectedFeeedResultMap: gitforge.FeedResultMap{

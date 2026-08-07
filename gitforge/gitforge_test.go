@@ -277,6 +277,38 @@ func TestLoadFeeds(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Repo with transient 500 on release feed",
+			mocks: []testutils.MockRoutedResponse{
+				{
+					UrlPattern: `api\.github\.com/user/starred`,
+					Response: http.Response{
+						Body: io.NopCloser(strings.NewReader(`[
+							{
+								"name": "` + repo1.Name.String() + `",
+								"html_url": "` + repo1.RepoURL.String() + `"
+							}
+						]`)),
+						Status:     testutils.StatusOKString,
+						StatusCode: http.StatusOK,
+					},
+				},
+				{
+					UrlPattern: repo1.Name.String() + `/releases\.atom`,
+					Response: http.Response{
+						StatusCode: http.StatusInternalServerError,
+						Status:     testutils.StatusIServerErrorString,
+						Body:       io.NopCloser(strings.NewReader("")),
+					},
+				},
+			},
+			expectedFeeds: FeedResultMap{
+				repo1.FeedURL: GitRepoResult{
+					RepoName: repo1.Name,
+					Err:      common.HTTPError{StatusCode: http.StatusInternalServerError},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

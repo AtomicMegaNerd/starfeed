@@ -12,6 +12,7 @@ const (
 	StatusOKString           = "200 OK"
 	StatusNotFoundString     = "404 Not Found"
 	StatusUnauthorizedString = "401 Unauthorized"
+	StatusIServerErrorString = "500 Internal Server Error"
 )
 
 // This is a mock round tripper that can be used to mock http responses
