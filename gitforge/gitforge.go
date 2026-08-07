@@ -41,37 +41,18 @@ func NewGitForge(
 func (g GitForge) LoadFeeds(
 	ctx context.Context,
 ) (StarredRepoMap, error) {
-	// Get all starredRepos
 	starredRepos, err := g.fetchStarredRepos(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// We aren't using errors here but errgroup gives us SetLimit
-	eg := &errgroup.Group{}
-	eg.SetLimit(5)
-
-	// This is the list of starredFeeds that we will return to the caller
 	starredFeeds := make(StarredRepoMap)
 
-	// Repos that have release feeds will be sent to this channel. Repos sent to this channel will
-	// then be added to the feeds map. There is no need for a buffered channel here as the
-	// consumer basically does nothing except writing to a map.
-	repoChan := make(chan GitRepo)
-
-	var wg sync.WaitGroup
-	wg.Go(func() {
-		// This for loop consumes each message that is received. It blocks if the channel is open
-		// but is waiting for a message. When the channel is closed the range is complete and the
-		// for loop terminates.
-		for repo := range repoChan {
-			starredFeeds[repo.FeedURL] = repo.Name
-			g.logger.Debug("Added feed to map", "repo", repo.Name, "feed", repo.FeedURL)
-		}
-	})
-
 	// Check each repo to make sure it has valid entries in its ATOM feed for releases
-	// This can be done in parallel to make it much faster. Send each release repo to the channel
+	// This can be done in parallel to make it much faster.
+	mu := sync.Mutex{}
+	eg := &errgroup.Group{}
+	eg.SetLimit(5)
 	for _, repo := range starredRepos {
 		eg.Go(func() error {
 			logger := g.logger.With(
@@ -80,9 +61,10 @@ func (g GitForge) LoadFeeds(
 			)
 
 			if g.repoHasReleaseFeed(ctx, repo) {
-				logger.Debug("Trying to send repo to channel")
-				repoChan <- repo
-				logger.Info("Adding feed for repo to feeds map")
+				mu.Lock()
+				starredFeeds[repo.FeedURL] = repo.Name
+				mu.Unlock()
+				logger.Info("Addedfeed for repo to feeds map")
 				return nil
 			}
 
@@ -91,12 +73,7 @@ func (g GitForge) LoadFeeds(
 		})
 	}
 
-	// When the producers are done, close the channel
 	_ = eg.Wait()
-	close(repoChan)
-
-	// Wait for the consumer to receive all messages from the producers
-	wg.Wait()
 
 	g.logger.Info("Successfully added all feeds to feeds map", "numFeeds", len(starredFeeds))
 	return starredFeeds, nil
