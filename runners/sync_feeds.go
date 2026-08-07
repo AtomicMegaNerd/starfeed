@@ -92,7 +92,7 @@ func (r SyncFeedsRunner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Nextperform the sync to RSS server adding new release feeds and removing
+	// Next perform the sync to RSS server adding new release feeds and removing
 	// old stale feeds. Here we return the slices of func() error that we can then add to our
 	// errgroup.Group
 	eg, syncCtx := errgroup.WithContext(ctx)
