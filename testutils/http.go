@@ -2,15 +2,17 @@ package testutils
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
-	"sync"
+	"sync/atomic"
 )
 
 const (
 	StatusOKString           = "200 OK"
 	StatusNotFoundString     = "404 Not Found"
 	StatusUnauthorizedString = "401 Unauthorized"
+	StatusIServerErrorString = "500 Internal Server Error"
 )
 
 // This is a mock round tripper that can be used to mock http responses
@@ -19,52 +21,65 @@ const (
 // in a single test.
 type MockMultiResponseRoundTripper struct {
 	responses []http.Response
-	calls     int
-	mtx       sync.Mutex
+	calls     atomic.Int32
 }
 
-func NewMockRoundTripper(responses []http.Response) MockMultiResponseRoundTripper {
+func NewMockMultiResponseRoundTripper(responses []http.Response) MockMultiResponseRoundTripper {
 	return MockMultiResponseRoundTripper{responses: responses}
 }
 
-func (mrt *MockMultiResponseRoundTripper) Increment() {
-	mrt.mtx.Lock()
-	defer mrt.mtx.Unlock()
-	mrt.calls++
-}
-
 func (mrt *MockMultiResponseRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	if mrt.calls >= len(mrt.responses) {
+	// Increment and store in the same op to prevent a race
+	calls := int(mrt.calls.Add(1) - 1)
+	if calls >= len(mrt.responses) {
 		return nil, errors.New("no more responses in mock responses slice")
 	}
-	defer mrt.Increment()
-	return &mrt.responses[mrt.calls], nil
+	res := &mrt.responses[calls]
+	return res, nil
 }
 
 func (mtr *MockMultiResponseRoundTripper) GetNumCalls() int {
-	return mtr.calls
+	return int(mtr.calls.Load())
 }
 
 // This is a mock round tripper that can be used to mock http responses based on the URL
-// of the request. We will use regex patterns to match the URL of the requests.
-type MockURLSelectedRoundTripper struct {
-	response         []http.Response
-	urlRegexPatterns []string
+// of the request. We will use regex patterns to match the URL of the requests. We can set
+// a max matches attribute as well which will specify how many times we can match on the same
+// pattern
+type MockRoutedResponse struct {
+	Response   http.Response
+	UrlPattern string
+	Err        error
+
+	// We increment this value so we want to be careful
+	Matches    atomic.Int32
+	MaxMatches int
 }
 
-func NewMockURLSelectedRoundTripper(
-	responses []http.Response, urls []string,
-) MockURLSelectedRoundTripper {
-	return MockURLSelectedRoundTripper{responses, urls}
+type MockRoutedResponseRoundTripper struct {
+	resps []MockRoutedResponse
 }
 
-func (ust *MockURLSelectedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	for ix, url := range ust.urlRegexPatterns {
-		if matches, _ := regexp.MatchString(url, req.URL.String()); matches {
-			return &ust.response[ix], nil
+func NewMockRoutedResponseRoundTripper(
+	responses []MockRoutedResponse,
+) MockRoutedResponseRoundTripper {
+	return MockRoutedResponseRoundTripper{resps: responses}
+}
+
+func (t *MockRoutedResponseRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	for ix := range t.resps {
+		resp := &t.resps[ix]
+		matches, _ := regexp.MatchString(resp.UrlPattern, req.URL.String())
+		if matches {
+			// Increment and store in the same op to prevent a race.
+			matches := int(resp.Matches.Add(1) - 1)
+			if resp.MaxMatches == 0 || matches < resp.MaxMatches {
+				return &resp.Response, resp.Err
+			}
 		}
 	}
-	return nil, errors.New("no response found for url")
+	// Return not found if we don't match which is what would happen
+	return nil, fmt.Errorf("no response for url: %s", req.URL.String())
 }
 
 // This is a mock ReadCloser that can be used to mock an error when reading

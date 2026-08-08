@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/pelletier/go-toml/v2"
@@ -11,10 +12,15 @@ import (
 // The main Config struct used to hold configuration state for the app
 type Config struct {
 	// dive here tells validator to validate each element in our slice
-	GitForges []GitForgeConfig `validate:"required,min=1,dive" toml:"git_forges"`
-	RSSServer RSSServerConfig  `validate:"required"            toml:"rss_server"`
-	Debug     bool             `                               toml:"debug"`
-	SingleRun bool             `                               toml:"single_run"`
+	GitForges   []GitForgeConfig `validate:"required,min=1,dive" toml:"git_forges"`
+	RSSServer   RSSServerConfig  `validate:"required"            toml:"rss_server"`
+	RunInterval duration         `validate:"required"            toml:"run_interval"`
+	Debug       bool             `                               toml:"debug"`
+	SingleRun   bool             `                               toml:"single_run"`
+}
+
+func (c Config) Interval() time.Duration {
+	return time.Duration(c.RunInterval)
 }
 
 // This type both holds and validates the config for a GitForge
@@ -33,11 +39,6 @@ type RSSServerConfig struct {
 	Token string `validate:"required,min=10"` // WARNING: This is a secret
 }
 
-// This interface lets us mock our ConfigLoader for testing
-type configLoader interface {
-	LoadConfig() ([]byte, error)
-}
-
 func NewConfig(cl configLoader) (Config, error) {
 	validate := validator.New()
 
@@ -50,6 +51,7 @@ func NewConfig(cl configLoader) (Config, error) {
 	// We are making it strict to disallow unknown fields. This will protect against typos
 	dec := toml.NewDecoder(bytes.NewReader(cfgData))
 	dec.DisallowUnknownFields()
+
 	if err := dec.Decode(&cfg); err != nil {
 		return Config{}, fmt.Errorf("could not parse invalid toml file %w", err)
 	}

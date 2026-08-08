@@ -58,7 +58,7 @@ I use logging for all debugging and never use a debugger.
 ## Code Organization
 
 - `cmd/main.go`: Application entrypoint; sets up logging, reads config, handles signals, schedules
-  24h ticker, and invokes the runners.
+  the ticker based on the configured interval.
 - `config/`: Loads configuration from the environment into our Go objects.
 - `common/`: Common code like http handling, etc.
 - `runners/`: Orchestration layer which executes workflows against the RSS server and the Git

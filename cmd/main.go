@@ -10,11 +10,7 @@ import (
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/config"
-	"github.com/atomicmeganerd/starfeed/gitforge"
-	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/runners"
-	"github.com/lmittmann/tint"
-	"golang.org/x/sync/errgroup"
 )
 
 // This is injected by the CI/CD to tag the binary
@@ -24,68 +20,62 @@ var (
 )
 
 func main() {
+	// Return an error to the operating system if run returns an error
+	if err := run(); err != nil {
+		os.Exit(1)
+	}
+}
+
+// Return errors so we can return an error to the OS in main
+func run() error {
 	// The configuration is loaded from the environment
 	cfg, err := config.NewConfig(config.ConfigLoader{})
 	if err != nil {
-		slog.Error("Failed to load configuration", "error", err)
-		os.Exit(1)
+		slog.Default().Error("Error loading configuration", "error", err)
+		return err
 	}
 
 	client := &http.Client{Timeout: 60 * time.Second}
-	logger := getLogger(cfg.Debug)
+	logger := buildLogger(cfg.Debug)
 
 	logger.Info("***********************************************")
 	logger.Info(" Welcome to Starfeed", "version", version, "commit", commit)
 	logger.Info("***********************************************")
 	logger.Debug("Debug mode enabled")
 
-	// Register signal handling. This will setup a private channel in our ctx object will
+	// Register signal handling. This will setup a private channel in our ctx object which will
 	// be closed if one of these signals is received. This is easy to understand...
+	// NOTE: the channel in ctx is one-shot and is a synchronization channel (meaning no actual
+	// data is sent).
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	// Setup our ticker for our timed execution. This will send a time.Time value to the ticker.C
-	// every 24 hours.
-	ticker := time.NewTicker(24 * time.Hour)
+	// is set by the interval setting in the Config.
+	// NOTE: This is a bounded (size 1) async channel
+	ticker := time.NewTicker(cfg.Interval())
 	defer ticker.Stop()
 
-	// Try to authenticate to the target RSS server
-	rssServer := rss.NewFreshRSS(
-		cfg.RSSServer.Name, cfg.RSSServer.User, cfg.RSSServer.URL, logger, client,
-	)
-	if err := rssServer.Authenticate(ctx, cfg.RSSServer.Token); err != nil {
-		logger.Error("Error authenticating to FreshRSS", "error", err)
-		os.Exit(1)
-	}
-	logger.Info(
-		"Successfully authenticated to RSS Server", "rssServer", cfg.RSSServer.URL,
-	)
-
-	// For each GitForge in our config let's create a new runner
-	runnerSlice := make([]starfeedRunner, 0)
-	for _, forgeCfg := range cfg.GitForges {
-		gitForge := gitforge.NewGitForge(
-			forgeCfg.Type, forgeCfg.Name, forgeCfg.Fqdn, forgeCfg.Token, logger, client,
-		)
-		releasesRunner := runners.NewSyncFeedsRunner(gitForge, rssServer, logger)
-		logger.Info("Successfully registered runner for gitForge", "name", forgeCfg.Name)
-		runnerSlice = append(runnerSlice, releasesRunner)
+	runnerSlice, err := buildRunners(ctx, cfg, logger, client)
+	if err != nil {
+		logger.Error("Error building runners", "error", err)
+		return err
 	}
 
-	// Always run once...
-	if err := executeRunners(ctx, runnerSlice); err != nil {
+	// We always want to run on startup, and if we are in SingleRun mode we will terminate
+	// the app after running the workflow once. SingleRun is useful for development and testing.
+	if err := runners.ExecuteRunners(ctx, runnerSlice); err != nil {
 		logger.Error("Error executing runners", "error", err)
-		os.Exit(1)
+		return err
 	}
-
 	if cfg.SingleRun {
 		logger.Info("Cancelling as we are in single run mode...")
-		return
+		return nil
 	}
 
-	// The comments below were written by me the human as I try to better understand how Go
-	// uses channels and select in this context.
 	for {
+		// Select will block until one of the two signals are received. The goroutine is parked
+		// until one of the below channels sends a message.
 		select {
 		// If the signal handler closes the private channel, the fact the channel was closed will
 		// wake up this goroutine and trigger this clause. Done() here is a getter for the private
@@ -94,48 +84,16 @@ func main() {
 		// the clause.
 		case <-ctx.Done():
 			logger.Info("Exiting...")
-			return
-		// ticker.C receives a time.Time value here but we ignore it because our logs will
-		// already capture the timestamp when we execute. But it is good to recognize that
-		// the ticker channel is sent this data.
-		case <-ticker.C:
-			if err := executeRunners(ctx, runnerSlice); err != nil {
+			return nil
+			// ticker.C receives a time.Time value here but we ignore it because our logs will
+			// already capture the timestamp when we execute. But it is good to recognize that
+			// the ticker channel is sent this data.
+		case t := <-ticker.C:
+			if err := runners.ExecuteRunners(ctx, runnerSlice); err != nil {
 				logger.Error("Error executing runners", "error", err)
-				os.Exit(1)
+				return err
 			}
-			logger.Info("Sleeping for 24 hours...")
+			logger.Info("Sleeping...", "nextRun", t.Add(cfg.Interval()))
 		}
 	}
-}
-
-type starfeedRunner interface {
-	Run(ctx context.Context) error
-}
-
-// Here we execute the runners in parallel...
-func executeRunners(ctx context.Context, runners []starfeedRunner) error {
-	errGroup, runnerCtx := errgroup.WithContext(ctx)
-	for _, runner := range runners {
-		errGroup.Go(func() error {
-			return runner.Run(runnerCtx)
-		})
-	}
-	return errGroup.Wait()
-}
-
-func getLogger(debug bool) *slog.Logger {
-	if debug {
-		return slog.New(
-			tint.NewTextHandler(
-				os.Stderr,
-				&tint.Options{Level: slog.LevelDebug, TimeFormat: time.RFC3339},
-			),
-		)
-	}
-	return slog.New(
-		tint.NewTextHandler(
-			os.Stderr,
-			&tint.Options{Level: slog.LevelInfo, TimeFormat: time.RFC3339},
-		),
-	)
 }

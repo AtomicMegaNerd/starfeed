@@ -2,9 +2,13 @@
 
 ![Starfeed](./img/starfeed.png)
 
-Starfeed scans the current list of your starred repos from any supported Git Forge on the Internet, grabs the Releases RSS feed for each repo it finds, and publishes them to your own self-hosted [FreshRSS](https://www.freshrss.org/) RSS aggregator. Then by hooking up an RSS client to your FreshRSS server you can easily follow the releases for any of the repos that you have starred.
+Starfeed scans the current list of your starred repos from any supported Git Forge on the Internet,
+grabs the Releases RSS feed for each repo it finds, and publishes them to your own self-hosted
+[FreshRSS](https://www.freshrss.org/) RSS aggregator. Then by hooking up an RSS client to your
+FreshRSS server you can easily follow the releases for any of the repos that you have starred.
 
-Starfeed will omit any RSS feeds that do not contain releases. It will also remove any feeds for repos that you are no longer starring.
+Starfeed will omit any RSS feeds that do not contain releases. It will also remove any feeds for
+repos that you are no longer starring.
 
 Currently supported Git Forges:
 
@@ -17,10 +21,12 @@ Currently supported Git Forges:
 
 ### Required Software
 
-- You must have [FreshRSS](https://www.freshrss.org) deployed in your local network. It must be reachable from the Starfeed Docker container.
+- You must have [FreshRSS](https://www.freshrss.org) deployed in your local network. It must be
+  reachable from the Starfeed Docker container.
 - You must have an API token generated in FreshRSS that has permissions to create/edit/delete feeds.
 - You must have an API token for each Git Forge with permission to read starred repos.
-- You must have [Docker](https://docker.com) or [Podman](https://podman.io) set up to run the container.
+- You must have [Docker](https://docker.com) or [Podman](https://podman.io) set up to run the
+  container.
 - To build and run the app locally you need to install [Go](https://go.dev),
   [Taskfile](https://taskfile.dev), and [Direnv](https://direnv.net/).
 
@@ -36,6 +42,7 @@ point to the file location. If unset, it defaults to `./starfeed.toml`.
 ```toml
 debug=true
 single_run=true
+run_interval="24h"
 
 [[git_forges]]
 type = "github"
@@ -58,34 +65,39 @@ token = "FRESHRSS_TOKEN"
 
 ### Configuration Fields
 
-| Field              | Description                                                        |
-| ------------------ | ------------------------------------------------------------------ |
-| `debug`            | Enable debug logging (`true`/`false`).                             |
-| `single_run`       | Run once and exit (`true`) or run on a 24-hour interval (`false`). |
-| `git_forges`       | List of Git Forge configurations. At least one is required.        |
-| `git_forges.type`  | Forge type: `github` or `forgejo`.                                 |
-| `git_forges.name`  | Display name for the forge.                                        |
-| `git_forges.fqdn`  | Fully qualified domain name (e.g. `github.com`, `codeberg.org`).   |
-| `git_forges.token` | API token with permission to read starred repos.                   |
-| `rss_server.name`  | RSS server type: `freshrss`.                                       |
-| `rss_server.url`   | URL of the FreshRSS instance.                                      |
-| `rss_server.user`  | FreshRSS username/email.                                           |
-| `rss_server.token` | FreshRSS API token.                                                |
+| Field              | Description                                                            |
+| ------------------ | ---------------------------------------------------------------------- |
+| `debug`            | Enable debug logging (`true`/`false`).                                 |
+| `single_run`       | Run once and exit (`true`) or run on an interval (`false`).            |
+| `run_interval`     | How often to run when not in `single_run` mode. Must be a string       |
+|                    | that can be parsed by time.ParseDuration and must be between 1 and 168 |
+|                    | hours (1 week)                                                         |
+| `git_forges`       | List of Git Forge configurations. At least one is required.            |
+| `git_forges.type`  | Forge type: `github` or `forgejo`.                                     |
+| `git_forges.name`  | Display name for the forge.                                            |
+| `git_forges.fqdn`  | Fully qualified domain name (e.g. `github.com`, `codeberg.org`).       |
+| `git_forges.token` | API token with permission to read starred repos.                       |
+| `rss_server.name`  | RSS server type: `freshrss`.                                           |
+| `rss_server.url`   | URL of the FreshRSS instance.                                          |
+| `rss_server.user`  | FreshRSS username/email.                                               |
+| `rss_server.token` | FreshRSS API token.                                                    |
 
-> [!note]Note
-> The TOML config contains secrets and must not be committed to version control or included in Docker images. It should be mounted into the container as a volume.
+<!-- prettier-ignore -->
+> [!IMPORTANT]
+> The TOML config contains secrets and must not be committed to version control or included in
+> Docker images. It should be mounted into the container as a volume.
 
 ---
 
 ## Setting the Environment
 
-For local development, the best way to manage the environment is with [Direnv](https://direnv.net/). Create an `.envrc` file (already in `.gitignore`).
+For local development, the best way to manage the environment is with [Direnv](https://direnv.net/).
+Create an `.envrc` file (already in `.gitignore`).
 
 ### .envrc
 
 ```bash
 use flake
-
 source .env
 ```
 
@@ -107,7 +119,8 @@ Then activate your environment with:
 direnv allow
 ```
 
-This will load all of the environment variables in `.envrc` into your environment while you are in the project directory. See the direnv docs for more information.
+This will load all of the environment variables in `.envrc` into your environment while you are in
+the project directory. See the direnv docs for more information.
 
 ## Running Locally with Containers (Recommended)
 
@@ -115,7 +128,8 @@ Use either **Docker** or **Podman** to run Starfeed. The instructions below show
 
 The included `docker-compose.yml` file will run FreshRSS and Starfeed locally. As long as the
 environment is set up correctly above it will configure Starfeed to connect to this local test
-instance of FreshRSS. Note that we use tmpfs so that the data is not persisted for FreshRSS after the container is shut down.
+instance of FreshRSS. Note that we use tmpfs so that the data is not persisted for FreshRSS after
+the container is shut down.
 
 While I use podman as my container runtime, `docker-compose` (the Go version) is pretty much a
 requirement as `podman-compose` has bugs that break basics like `depends_on` with `healthcheck`.
@@ -144,7 +158,9 @@ task build
 
 ### Run
 
-As long as you have a valid `starfeed.toml` config file, you should be able to run the app. However, you'll need to point to an existing FreshRSS instance. Generally the docker-compose option is superior as it will spin up a test FreshRSS instance for you.
+As long as you have a valid `starfeed.toml` config file, you should be able to run the app. However,
+you'll need to point to an existing FreshRSS instance. Generally the docker-compose option is
+superior as it will spin up a test FreshRSS instance for you.
 
 ```bash
 task run
@@ -178,7 +194,8 @@ Steps:
 - Go to the **Actions** tab on GitHub.
 - Select the **Starfeed Release** workflow from the sidebar.
 - Click **Run workflow** and enter the version tag in semver format (e.g. `v0.5.1`).
-- The workflow will run CI first, then validate the version, create and push the git tag, and run GoReleaser to build binaries and publish the Docker image to Docker Hub.
+- The workflow will run CI first, then validate the version, create and push the git tag, and run
+  GoReleaser to build binaries and publish the Docker image to Docker Hub.
 
 ## Roadmap
 
@@ -196,7 +213,6 @@ I really want to get these items done.
 
 These are less important and may or may not happen.
 
-- [ ] Migrate to [codeberg](https://codeberg.org) or another host?
 - [ ] Support other RSS backends?
 - [ ] Support other Git Forges (Gitea, Bitbucket, Gitlab)?
 - [ ] Create RSS feeds for notifications that we can serve up from this daemon.

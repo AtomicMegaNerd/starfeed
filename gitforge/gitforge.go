@@ -6,7 +6,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log/slog"
-	"maps"
 	"net/http"
 	"regexp"
 	"strings"
@@ -19,186 +18,152 @@ import (
 // This regex will match if there is a next page in the response headers
 var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
-type GitForge struct {
-	name             string
-	fetchRepoURL     string
-	feeds            map[string]string
-	isReleasePattern *regexp.Regexp
-	headers          http.Header
-	logger           *slog.Logger
-	client           *http.Client
-	mtx              sync.RWMutex
+// GitForgeClient struct represents a GitForge. We can load RSS feeds for all starred repos that
+// belong to this Git Forge.
+type GitForgeClient struct {
+	fetchRepoURL string
+	headers      http.Header
+	logger       *slog.Logger
+	client       *http.Client
 }
 
-func NewGitForge(
-	forgeType, name, fqdn, token string,
+func NewGitForgeClient(
+	forgeType, fqdn, token string,
 	logger *slog.Logger,
 	client *http.Client,
-) *GitForge {
-	return &GitForge{
-		name:         name,
+) GitForgeClient {
+	return GitForgeClient{
 		fetchRepoURL: buildStarredRepoUrl(forgeType, fqdn),
-		feeds:        make(map[string]string, 0),
-		isReleasePattern: regexp.MustCompile(
-			fmt.Sprintf(
-				`^https://%s/[\w\.\-]+/[\w\.\-]+/releases\.atom`,
-				regexp.QuoteMeta(fqdn),
-			),
-		),
-		headers: buildHeaders(forgeType, token),
-		logger: logger.With(
-			slog.Group("gitforge",
-				"name", name,
-			),
-		),
-		client: client,
+		headers:      buildHeaders(forgeType, token),
+		logger:       logger,
+		client:       client,
 	}
 }
 
-func (g *GitForge) LoadFeeds(
+func (c GitForgeClient) LoadFeeds(
 	ctx context.Context,
-) error {
-	// Clear the feeds map before reloading...
-	g.mtx.Lock()
-	g.feeds = make(map[string]string, 0)
-	g.mtx.Unlock()
-
-	// Get all repos
-	repos, err := g.fetchStarredRepos(ctx)
+) (FeedResultMap, error) {
+	starredRepos, err := c.fetchStarredRepos(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// We aren't using errors here but errgroup gives us SetLimit
-	eg := &errgroup.Group{}
-	eg.SetLimit(5)
+	starredFeeds := make(FeedResultMap)
 
 	// Check each repo to make sure it has valid entries in its ATOM feed for releases
-	// This can be done in parallel to make it much faster
-	for _, repo := range repos {
+	// This can be done in parallel to make it much faster.
+	mu := sync.Mutex{}
+	// We only use a errgroup here to get SetLimit. None of our goroutines can throw an
+	// error. I just like this better than using the weighted semaphore.
+	eg := &errgroup.Group{}
+	eg.SetLimit(5)
+	for _, repo := range starredRepos {
+		logger := c.logger.With("repoName", repo.Name, "feeedURL", repo.FeedURL)
 		eg.Go(func() error {
-			logger := g.logger.With(
-				"feed", repo.FeedURL,
-				"repo", repo.Name,
-			)
-			if !g.repoHasReleaseFeed(ctx, repo) {
-				logger.Warn("Repo does not have valid release feed")
-				return nil
+			result := c.repoHasReleaseFeed(ctx, repo)
+			if result.IsOK() {
+				logger.Info("Repo has valid release feed")
 			}
-
-			g.mtx.Lock()
-			g.feeds[repo.FeedURL] = repo.Name
-			g.mtx.Unlock()
-			g.logger.Info("Added feed for repo to feeds map")
+			mu.Lock()
+			starredFeeds[repo.FeedURL] = result
+			mu.Unlock()
 			return nil
 		})
 	}
-	// We don't get an error, see comment above
+
 	_ = eg.Wait()
 
-	g.logger.Info(
-		"Successfully added all feeds to feeds map",
-		"numFeeds", len(g.feeds),
-	)
-	return nil
+	c.logger.Info("Successfully added all feeds to feeds map", "numFeeds", len(starredFeeds))
+	return starredFeeds, nil
 }
 
-func (g *GitForge) fetchStarredRepos(
+func (c GitForgeClient) fetchStarredRepos(
 	ctx context.Context,
 ) ([]GitRepo, error) {
 	allRepos := make([]GitRepo, 0)
-	nextPageURL := g.fetchRepoURL
+	nextPageURL := c.fetchRepoURL
 	for {
-		g.logger.Debug("Fetching starred repos", "url", nextPageURL)
+		c.logger.Debug("Fetching starred repos", "url", nextPageURL)
 		data, respHeaders, err := common.DoAPIRequest(
 			ctx,
 			http.MethodGet,
 			nextPageURL,
 			nil,
-			g.headers,
-			g.client,
+			c.headers,
+			c.client,
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error %w getting raw data from gitforge: %s url: %s",
-				err, g.name, nextPageURL,
+				"error %w getting raw data from gitforge url: %s", err, nextPageURL,
 			)
 		}
 
 		repos := make([]GitRepo, 0)
 		if err := json.Unmarshal(data, &repos); err != nil {
 			return nil, fmt.Errorf(
-				"error %w parsing JSON response from gitforge %s",
-				err, g.name,
+				"error %w parsing JSON response from gitforge", err,
 			)
 		}
 
 		for ix := range repos {
-			repos[ix].FeedURL = fmt.Sprintf(
-				"%s/releases.atom", repos[ix].RepoURL,
+			repos[ix].FeedURL = common.FeedURL(
+				fmt.Sprintf(
+					"%s/releases.atom", repos[ix].RepoURL,
+				),
 			)
 		}
 		allRepos = append(allRepos, repos...)
 
-		nextPageURL = g.parseNextPageURL(respHeaders)
+		nextPageURL = c.parseNextPageURL(respHeaders)
 		if nextPageURL == "" {
-			g.logger.Info("Finished loading starred repos", "numRepos", len(allRepos))
+			c.logger.Info("Finished loading starred repos", "numRepos", len(allRepos))
 			return allRepos, nil
 		}
 	}
 }
 
-func (g *GitForge) Feeds() map[string]string {
-	g.mtx.RLock()
-	defer g.mtx.RUnlock()
-	feedsCopy := maps.Clone(g.feeds)
-	return feedsCopy
-}
-
-func (g *GitForge) Name() string {
-	return g.name
-}
-
-func (g *GitForge) IsRepoFeedStale(feedUrl string) bool {
-	// First of all, if the repo exists it canot be stale
-	g.mtx.RLock()
-	defer g.mtx.RUnlock()
-	if _, exists := g.feeds[feedUrl]; exists {
-		return false
-	}
-
-	// If the repo does not exist but matches the regex for this gitforge it is stale
-	return g.isReleasePattern.MatchString(feedUrl)
-}
-
-func (g *GitForge) repoHasReleaseFeed(
+func (c GitForgeClient) repoHasReleaseFeed(
 	ctx context.Context,
 	repo GitRepo,
-) bool {
-	logger := g.logger.With("repo", repo.Name, "feed", repo.FeedURL)
+) GitRepoResult {
+
+	result := GitRepoResult{RepoName: repo.Name}
+
+	logger := c.logger.With("repo", repo.Name, "feed", repo.FeedURL)
 	logger.Debug("Checking if repo has release feed")
-	data, _, err := common.DoAPIRequest(ctx, http.MethodGet, repo.FeedURL, nil, g.headers, g.client)
+	data, _, err := common.DoAPIRequest(
+		ctx,
+		http.MethodGet,
+		repo.FeedURL.String(),
+		nil,
+		c.headers,
+		c.client,
+	)
 	if err != nil {
-		return false
+		result.Err = err
+		return result
 	}
 	relFeed := &AtomFeed{}
 	if err = xml.Unmarshal(data, relFeed); err != nil {
-		return false
+		result.Err = err
+		return result
 	}
 	if len(relFeed.Entries) >= 1 {
 		logger.Debug("Repo feed is valid")
-		return true
+		result.RelFeedHasEntries = true
+		return result
 	}
-	return false
+
+	return result
 }
 
-func (g *GitForge) parseNextPageURL(respHeaders http.Header) string {
+func (c GitForgeClient) parseNextPageURL(respHeaders http.Header) string {
 	linkHeader := respHeaders.Get("Link")
 	if linkHeader == "" {
 		return ""
 	}
 
-	g.logger.Debug("linkHeader found", "linkHeader", linkHeader)
+	c.logger.Debug("linkHeader found", "linkHeader", linkHeader)
 	links := strings.SplitSeq(linkHeader, ",")
 	for link := range links {
 		matches := nextPagePattern.FindStringSubmatch(link)

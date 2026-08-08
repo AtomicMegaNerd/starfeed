@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/testutils"
 )
 
@@ -62,11 +63,10 @@ func TestAuthenticate(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.responses[0].Status, func(t *testing.T) {
 			t.Parallel()
-			mockTransport := testutils.NewMockRoundTripper(tc.responses)
+			mockTransport := testutils.NewMockMultiResponseRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewFreshRSS(
-				testutils.FreshRSSName,
+			f := NewFreshRSSClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
@@ -93,16 +93,17 @@ func TestAuthenticate(t *testing.T) {
 func TestAddFeed(t *testing.T) {
 
 	testCases := []struct {
-		name             string
-		responses        []http.Response
-		urlRegexPatterns []string
-		expectError      bool
+		name        string
+		mocks       []testutils.MockRoutedResponse
+		expectError bool
 	}{
 		{
 			name: "Successful feed addition",
-			responses: []http.Response{
+			mocks: []testutils.MockRoutedResponse{
 				{
-					Body: io.NopCloser(strings.NewReader(`
+					UrlPattern: ".*quickadd",
+					Response: http.Response{
+						Body: io.NopCloser(strings.NewReader(`
 					{
 						"query": "http://localhost/feeds/123",
 						"numResults": 1,
@@ -110,71 +111,73 @@ func TestAddFeed(t *testing.T) {
 						"streamName": "name"
 					}
 					`)),
-					StatusCode: http.StatusOK,
-					Status:     testutils.StatusOKString,
+						StatusCode: http.StatusOK,
+						Status:     testutils.StatusOKString,
+					},
 				},
 				{
-					Status:     testutils.StatusOKString,
-					StatusCode: http.StatusOK,
+					UrlPattern: ".*edit",
+					Response: http.Response{
+						Status:     testutils.StatusOKString,
+						StatusCode: http.StatusOK,
+					},
 				},
-			},
-			urlRegexPatterns: []string{
-				".*quickadd",
-				".*edit",
 			},
 			expectError: false,
 		},
 		{
 			name: "Failed feed addition on step 1",
-			responses: []http.Response{
+			mocks: []testutils.MockRoutedResponse{
 				{
-					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
-					StatusCode: http.StatusUnauthorized,
-					Status:     testutils.StatusUnauthorizedString,
+					UrlPattern: ".*quickadd",
+					Response: http.Response{
+						Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
+						StatusCode: http.StatusUnauthorized,
+						Status:     testutils.StatusUnauthorizedString,
+					},
 				},
-			},
-			urlRegexPatterns: []string{
-				".*quickadd",
 			},
 			expectError: true,
 		},
 		{
 			name: "Failed feed addition on step 2",
-			responses: []http.Response{
+			mocks: []testutils.MockRoutedResponse{
 				{
-					Body: io.NopCloser(strings.NewReader(`
+					UrlPattern: ".*quickadd",
+					Response: http.Response{
+						Body: io.NopCloser(strings.NewReader(`
 					{
 						"query": "http://localhost/feeds/123",
 						"numResults": 1,
 						"streamId": "feed/http://localhost/feeds/123",
 						"streamName": "name"
 					}`)),
-					StatusCode: http.StatusOK,
-					Status:     testutils.StatusOKString,
+						StatusCode: http.StatusOK,
+						Status:     testutils.StatusOKString,
+					},
 				},
 				{
-					Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
-					StatusCode: http.StatusBadRequest,
-					Status:     "400 Bad Request",
+					UrlPattern: ".*edit",
+					Response: http.Response{
+						Body:       io.NopCloser(strings.NewReader(`{"error": "error"}`)),
+						StatusCode: http.StatusBadRequest,
+						Status:     "400 Bad Request",
+					},
 				},
-			},
-			urlRegexPatterns: []string{
-				".*quickadd",
-				".*edit",
 			},
 			expectError: true,
 		},
 		{
 			name: "Failed feed with invalid response",
-			responses: []http.Response{
+			mocks: []testutils.MockRoutedResponse{
 				{
-					Body:       io.NopCloser(strings.NewReader(`Invalid response`)),
-					StatusCode: http.StatusOK,
-					Status:     testutils.StatusOKString,
+					UrlPattern: ".*quickadd",
+					Response: http.Response{
+						Body:       io.NopCloser(strings.NewReader(`Invalid response`)),
+						StatusCode: http.StatusOK,
+						Status:     testutils.StatusOKString,
+					},
 				},
-			},
-			urlRegexPatterns: []string{
-				".*quickadd",
 			},
 			expectError: true,
 		},
@@ -184,14 +187,10 @@ func TestAddFeed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			mockTransport := testutils.NewMockURLSelectedRoundTripper(
-				tc.responses,
-				tc.urlRegexPatterns,
-			)
+			mockTransport := testutils.NewMockRoutedResponseRoundTripper(tc.mocks)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewFreshRSS(
-				testutils.FreshRSSName,
+			f := NewFreshRSSClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
@@ -216,22 +215,34 @@ func TestLoadFeeds(t *testing.T) {
 
 	testCases := []struct {
 		name            string
+		gitForge        string
 		responses       []http.Response
-		expectedFeedMap map[string]struct{}
+		expectedFeedMap *common.Set[common.FeedURL]
 		expectError     bool
 	}{
 		{
-			name: "Successful feed retrieval",
+			name:     "Successful feed retrieval",
+			gitForge: "GitHub",
 			responses: []http.Response{
 				{
 					Body: io.NopCloser(strings.NewReader(`
 						{
 							"subscriptions": [
 								{
-									"url": "http://localhost/feeds/123"
+									"url": "http://localhost/feeds/123",
+									"categories": [
+										{
+											"label": "GitHub"
+										}
+									]
 								},
 								{
-									"url": "http://localhost/feeds/456"
+									"url": "http://localhost/feeds/456",
+									"categories": [
+										{
+											"label": "GitHub"
+										}
+									]
 								}
 							]
 						}`),
@@ -240,10 +251,10 @@ func TestLoadFeeds(t *testing.T) {
 					Status:     testutils.StatusOKString,
 				},
 			},
-			expectedFeedMap: map[string]struct{}{
-				"http://localhost/feeds/123": {},
-				"http://localhost/feeds/456": {},
-			},
+			expectedFeedMap: common.NewSet[common.FeedURL](
+				"http://localhost/feeds/123",
+				"http://localhost/feeds/456",
+			),
 			expectError: false,
 		},
 		{
@@ -255,7 +266,7 @@ func TestLoadFeeds(t *testing.T) {
 					Status:     testutils.StatusUnauthorizedString,
 				},
 			},
-			expectedFeedMap: map[string]struct{}{},
+			expectedFeedMap: common.NewSet[common.FeedURL](),
 			expectError:     true,
 		},
 		{
@@ -267,7 +278,7 @@ func TestLoadFeeds(t *testing.T) {
 					Status:     testutils.StatusOKString,
 				},
 			},
-			expectedFeedMap: map[string]struct{}{},
+			expectedFeedMap: common.NewSet[common.FeedURL](),
 			expectError:     true,
 		},
 	}
@@ -276,19 +287,17 @@ func TestLoadFeeds(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			mockTransport := testutils.NewMockRoundTripper(tc.responses)
+			mockTransport := testutils.NewMockMultiResponseRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewFreshRSS(
-				testutils.FreshRSSName,
+			f := NewFreshRSSClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
 				mockClient,
 			)
 
-			err := f.LoadFeeds(ctx)
-			feeds := f.Feeds()
+			feeds, err := f.LoadFeeds(ctx, FeedCategory(tc.gitForge))
 
 			if tc.expectError {
 				if err == nil {
@@ -299,12 +308,12 @@ func TestLoadFeeds(t *testing.T) {
 					t.Errorf("Expected no error but got %v", err)
 				}
 
-				if len(feeds) != len(tc.expectedFeedMap) {
-					t.Errorf("Expected %d feeds but got %d", len(tc.expectedFeedMap), len(feeds))
+				if feeds.Len() != tc.expectedFeedMap.Len() {
+					t.Errorf("Expected %d feeds but got %d", tc.expectedFeedMap.Len(), feeds.Len())
 				}
 
-				for feed := range feeds {
-					if _, ok := tc.expectedFeedMap[feed]; !ok {
+				for feed := range feeds.All() {
+					if !tc.expectedFeedMap.Contains(feed) {
 						t.Errorf("Unexpected feed %s", feed)
 					}
 				}
@@ -317,7 +326,7 @@ func TestRemoveFeed(t *testing.T) {
 
 	testCases := []struct {
 		name        string
-		feedURL     string
+		feedURL     common.FeedURL
 		responses   []http.Response
 		expectError bool
 	}{
@@ -350,11 +359,10 @@ func TestRemoveFeed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			mockTransport := testutils.NewMockRoundTripper(tc.responses)
+			mockTransport := testutils.NewMockMultiResponseRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
 
-			f := NewFreshRSS(
-				testutils.FreshRSSName,
+			f := NewFreshRSSClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),

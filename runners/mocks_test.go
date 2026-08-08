@@ -2,67 +2,58 @@ package runners
 
 import (
 	"context"
-	"sync"
+	"sync/atomic"
+
+	"github.com/atomicmeganerd/starfeed/common"
+	"github.com/atomicmeganerd/starfeed/gitforge"
+	"github.com/atomicmeganerd/starfeed/rss"
 )
 
 type MockGitForge struct {
-	ExpectedError     error
-	ExpectedFeeds     map[string]string
-	ExpectedRepoStale bool
-	ExpectedName      string
+	ExpectedLoadError      error
+	ExpectedFeeedResultMap gitforge.FeedResultMap
 }
 
-func (m *MockGitForge) LoadFeeds(ctx context.Context) error {
-	return m.ExpectedError
-}
-
-func (m *MockGitForge) Feeds() map[string]string {
-	return m.ExpectedFeeds
-}
-
-func (m *MockGitForge) Name() string {
-	return m.ExpectedName
-}
-
-func (m *MockGitForge) IsRepoFeedStale(feedURL string) bool {
-	return m.ExpectedRepoStale
+func (m *MockGitForge) LoadFeeds(ctx context.Context) (gitforge.FeedResultMap, error) {
+	return m.ExpectedFeeedResultMap, m.ExpectedLoadError
 }
 
 type MockRssServer struct {
-	ExpectedError error
-	ExpectedFeeds map[string]struct{}
-	ExpectedName  string
-	AddedFeeds    []string
-	RemovedFeeds  []string
-	mu            sync.Mutex
+	ExpectedLoadError   error
+	ExpectedAddError    error
+	ExpectedRemoveError error
+	ExpectedFeeds       *common.Set[common.FeedURL]
+
+	// These need to be atomic because we call the real RSS server with multiple goroutines. It
+	// has no state to protect but this mock does
+	NumAdded   atomic.Int32
+	NumRemoved atomic.Int32
 }
 
-func (m *MockRssServer) LoadFeeds(ctx context.Context) error {
-	return m.ExpectedError
-}
-
-func (m *MockRssServer) AddFeed(ctx context.Context, feedURL, name, category string) error {
-	if m.ExpectedError == nil {
-		m.mu.Lock()
-		m.AddedFeeds = append(m.AddedFeeds, feedURL)
-		m.mu.Unlock()
+func (m *MockRssServer) LoadFeeds(
+	ctx context.Context, category rss.FeedCategory,
+) (*common.Set[common.FeedURL], error) {
+	if m.ExpectedFeeds == nil {
+		m.ExpectedFeeds = common.NewSet[common.FeedURL]()
 	}
-	return m.ExpectedError
+	return m.ExpectedFeeds, m.ExpectedLoadError
 }
 
-func (m *MockRssServer) RemoveFeed(ctx context.Context, feedURL string) error {
-	if m.ExpectedError == nil {
-		m.mu.Lock()
-		m.RemovedFeeds = append(m.RemovedFeeds, feedURL)
-		m.mu.Unlock()
+func (m *MockRssServer) AddFeed(
+	ctx context.Context,
+	feedURL common.FeedURL,
+	name rss.FeedName,
+	category rss.FeedCategory,
+) error {
+	if m.ExpectedAddError == nil {
+		m.NumAdded.Add(1)
 	}
-	return m.ExpectedError
+	return m.ExpectedAddError
 }
 
-func (m *MockRssServer) Feeds() map[string]struct{} {
-	return m.ExpectedFeeds
-}
-
-func (m *MockRssServer) Name() string {
-	return m.ExpectedName
+func (m *MockRssServer) RemoveFeed(ctx context.Context, feedURL common.FeedURL) error {
+	if m.ExpectedRemoveError == nil {
+		m.NumRemoved.Add(1)
+	}
+	return m.ExpectedRemoveError
 }

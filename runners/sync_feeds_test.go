@@ -3,138 +3,383 @@ package runners
 import (
 	"context"
 	"errors"
-	"log/slog"
-	"os"
 	"testing"
-	"time"
 
+	"github.com/atomicmeganerd/starfeed/common"
+	"github.com/atomicmeganerd/starfeed/gitforge"
+	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/testutils"
-	"github.com/lmittmann/tint"
-	"golang.org/x/sync/errgroup"
 )
 
 func TestSyncFeeds(t *testing.T) {
 	logger := testutils.TestLogger(t)
 
 	testCases := []struct {
-		name        string
-		gitForge    GitForge
-		rssServer   RssServer
-		expectError bool
+		name          string
+		gitForge      *MockGitForge
+		rssServer     *MockRssServer
+		expectAdded   int32
+		expectRemoved int32
+		expectError   bool
 	}{
 		{
 			name: "success- adds new feeds and removes stale feeds",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: map[string]string{
-					"https://github.com/user/new-repo/releases.atom": "new-repo",
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
+					"https://github.com/user/new-repo/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "new-repo",
+						RelFeedHasEntries: true,
+					},
 				},
-				ExpectedRepoStale: false,
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: map[string]struct{}{
-					"https://github.com/user/old-repo/releases.atom": {},
-				},
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/old-repo/releases.atom",
+				),
 			},
-			expectError: false,
+			expectAdded:   1,
+			expectRemoved: 1,
+			expectError:   false,
 		},
 		{
 			name: "No feeds to sync",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: map[string]string{},
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: map[string]struct{}{},
+				ExpectedFeeds: common.NewSet[common.FeedURL](),
 			},
 			expectError: false,
 		},
 		{
 			name: "GitForge LoadFeeds fails",
 			gitForge: &MockGitForge{
-				ExpectedError: errors.New("failed to load from git forge"),
+				ExpectedLoadError: errors.New("failed to load from git forge"),
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: map[string]struct{}{},
+				ExpectedFeeds: common.NewSet[common.FeedURL](),
 			},
 			expectError: true,
 		},
 		{
 			name: "RssServer LoadFeeds fails",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: map[string]string{},
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{},
 			},
 			rssServer: &MockRssServer{
-				ExpectedError: errors.New("failed to load from rss server"),
+				ExpectedLoadError: errors.New("failed to load from rss server"),
 			},
 			expectError: true,
 		},
 		{
-			name: "AddFeed fails",
+			name: "AddFeed fails but no error",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: map[string]string{
-					"https://github.com/user/repo/releases.atom": "repo",
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
+					"https://github.com/user/repo/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo",
+						RelFeedHasEntries: true,
+					},
 				},
 			},
 			rssServer: &MockRssServer{
-				ExpectedError: errors.New("failed to add feed"),
+				ExpectedAddError: errors.New("failed to add feed"),
 			},
-			expectError: true,
 		},
 		{
 			name: "RemoveFeed fails",
 			gitForge: &MockGitForge{
-				ExpectedFeeds:     map[string]string{},
-				ExpectedRepoStale: true,
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: map[string]struct{}{
-					"https://github.com/user/old-repo/releases.atom": {},
-				},
-				ExpectedError: errors.New("failed to remove feed"),
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/old-repo/releases.atom",
+				),
+				ExpectedRemoveError: errors.New("failed to remove feed"),
 			},
-			expectError: true,
 		},
 		{
 			name: "Both LoadFeeds fail simultaneously",
 			gitForge: &MockGitForge{
-				ExpectedError: errors.New("forge error"),
+				ExpectedLoadError: errors.New("forge error"),
 			},
 			rssServer: &MockRssServer{
-				ExpectedError: errors.New("rss error"),
+				ExpectedLoadError: errors.New("rss error"),
 			},
 			expectError: true,
 		},
 		{
 			name: "Multiple feeds to add concurrently",
 			gitForge: &MockGitForge{
-				ExpectedFeeds: map[string]string{
-					"https://github.com/user/repo1/releases.atom": "repo1",
-					"https://github.com/user/repo2/releases.atom": "repo2",
-					"https://github.com/user/repo3/releases.atom": "repo3",
-					"https://github.com/user/repo4/releases.atom": "repo4",
-					"https://github.com/user/repo5/releases.atom": "repo5",
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
+					"https://github.com/user/repo1/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo1",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo2/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo2",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo3/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo3",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo4/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo4",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo5/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo5",
+						RelFeedHasEntries: true,
+					},
 				},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: map[string]struct{}{},
+				ExpectedFeeds: common.NewSet[common.FeedURL](),
 			},
+			expectAdded: 5,
 			expectError: false,
 		},
 		{
 			name: "Multiple feeds to remove concurrently",
 			gitForge: &MockGitForge{
-				ExpectedFeeds:     map[string]string{},
-				ExpectedRepoStale: true,
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{},
 			},
 			rssServer: &MockRssServer{
-				ExpectedFeeds: map[string]struct{}{
-					"https://github.com/user/old1/releases.atom": {},
-					"https://github.com/user/old2/releases.atom": {},
-					"https://github.com/user/old3/releases.atom": {},
-					"https://github.com/user/old4/releases.atom": {},
-					"https://github.com/user/old5/releases.atom": {},
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/old1/releases.atom",
+					"https://github.com/user/old2/releases.atom",
+					"https://github.com/user/old3/releases.atom",
+					"https://github.com/user/old4/releases.atom",
+					"https://github.com/user/old5/releases.atom",
+				),
+			},
+			expectRemoved: 5,
+			expectError:   false,
+		},
+		{
+			name: "All feeds already exist - no changes needed",
+			gitForge: &MockGitForge{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
+					"https://github.com/user/repo1/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo1",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo2/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo2",
+						RelFeedHasEntries: true,
+					},
 				},
 			},
-			expectError: false,
+			rssServer: &MockRssServer{
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/repo1/releases.atom",
+					"https://github.com/user/repo2/releases.atom",
+				),
+			},
+			expectAdded:   0,
+			expectRemoved: 0,
+			expectError:   false,
+		},
+		{
+			name: "Mix of adds, removes, and existing feeds",
+			gitForge: &MockGitForge{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
+					"https://github.com/user/existing/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "existing",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/new1/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "new1",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/new2/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "new2",
+						RelFeedHasEntries: true,
+					},
+				},
+			},
+			rssServer: &MockRssServer{
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/existing/releases.atom",
+					"https://github.com/user/stale1/releases.atom",
+					"https://github.com/user/stale2/releases.atom",
+				),
+			},
+			expectAdded:   2,
+			expectRemoved: 2,
+			expectError:   false,
+		},
+		{
+			name: "Only adds - no stale feeds",
+			gitForge: &MockGitForge{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
+					"https://github.com/user/new1/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "new1",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/new2/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "new2",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/new3/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "new3",
+						RelFeedHasEntries: true,
+					},
+				},
+			},
+			rssServer: &MockRssServer{
+				ExpectedFeeds: common.NewSet[common.FeedURL](),
+			},
+			expectAdded:   3,
+			expectRemoved: 0,
+			expectError:   false,
+		},
+		{
+			name: "Only removes - no new feeds",
+			gitForge: &MockGitForge{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{},
+			},
+			rssServer: &MockRssServer{
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/stale1/releases.atom",
+					"https://github.com/user/stale2/releases.atom",
+					"https://github.com/user/stale3/releases.atom",
+				),
+			},
+			expectAdded:   0,
+			expectRemoved: 3,
+			expectError:   false,
+		},
+		{
+			name: "5xx on release feed must not remove existing feed",
+			gitForge: &MockGitForge{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
+					"https://github.com/user/repo/releases.atom": gitforge.GitRepoResult{
+						RepoName: "repo",
+						Err:      common.HTTPError{StatusCode: 500},
+					},
+				},
+			},
+			rssServer: &MockRssServer{
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/repo/releases.atom",
+				),
+			},
+			expectAdded:   0,
+			expectRemoved: 0,
+			expectError:   false,
+		},
+		{
+			name: "Network error on release feed must not remove existing feed",
+			gitForge: &MockGitForge{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
+					"https://github.com/user/repo/releases.atom": gitforge.GitRepoResult{
+						RepoName: "repo",
+						Err:      errors.New("connection reset"),
+					},
+				},
+			},
+			rssServer: &MockRssServer{
+				ExpectedFeeds: common.NewSet[common.FeedURL](
+					"https://github.com/user/repo/releases.atom",
+				),
+			},
+			expectAdded:   0,
+			expectRemoved: 0,
+			expectError:   false,
+		},
+		{
+			name: "Large number of feeds",
+			gitForge: &MockGitForge{
+				ExpectedFeeedResultMap: gitforge.FeedResultMap{
+					"https://github.com/user/repo1/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo1",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo2/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo2",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo3/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo3",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo4/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo4",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo5/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo5",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo6/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo6",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo7/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo7",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo8/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo8",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo9/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo9",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo10/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo10",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo11/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo11",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo12/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo12",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo13/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo13",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo14/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo14",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo15/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo15",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo16/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo16",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo17/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo17",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo18/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo18",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo19/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo19",
+						RelFeedHasEntries: true,
+					},
+					"https://github.com/user/repo20/releases.atom": gitforge.GitRepoResult{
+						RepoName:          "repo20",
+						RelFeedHasEntries: true,
+					},
+				},
+			},
+			rssServer: &MockRssServer{
+				ExpectedFeeds: common.NewSet[common.FeedURL](),
+			},
+			expectAdded:   20,
+			expectRemoved: 0,
+			expectError:   false,
 		},
 	}
 
@@ -143,9 +388,12 @@ func TestSyncFeeds(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
 
+			category := rss.FeedCategory(testutils.GitHubName)
 			runner := NewSyncFeedsRunner(
 				tc.gitForge,
 				tc.rssServer,
+
+				category,
 				logger,
 			)
 
@@ -157,103 +405,16 @@ func TestSyncFeeds(t *testing.T) {
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error %q", err)
 			}
-		})
-	}
-}
 
-func TestRemoveStaleFeed(t *testing.T) {
-	logger := slog.New(
-		tint.NewTextHandler(
-			os.Stderr,
-			&tint.Options{Level: slog.LevelDebug, TimeFormat: time.RFC3339},
-		),
-	)
+			numAdded := tc.rssServer.NumAdded.Load()
+			numRemoved := tc.rssServer.NumRemoved.Load()
 
-	testCases := []struct {
-		name            string
-		forgeType       string
-		starredRepoMap  map[string]string
-		rssFeed         string
-		expectedErr     error
-		repoIsStale     bool
-		expectedRemoved int
-	}{
-		{
-			name: "Feed still starred - should not remove",
-			starredRepoMap: map[string]string{
-				"https://github.com/user/repo/releases.atom": "repo",
-			},
-			rssFeed: "https://github.com/user/repo/releases.atom",
-		},
-		{
-			name:    "Github unstarred - should not remove codeberg repo",
-			rssFeed: "https://codeberg.org/user/repo/releases.atom",
-		},
-		{
-			name:    "Codeberg unstarred - should not remove Github repo",
-			rssFeed: "https://github.com/user/repo/releases.atom",
-		},
-		{
-			name:    "Not a release feed - should not remove",
-			rssFeed: "https://roflstar.com/feed/feed.xml",
-		},
-		{
-			name:            "Feed no longer starred - should remove",
-			rssFeed:         "https://github.com/user/old-repo/releases.atom",
-			repoIsStale:     true,
-			expectedRemoved: 1,
-		},
-		{
-			name:        "Remove feed fails - should handle error gracefully",
-			rssFeed:     "https://github.com/user/old-repo/releases.atom",
-			repoIsStale: true,
-			expectedErr: errors.New("error removing feed"),
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			ctx := context.Background()
-
-			rssServer := &MockRssServer{
-				ExpectedFeeds: map[string]struct{}{tc.rssFeed: {}},
-				ExpectedError: tc.expectedErr,
-			}
-			gitForge := &MockGitForge{
-				ExpectedFeeds:     tc.starredRepoMap,
-				ExpectedRepoStale: tc.repoIsStale,
+			if tc.expectAdded != numAdded {
+				t.Fatalf("Expected %d feeds added but added %d", tc.expectAdded, numAdded)
 			}
 
-			runner := &SyncFeedsRunner{
-				rssServer: rssServer,
-				gitForge:  gitForge,
-				logger:    logger,
-			}
-
-			g := &errgroup.Group{}
-			runner.removeStaleFeeds(ctx, g)
-			err := g.Wait()
-
-			if tc.expectedErr != nil {
-				if err == nil {
-					t.Fatal("Expected error but didn't get one")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("Got an error that we didn't expect %v", err)
-				return
-			}
-
-			if tc.expectedRemoved != len(rssServer.RemovedFeeds) {
-				t.Fatalf(
-					"Expected %d feeds to be removed but %d were",
-					tc.expectedRemoved,
-					len(rssServer.RemovedFeeds),
-				)
-				return
+			if tc.expectRemoved != numRemoved {
+				t.Fatalf("Expected %d feeds removed but removed %d", tc.expectRemoved, numRemoved)
 			}
 		})
 	}

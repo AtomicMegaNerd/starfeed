@@ -1,0 +1,11 @@
+---
+extends: default
+
+ignore:
+  - .pre-commit-config.yaml
+
+rules:
+  line-length:
+    max: 100
+  truthy:
+    allowed-values: ["true", "false", "on"]

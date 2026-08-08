@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.0] - 2026-08-06
+
+### Changed
+
+- Architectural changes where I got rid of the state in `gitforge.GitForge` and `rss.FreshRSS` and
+  the extra mutexes that went with them. State now lives in the runner and is not saved between
+  runs.
+- Added Named Types for the FeedURL and RepoName to prevent mixing them up in our maps and in our
+  methods.
+- Tidied up the interfaces to make them smaller.
+
+### Fixed
+
+- We now will not remove an RSS feed from FreshRSS if querying the feed fails due to network issue
+  or outage on the current Git Forge.
+
+## [v0.5.1] - 2026-07-29
+
+### Added
+
+- We can now choose the run interval between `1h` and `168h` in the `starfeed.toml` config file.
+
+### Changed
+
+- Linting for cognitive complexity now and refactored `main.go` to get under the limit of `10`.
+- Updated dependencies.
+
 ## [v0.5.0] - 2026-07-10
 
 ### Changed
