@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/atomicmeganerd/starfeed/common"
+	"github.com/atomicmeganerd/starfeed/gitforge"
 )
 
 // FreshRSS struct is for connecting to FreshRSS servers. You can then Load/Add/Remove RSS
@@ -142,8 +143,8 @@ func (c *FreshRSS) addFeed(
 
 func (c *FreshRSS) addFeedToCategory(
 	ctx context.Context,
-	name FeedName,
-	category FeedCategory,
+	name gitforge.GitRepoName,
+	gitForgeName gitforge.GitForgeName,
 	streamId string,
 ) error {
 	addCategoryUrl := fmt.Sprintf(
@@ -154,7 +155,7 @@ func (c *FreshRSS) addFeedToCategory(
 		"ac": {"edit"},
 		"s":  {streamId},
 		"t":  {name.String()},
-		"a":  {fmt.Sprintf("user/%s/label/%s", c.user, category)},
+		"a":  {fmt.Sprintf("user/%s/label/%s", c.user, gitForgeName)},
 	}
 
 	if _, _, err := common.DoAPIRequest(

@@ -6,7 +6,7 @@ import (
 )
 
 type GitForgeLoader struct {
-	Name         string
+	Name         GitForgeName
 	LoadChan     chan struct{}
 	GitFeedsChan chan GitFeed
 	forge        GitForge

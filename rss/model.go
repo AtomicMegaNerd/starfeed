@@ -2,24 +2,13 @@ package rss
 
 import (
 	"github.com/atomicmeganerd/starfeed/common"
+	"github.com/atomicmeganerd/starfeed/gitforge"
 )
 
-type FeedName string
-
-func (n FeedName) String() string {
-	return string(n)
-}
-
-type FeedCategory string
-
-func (c FeedCategory) String() string {
-	return string(c)
-}
-
 type AddFeedRequest struct {
-	Name     FeedName
+	Name     gitforge.GitRepoName
 	URL      common.FeedURL
-	Category FeedCategory
+	Category gitforge.GitForgeName
 }
 
 type FreshRSSAddFeedResponse struct {
@@ -39,5 +28,5 @@ type RSSFeed struct {
 }
 
 type RSSFeedCategory struct {
-	Label FeedCategory `json:"label"`
+	Label gitforge.GitForgeName `json:"label"`
 }

@@ -10,6 +10,7 @@ import (
 )
 
 type Runner struct {
+	// This channel receives the command to sync
 	RunChan chan struct{}
 
 	rssLoader  rss.RSSFeedLoader
@@ -26,7 +27,6 @@ func NewRunner(
 	gitForges []gitforge.GitForge,
 	logger *slog.Logger,
 ) Runner {
-
 	runChan := make(chan struct{}, 1)
 
 	// Register our RSS components
@@ -53,6 +53,7 @@ func NewRunner(
 	}
 }
 
+// This method registers the Runner to listen for messages
 func (r Runner) Init(ctx context.Context) {
 	for {
 		select {
@@ -66,22 +67,27 @@ func (r Runner) Init(ctx context.Context) {
 
 func (r Runner) Run() {
 	for _, gitLoader := range r.gitLoaders {
-
-		category := rss.FeedCategory(gitLoader.Name)
-		// Send the request to get both the rss and git feeds
-		r.rssLoader.LoadChan <- category
-		gitLoader.LoadChan <- struct{}{}
-
-		rssFeeds := <-r.rssLoader.FeedChan
+		forgeName := gitLoader.Name
 		gitFeeds := common.NewSet[common.FeedURL]()
 
+		// Send the request to get both the rss and git feeds
+		r.rssLoader.LoadChan <- forgeName
+		gitLoader.LoadChan <- struct{}{}
+
+		// We always get the rssFeeds back as a single slice
+		rssFeeds := <-r.rssLoader.FeedChan
+
+		// We get the git feeds one by one
 		for gitFeed := range gitLoader.GitFeedsChan {
 			if gitFeed.Valid && !rssFeeds.Contains(gitFeed.URL) {
-				go r.subscribe(rss.FeedName(gitFeed.Name.String()), gitFeed.URL, category)
+				go r.subscribe(gitFeed.Name, gitFeed.URL, forgeName)
 			}
+
+			// Add to our set so we can compare against existing rss feeds
 			gitFeeds.Add(gitFeed.URL)
 		}
 
+		// Remove any stale feeds that are no longer in FrshRSS
 		for rssFeed := range rssFeeds.All() {
 			if !gitFeeds.Contains(rssFeed) {
 				go r.unsubscribe(rssFeed)
@@ -91,9 +97,9 @@ func (r Runner) Run() {
 }
 
 func (r Runner) subscribe(
-	name rss.FeedName,
+	name gitforge.GitRepoName,
 	url common.FeedURL,
-	category rss.FeedCategory,
+	category gitforge.GitForgeName,
 ) {
 	req := rss.AddFeedRequest{
 		Name:     name,

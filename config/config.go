@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/atomicmeganerd/starfeed/gitforge"
 	"github.com/go-playground/validator/v10"
 	"github.com/pelletier/go-toml/v2"
 )
@@ -25,10 +26,10 @@ func (c Config) Interval() time.Duration {
 
 // This type both holds and validates the config for a GitForge
 type GitForgeConfig struct {
-	Type  string `validate:"required,oneof=github forgejo" toml:"type"`
-	Name  string `validate:"required,min=3"                toml:"name"`
-	Fqdn  string `validate:"required,min=8"                toml:"fqdn"`
-	Token string `validate:"required,min=10"` // WARNING: This is a secret
+	Type  gitforge.GitForgeType `validate:"required,oneof=github forgejo" toml:"type"`
+	Name  gitforge.GitForgeName `validate:"required,min=3"                toml:"name"`
+	Fqdn  string                `validate:"required,min=8"                toml:"fqdn"`
+	Token string                `validate:"required,min=10"` // WARNING: This is a secret
 }
 
 // This type both holds and validates the config for the RSS Server

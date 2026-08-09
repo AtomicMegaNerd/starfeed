@@ -11,6 +11,18 @@ const (
 	ForgejoForgeType = "forgejo"
 )
 
+type GitForgeType string
+
+func (t GitForgeType) String() string {
+	return string(t)
+}
+
+type GitForgeName string
+
+func (n GitForgeName) String() string {
+	return string(n)
+}
+
 type GitRepoName string
 
 func (r GitRepoName) String() string {

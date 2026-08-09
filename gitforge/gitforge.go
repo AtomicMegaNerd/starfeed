@@ -19,14 +19,16 @@ var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 // GitForge struct represents a GitForge. We can load RSS feeds for all starred repos that
 // belong to this Git Forge.
 type GitForge struct {
-	Name         string
+	Name         GitForgeName
 	fetchRepoURL string
 	headers      http.Header
 	client       *http.Client
 }
 
 func NewGitForgeClient(
-	name, forgeType, fqdn, token string,
+	name GitForgeName,
+	forgeType GitForgeType,
+	fqdn, token string,
 	client *http.Client,
 ) GitForge {
 	return GitForge{
@@ -121,7 +123,7 @@ func (c GitForge) parseNextPageURL(respHeaders http.Header) string {
 	return ""
 }
 
-func buildHeaders(forgeType, token string) http.Header {
+func buildHeaders(forgeType GitForgeType, token string) http.Header {
 	headers := http.Header{}
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
@@ -133,7 +135,7 @@ func buildHeaders(forgeType, token string) http.Header {
 	return headers
 }
 
-func buildStarredRepoUrl(forgeType, fqdn string) string {
+func buildStarredRepoUrl(forgeType GitForgeType, fqdn string) string {
 	if forgeType == GitHubForgeType {
 		return fmt.Sprintf("https://api.%s/user/starred?per_page=100", fqdn)
 	}
