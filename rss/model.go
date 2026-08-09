@@ -1,6 +1,8 @@
 package rss
 
-import "github.com/atomicmeganerd/starfeed/common"
+import (
+	"github.com/atomicmeganerd/starfeed/common"
+)
 
 type FeedName string
 
@@ -12,6 +14,12 @@ type FeedCategory string
 
 func (c FeedCategory) String() string {
 	return string(c)
+}
+
+type AddFeedRequest struct {
+	Name     FeedName
+	URL      common.FeedURL
+	Category FeedCategory
 }
 
 type FreshRSSAddFeedResponse struct {

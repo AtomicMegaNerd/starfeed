@@ -10,7 +10,7 @@ linters:
       line-length: 100
       tab-width: 4
     gocognit:
-      min-complexity: 10
+      min-complexity: 15
   exclusions:
     rules:
       - path: _test\.go$

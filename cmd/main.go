@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/atomicmeganerd/starfeed/config"
+	"github.com/atomicmeganerd/starfeed/gitforge"
+	"github.com/atomicmeganerd/starfeed/rss"
 	"github.com/atomicmeganerd/starfeed/runners"
 )
 
@@ -35,7 +37,6 @@ func run() error {
 		return err
 	}
 
-	client := &http.Client{Timeout: 60 * time.Second}
 	logger := buildLogger(cfg.Debug)
 
 	logger.Info("***********************************************")
@@ -50,24 +51,36 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	client := &http.Client{Timeout: 60 * time.Second}
+
+	rssServer := rss.NewFreshRSS(
+		cfg.RSSServer.User, cfg.RSSServer.URL, logger, client,
+	)
+	if err := rssServer.Authenticate(ctx, cfg.RSSServer.Token); err != nil {
+		logger.Error("Error authenticatin to RSS", "error", err)
+		return err
+	}
+
 	// Setup our ticker for our timed execution. This will send a time.Time value to the ticker.C
 	// is set by the interval setting in the Config.
 	// NOTE: This is a bounded (size 1) async channel
 	ticker := time.NewTicker(cfg.Interval())
 	defer ticker.Stop()
 
-	runnerSlice, err := buildRunners(ctx, cfg, logger, client)
-	if err != nil {
-		logger.Error("Error building runners", "error", err)
-		return err
+	gitForges := make([]gitforge.GitForge, len(cfg.GitForges))
+	for ix, gitForgeCfg := range cfg.GitForges {
+		gitForges[ix] = gitforge.NewGitForgeClient(
+			gitForgeCfg.Name,
+			gitForgeCfg.Type,
+			gitForgeCfg.Fqdn,
+			gitForgeCfg.Token,
+			client,
+		)
 	}
 
-	// We always want to run on startup, and if we are in SingleRun mode we will terminate
-	// the app after running the workflow once. SingleRun is useful for development and testing.
-	if err := runners.ExecuteRunners(ctx, runnerSlice); err != nil {
-		logger.Error("Error executing runners", "error", err)
-		return err
-	}
+	runner := runners.NewRunner(ctx, stop, *rssServer, gitForges, logger)
+	runner.Init(ctx)
+
 	if cfg.SingleRun {
 		logger.Info("Cancelling as we are in single run mode...")
 		return nil
@@ -89,10 +102,7 @@ func run() error {
 			// already capture the timestamp when we execute. But it is good to recognize that
 			// the ticker channel is sent this data.
 		case t := <-ticker.C:
-			if err := runners.ExecuteRunners(ctx, runnerSlice); err != nil {
-				logger.Error("Error executing runners", "error", err)
-				return err
-			}
+			runner.RunChan <- struct{}{}
 			logger.Info("Sleeping...", "nextRun", t.Add(cfg.Interval()))
 		}
 	}
