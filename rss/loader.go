@@ -8,22 +8,22 @@ import (
 	"github.com/atomicmeganerd/starfeed/gitforge"
 )
 
-type RSSFeedLoader struct {
-	LoadChan chan gitforge.GitForgeName
+type Loader struct {
+	LoadChan chan gitforge.ForgeName
 	FeedChan chan common.Set[common.FeedURL]
-	rss      FreshRSS
+	rss      RSS
 	stop     context.CancelFunc
 	logger   *slog.Logger
 }
 
-func NewRSSFeedLoader(
-	rss FreshRSS,
+func NewLoader(
+	rss RSS,
 	stop context.CancelFunc,
 	logger *slog.Logger,
-) RSSFeedLoader {
-	loadChan := make(chan gitforge.GitForgeName, 1)
+) Loader {
+	loadChan := make(chan gitforge.ForgeName, 1)
 	feedChan := make(chan common.Set[common.FeedURL], 1)
-	return RSSFeedLoader{
+	return Loader{
 		LoadChan: loadChan,
 		FeedChan: feedChan,
 		rss:      rss,
@@ -32,7 +32,7 @@ func NewRSSFeedLoader(
 	}
 }
 
-func (l RSSFeedLoader) Init(ctx context.Context) {
+func (l Loader) Init(ctx context.Context) {
 	for {
 		select {
 		case category := <-l.LoadChan:
@@ -47,11 +47,11 @@ func (l RSSFeedLoader) Init(ctx context.Context) {
 }
 
 // Load all feeds that are under the given category.
-func (c RSSFeedLoader) getFeeds(
+func (c Loader) getFeeds(
 	ctx context.Context,
-	forgeName gitforge.GitForgeName,
+	forgeName gitforge.ForgeName,
 ) error {
-	feedList, err := c.rss.loadFeeds(ctx)
+	feedList, err := c.rss.load(ctx)
 	if err != nil {
 		return err
 	}

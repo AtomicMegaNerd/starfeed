@@ -19,15 +19,15 @@ var nextPagePattern = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 // GitForge struct represents a GitForge. We can load RSS feeds for all starred repos that
 // belong to this Git Forge.
 type GitForge struct {
-	Name         GitForgeName
+	Name         ForgeName
 	fetchRepoURL string
 	headers      http.Header
 	client       *http.Client
 }
 
-func NewGitForgeClient(
-	name GitForgeName,
-	forgeType GitForgeType,
+func NewGitForge(
+	name ForgeName,
+	forgeType ForgeType,
 	fqdn, token string,
 	client *http.Client,
 ) GitForge {
@@ -40,11 +40,11 @@ func NewGitForgeClient(
 }
 
 // This will send the list of all feeds to our respChan
-func (c GitForge) getRepos(
+func (c GitForge) load(
 	ctx context.Context,
-) ([]GitRepo, error) {
+) ([]Repo, error) {
 	nextPageURL := c.fetchRepoURL
-	allRepos := make([]GitRepo, 0)
+	allRepos := make([]Repo, 0)
 	for {
 		data, respHeaders, err := common.DoAPIRequest(
 			ctx,
@@ -60,7 +60,7 @@ func (c GitForge) getRepos(
 			)
 		}
 
-		repos := make([]GitRepo, 0)
+		repos := make([]Repo, 0)
 		if err := json.Unmarshal(data, &repos); err != nil {
 			return nil, fmt.Errorf(
 				"error %w parsing JSON response from gitforge", err,
@@ -76,11 +76,11 @@ func (c GitForge) getRepos(
 	}
 }
 
-func (c GitForge) buildFeedFromRepo(
+func (c GitForge) rssFeedFromRepo(
 	ctx context.Context,
-	repo GitRepo,
+	repo Repo,
 ) GitFeed {
-	feedURL := fmt.Sprintf("%s/releases.atom", repo.RepoURL)
+	feedURL := fmt.Sprintf("%s/releases.atom", repo.URL)
 	feed := GitFeed{Name: repo.Name, URL: common.FeedURL(feedURL)}
 	data, _, err := common.DoAPIRequest(
 		ctx,
@@ -123,7 +123,7 @@ func (c GitForge) parseNextPageURL(respHeaders http.Header) string {
 	return ""
 }
 
-func buildHeaders(forgeType GitForgeType, token string) http.Header {
+func buildHeaders(forgeType ForgeType, token string) http.Header {
 	headers := http.Header{}
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
@@ -135,7 +135,7 @@ func buildHeaders(forgeType GitForgeType, token string) http.Header {
 	return headers
 }
 
-func buildStarredRepoUrl(forgeType GitForgeType, fqdn string) string {
+func buildStarredRepoUrl(forgeType ForgeType, fqdn string) string {
 	if forgeType == GitHubForgeType {
 		return fmt.Sprintf("https://api.%s/user/starred?per_page=100", fqdn)
 	}

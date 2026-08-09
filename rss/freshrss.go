@@ -14,9 +14,9 @@ import (
 	"github.com/atomicmeganerd/starfeed/gitforge"
 )
 
-// FreshRSS struct is for connecting to FreshRSS servers. You can then Load/Add/Remove RSS
+// RSS struct is for connecting to RSS servers. You can then Load/Add/Remove RSS
 // feeds too/from the server.
-type FreshRSS struct {
+type RSS struct {
 	user    string
 	url     string
 	headers http.Header
@@ -24,14 +24,14 @@ type FreshRSS struct {
 	client  *http.Client
 }
 
-func NewFreshRSS(
+func NewRSS(
 	user, url string,
 	logger *slog.Logger,
 	client *http.Client,
-) *FreshRSS {
+) *RSS {
 	headers := http.Header{}
 	headers.Set("Content-type", "application/x-www-form-urlencoded")
-	return &FreshRSS{
+	return &RSS{
 		user:    user,
 		url:     url,
 		headers: headers,
@@ -41,7 +41,7 @@ func NewFreshRSS(
 }
 
 // This function will authenticate to FreshRSS.
-func (c *FreshRSS) Authenticate(
+func (c *RSS) Authenticate(
 	ctx context.Context,
 	token string,
 ) error {
@@ -76,9 +76,9 @@ func (c *FreshRSS) Authenticate(
 	return nil
 }
 
-func (c *FreshRSS) loadFeeds(
+func (c *RSS) load(
 	ctx context.Context,
-) (*RSSFeedList, error) {
+) (*FeedList, error) {
 	loadUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/list?output=json", c.url,
 	)
@@ -88,7 +88,7 @@ func (c *FreshRSS) loadFeeds(
 	}
 
 	// Parse the response
-	feedList := &RSSFeedList{}
+	feedList := &FeedList{}
 	if err = json.Unmarshal(res, &feedList); err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (c *FreshRSS) loadFeeds(
 	return feedList, nil
 }
 
-func (c *FreshRSS) rmFeed(ctx context.Context, feed common.FeedURL) error {
+func (c *RSS) unsubscribe(ctx context.Context, feed common.FeedURL) error {
 	editUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/edit",
 		c.url,
@@ -114,9 +114,9 @@ func (c *FreshRSS) rmFeed(ctx context.Context, feed common.FeedURL) error {
 	return nil
 }
 
-func (c *FreshRSS) addFeed(
+func (c *RSS) subscribe(
 	ctx context.Context,
-	req AddFeedRequest,
+	req SubscribeRequest,
 ) error {
 	addUrl := fmt.Sprintf("%s/api/greader.php/reader/api/0/subscription/quickadd", c.url)
 	formData := url.Values{
@@ -129,7 +129,7 @@ func (c *FreshRSS) addFeed(
 		return err
 	}
 
-	feedResponse := &FreshRSSAddFeedResponse{}
+	feedResponse := &SubscribeResponse{}
 	if err = json.Unmarshal(res, &feedResponse); err != nil {
 		return err
 	}
@@ -141,10 +141,10 @@ func (c *FreshRSS) addFeed(
 	return nil
 }
 
-func (c *FreshRSS) addFeedToCategory(
+func (c *RSS) addFeedToCategory(
 	ctx context.Context,
-	name gitforge.GitRepoName,
-	gitForgeName gitforge.GitForgeName,
+	name gitforge.RepoName,
+	gitForgeName gitforge.ForgeName,
 	streamId string,
 ) error {
 	addCategoryUrl := fmt.Sprintf(

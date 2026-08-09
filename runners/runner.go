@@ -13,34 +13,34 @@ type Runner struct {
 	// This channel receives the command to sync
 	RunChan chan struct{}
 
-	rssLoader  rss.RSSFeedLoader
-	rssAdder   rss.RSSFeedAdder
-	rssRemover rss.RSSFeedRemover
+	rssLoader  rss.Loader
+	rssAdder   rss.Subscriber
+	rssRemover rss.Unsubscriber
 
-	gitLoaders []gitforge.GitForgeLoader
+	gitLoaders []gitforge.Loader
 }
 
 func NewRunner(
 	ctx context.Context,
 	stop context.CancelFunc,
-	rssServer rss.FreshRSS,
+	rssServer rss.RSS,
 	gitForges []gitforge.GitForge,
 	logger *slog.Logger,
 ) Runner {
 	runChan := make(chan struct{}, 1)
 
 	// Register our RSS components
-	rssLoader := rss.NewRSSFeedLoader(rssServer, stop, logger)
+	rssLoader := rss.NewLoader(rssServer, stop, logger)
 	go rssLoader.Init(ctx)
-	rssAdder := rss.NewRSSFeedAdder(rssServer, logger)
+	rssAdder := rss.NewSubscriber(rssServer, logger)
 	go rssAdder.Init(ctx)
-	rssRemover := rss.NewRSSFeedRemover(rssServer, logger)
+	rssRemover := rss.NewUnsubscriber(rssServer, logger)
 	go rssRemover.Init(ctx)
-	gitLoaders := make([]gitforge.GitForgeLoader, len(gitForges))
+	gitLoaders := make([]gitforge.Loader, len(gitForges))
 
 	// Now register our gitLoader components
 	for ix, gitForge := range gitForges {
-		gitLoaders[ix] = gitforge.NewGitForgeLoader(gitForge, stop, logger)
+		gitLoaders[ix] = gitforge.NewLoader(gitForge, stop, logger)
 		go gitLoaders[ix].Init(ctx)
 	}
 
@@ -78,7 +78,7 @@ func (r Runner) Run() {
 		rssFeeds := <-r.rssLoader.FeedChan
 
 		// We get the git feeds one by one
-		for gitFeed := range gitLoader.GitFeedsChan {
+		for gitFeed := range gitLoader.FeedChan {
 			if gitFeed.Valid && !rssFeeds.Contains(gitFeed.URL) {
 				go r.subscribe(gitFeed.Name, gitFeed.URL, forgeName)
 			}
@@ -97,18 +97,18 @@ func (r Runner) Run() {
 }
 
 func (r Runner) subscribe(
-	name gitforge.GitRepoName,
+	name gitforge.RepoName,
 	url common.FeedURL,
-	category gitforge.GitForgeName,
+	category gitforge.ForgeName,
 ) {
-	req := rss.AddFeedRequest{
+	req := rss.SubscribeRequest{
 		Name:     name,
 		URL:      url,
 		Category: category,
 	}
-	r.rssAdder.AddChan <- req
+	r.rssAdder.SubChan <- req
 }
 
 func (r Runner) unsubscribe(rssFeed common.FeedURL) {
-	r.rssRemover.RmChan <- rssFeed
+	r.rssRemover.UnsubChan <- rssFeed
 }

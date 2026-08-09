@@ -5,28 +5,28 @@ import (
 	"github.com/atomicmeganerd/starfeed/gitforge"
 )
 
-type AddFeedRequest struct {
-	Name     gitforge.GitRepoName
+type SubscribeRequest struct {
+	Name     gitforge.RepoName
 	URL      common.FeedURL
-	Category gitforge.GitForgeName
+	Category gitforge.ForgeName
 }
 
-type FreshRSSAddFeedResponse struct {
+type SubscribeResponse struct {
 	NumResults int    `json:"numResults"`
 	Query      string `json:"query"`
 	StreamId   string `json:"streamId"`
 	StreamName string `json:"streamName"`
 }
 
-type RSSFeedList struct {
+type FeedList struct {
 	Feeds []RSSFeed `json:"subscriptions"`
 }
 
 type RSSFeed struct {
-	URL        common.FeedURL    `json:"url"`
-	Categories []RSSFeedCategory `json:"categories"`
+	URL        common.FeedURL `json:"url"`
+	Categories []FeedCategory `json:"categories"`
 }
 
-type RSSFeedCategory struct {
-	Label gitforge.GitForgeName `json:"label"`
+type FeedCategory struct {
+	Label gitforge.ForgeName `json:"label"`
 }

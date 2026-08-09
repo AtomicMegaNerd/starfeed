@@ -5,40 +5,36 @@ import (
 	"log/slog"
 )
 
-type GitForgeLoader struct {
-	Name         GitForgeName
-	LoadChan     chan struct{}
-	GitFeedsChan chan GitFeed
-	forge        GitForge
-	stop         context.CancelFunc
-	logger       *slog.Logger
+type Loader struct {
+	Name     ForgeName
+	LoadChan chan struct{}
+	FeedChan chan GitFeed
+	forge    GitForge
+	stop     context.CancelFunc
+	logger   *slog.Logger
 }
 
-func NewGitForgeLoader(
+func NewLoader(
 	forge GitForge,
 	stop context.CancelFunc,
 	logger *slog.Logger,
-) GitForgeLoader {
-
-	loadChan := make(chan struct{}, 1)
-	gitFeedsChan := make(chan GitFeed)
-
-	return GitForgeLoader{
-		Name:         forge.Name,
-		LoadChan:     loadChan,
-		GitFeedsChan: gitFeedsChan,
-		forge:        forge,
-		stop:         stop,
-		logger:       logger,
+) Loader {
+	return Loader{
+		Name:     forge.Name,
+		LoadChan: make(chan struct{}, 1),
+		FeedChan: make(chan GitFeed, 5),
+		forge:    forge,
+		stop:     stop,
+		logger:   logger,
 	}
 }
 
 // This method registers our GitForge so it listens for messages
-func (c GitForgeLoader) Init(ctx context.Context) {
+func (c Loader) Init(ctx context.Context) {
 	for {
 		select {
 		case <-c.LoadChan:
-			repos, err := c.forge.getRepos(ctx)
+			repos, err := c.forge.load(ctx)
 			if err != nil {
 				c.stop()
 				return
@@ -47,7 +43,7 @@ func (c GitForgeLoader) Init(ctx context.Context) {
 			for _, repo := range repos {
 				go func() {
 					sem <- struct{}{}
-					c.GitFeedsChan <- c.forge.buildFeedFromRepo(ctx, repo)
+					c.FeedChan <- c.forge.rssFeedFromRepo(ctx, repo)
 				}()
 			}
 		case <-ctx.Done():

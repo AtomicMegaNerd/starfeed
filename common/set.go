@@ -22,29 +22,6 @@ func NewSet[E comparable](items ...E) *Set[E] {
 	return &set
 }
 
-// Compares two sets. If they are both nil return true. If one is nil and not the other return
-// false. If the lengths are not the same or if the elements are not all the same return false.
-func (s *Set[E]) Equal(other *Set[E]) bool {
-	if s == nil && other == nil {
-		return true
-	}
-
-	if s == nil || other == nil {
-		return false
-	}
-
-	if s.Len() != other.Len() {
-		return false
-	}
-
-	for elem := range s.elems {
-		if _, ok := other.elems[elem]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
 // Add an element to the Set
 func (s *Set[E]) Add(item E) {
 	// Just in-case someone doesn't listen and use NewSet()

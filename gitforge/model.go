@@ -11,43 +11,41 @@ const (
 	ForgejoForgeType = "forgejo"
 )
 
-type GitForgeType string
+type ForgeType string
 
-func (t GitForgeType) String() string {
+func (t ForgeType) String() string {
 	return string(t)
 }
 
-type GitForgeName string
+type ForgeName string
 
-func (n GitForgeName) String() string {
+func (n ForgeName) String() string {
 	return string(n)
 }
 
-type GitRepoName string
+type RepoName string
 
-func (r GitRepoName) String() string {
+func (r RepoName) String() string {
 	return string(r)
 }
 
-type GitRepoURL string
+type RepoURL string
 
-func (u GitRepoURL) String() string {
+func (u RepoURL) String() string {
 	return string(u)
 }
 
-type FeedResultMap map[common.FeedURL]GitFeed
-
 type GitFeed struct {
-	Name  GitRepoName
+	Name  RepoName
 	URL   common.FeedURL
 	Valid bool
 }
 
 // This object represents a Git repo in a supported Git Host that is starred and that we want to
 // get the Atom feed for.
-type GitRepo struct {
-	Name    GitRepoName `json:"name"`
-	RepoURL GitRepoURL  `json:"html_url"`
+type Repo struct {
+	Name RepoName `json:"name"`
+	URL  RepoURL  `json:"html_url"`
 }
 
 // This object represents an ATOM feed. We check to make sure that release feeds exist and

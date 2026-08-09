@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -28,9 +29,7 @@ func main() {
 	}
 }
 
-// Return errors so we can return an error to the OS in main
 func run() error {
-	// The configuration is loaded from the environment
 	cfg, err := config.NewConfig(config.ConfigLoader{})
 	if err != nil {
 		slog.Default().Error("Error loading configuration", "error", err)
@@ -51,35 +50,21 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	client := &http.Client{Timeout: 60 * time.Second}
-
-	rssServer := rss.NewFreshRSS(
-		cfg.RSSServer.User, cfg.RSSServer.URL, logger, client,
-	)
-	if err := rssServer.Authenticate(ctx, cfg.RSSServer.Token); err != nil {
-		logger.Error("Error authenticatin to RSS", "error", err)
-		return err
-	}
-
 	// Setup our ticker for our timed execution. This will send a time.Time value to the ticker.C
 	// is set by the interval setting in the Config.
 	// NOTE: This is a bounded (size 1) async channel
 	ticker := time.NewTicker(cfg.Interval())
 	defer ticker.Stop()
 
-	gitForges := make([]gitforge.GitForge, len(cfg.GitForges))
-	for ix, gitForgeCfg := range cfg.GitForges {
-		gitForges[ix] = gitforge.NewGitForgeClient(
-			gitForgeCfg.Name,
-			gitForgeCfg.Type,
-			gitForgeCfg.Fqdn,
-			gitForgeCfg.Token,
-			client,
-		)
+	// Get our runner ojbect
+	runner, err := buildRunner(ctx, stop, cfg, logger)
+	if err != nil {
+		logger.Error("Error building runners", "error", err)
+		return err
 	}
 
-	runner := runners.NewRunner(ctx, stop, *rssServer, gitForges, logger)
-	runner.Init(ctx)
+	// Run at least once
+	runner.RunChan <- struct{}{}
 
 	if cfg.SingleRun {
 		logger.Info("Cancelling as we are in single run mode...")
@@ -98,12 +83,44 @@ func run() error {
 		case <-ctx.Done():
 			logger.Info("Exiting...")
 			return nil
-			// ticker.C receives a time.Time value here but we ignore it because our logs will
-			// already capture the timestamp when we execute. But it is good to recognize that
-			// the ticker channel is sent this data.
+
+		// ticker.C receives a time.Time value here but we ignore it because our logs will
+		// already capture the timestamp when we execute. But it is good to recognize that
+		// the ticker channel is sent this data.
 		case t := <-ticker.C:
 			runner.RunChan <- struct{}{}
 			logger.Info("Sleeping...", "nextRun", t.Add(cfg.Interval()))
 		}
 	}
+}
+
+func buildRunner(
+	ctx context.Context,
+	stop context.CancelFunc,
+	cfg config.Config,
+	logger *slog.Logger,
+) (runners.Runner, error) {
+	client := &http.Client{Timeout: 60 * time.Second}
+
+	rssServer := rss.NewRSS(
+		cfg.RSSServer.User, cfg.RSSServer.URL, logger, client,
+	)
+	if err := rssServer.Authenticate(ctx, cfg.RSSServer.Token); err != nil {
+		return runners.Runner{}, fmt.Errorf("error authenticating to rss: %w", err)
+	}
+
+	gitForges := make([]gitforge.GitForge, len(cfg.GitForges))
+	for ix, gitForgeCfg := range cfg.GitForges {
+		gitForges[ix] = gitforge.NewGitForge(
+			gitForgeCfg.Name,
+			gitForgeCfg.Type,
+			gitForgeCfg.Fqdn,
+			gitForgeCfg.Token,
+			client,
+		)
+	}
+
+	runner := runners.NewRunner(ctx, stop, *rssServer, gitForges, logger)
+	runner.Init(ctx) // This registers the runner to listen for run messages
+	return runner, nil
 }
