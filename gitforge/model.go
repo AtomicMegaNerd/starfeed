@@ -35,7 +35,7 @@ func (u RepoURL) String() string {
 	return string(u)
 }
 
-type GitFeed struct {
+type ReleaseFeed struct {
 	Name  RepoName
 	URL   common.FeedURL
 	Valid bool

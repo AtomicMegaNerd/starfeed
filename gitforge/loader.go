@@ -8,7 +8,7 @@ import (
 type Loader struct {
 	Name     ForgeName
 	LoadChan chan struct{}
-	FeedChan chan GitFeed
+	FeedChan chan ReleaseFeed
 	forge    GitForge
 	stop     context.CancelFunc
 	logger   *slog.Logger
@@ -22,7 +22,7 @@ func NewLoader(
 	return Loader{
 		Name:     forge.Name,
 		LoadChan: make(chan struct{}, 1),
-		FeedChan: make(chan GitFeed, 5),
+		FeedChan: make(chan ReleaseFeed, 5),
 		forge:    forge,
 		stop:     stop,
 		logger:   logger,
@@ -43,7 +43,7 @@ func (c Loader) Init(ctx context.Context) {
 			for _, repo := range repos {
 				go func() {
 					sem <- struct{}{}
-					c.FeedChan <- c.forge.rssFeedFromRepo(ctx, repo)
+					c.FeedChan <- c.forge.relFeedFromRepo(ctx, repo)
 				}()
 			}
 		case <-ctx.Done():

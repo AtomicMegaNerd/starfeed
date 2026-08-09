@@ -3,6 +3,7 @@ package runners
 import (
 	"context"
 	"log/slog"
+	"sync"
 
 	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/gitforge"
@@ -10,13 +11,10 @@ import (
 )
 
 type Runner struct {
-	// This channel receives the command to sync
-	RunChan chan struct{}
-
+	RunChan    chan struct{}
 	rssLoader  rss.Loader
 	rssAdder   rss.Subscriber
 	rssRemover rss.Unsubscriber
-
 	gitLoaders []gitforge.Loader
 }
 
@@ -27,8 +25,6 @@ func NewRunner(
 	gitForges []gitforge.GitForge,
 	logger *slog.Logger,
 ) Runner {
-	runChan := make(chan struct{}, 1)
-
 	// Register our RSS components
 	rssLoader := rss.NewLoader(rssServer, stop, logger)
 	go rssLoader.Init(ctx)
@@ -45,7 +41,7 @@ func NewRunner(
 	}
 
 	return Runner{
-		RunChan:    runChan,
+		RunChan:    make(chan struct{}, 1),
 		rssLoader:  rssLoader,
 		rssAdder:   rssAdder,
 		rssRemover: rssRemover,
@@ -68,31 +64,34 @@ func (r Runner) Init(ctx context.Context) {
 func (r Runner) Run() {
 	for _, gitLoader := range r.gitLoaders {
 		forgeName := gitLoader.Name
-		gitFeeds := common.NewSet[common.FeedURL]()
+		relFeeds := common.NewSet[common.FeedURL]()
 
 		// Send the request to get both the rss and git feeds
-		r.rssLoader.LoadChan <- forgeName
-		gitLoader.LoadChan <- struct{}{}
+		wg := sync.WaitGroup{}
+		wg.Go(func() { r.rssLoader.LoadChan <- forgeName })
+		wg.Go(func() { gitLoader.LoadChan <- struct{}{} })
+		wg.Wait()
 
 		// We always get the rssFeeds back as a single slice
+		// This should block until we get this back
 		rssFeeds := <-r.rssLoader.FeedChan
 
-		// We get the git feeds one by one
-		for gitFeed := range gitLoader.FeedChan {
-			if gitFeed.Valid && !rssFeeds.Contains(gitFeed.URL) {
-				go r.subscribe(gitFeed.Name, gitFeed.URL, forgeName)
+		// The release feeds from the git forge come in as single messages
+		for relFeed := range gitLoader.FeedChan {
+			if relFeed.Valid && !rssFeeds.Contains(relFeed.URL) {
+				go r.subscribe(relFeed.Name, relFeed.URL, forgeName)
 			}
-
 			// Add to our set so we can compare against existing rss feeds
-			gitFeeds.Add(gitFeed.URL)
+			relFeeds.Add(relFeed.URL)
 		}
 
 		// Remove any stale feeds that are no longer in FrshRSS
 		for rssFeed := range rssFeeds.All() {
-			if !gitFeeds.Contains(rssFeed) {
+			if !relFeeds.Contains(rssFeed) {
 				go r.unsubscribe(rssFeed)
 			}
 		}
+
 	}
 }
 

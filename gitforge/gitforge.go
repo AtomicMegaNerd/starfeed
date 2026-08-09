@@ -76,12 +76,12 @@ func (c GitForge) load(
 	}
 }
 
-func (c GitForge) rssFeedFromRepo(
+func (c GitForge) relFeedFromRepo(
 	ctx context.Context,
 	repo Repo,
-) GitFeed {
+) ReleaseFeed {
 	feedURL := fmt.Sprintf("%s/releases.atom", repo.URL)
-	feed := GitFeed{Name: repo.Name, URL: common.FeedURL(feedURL)}
+	feed := ReleaseFeed{Name: repo.Name, URL: common.FeedURL(feedURL)}
 	data, _, err := common.DoAPIRequest(
 		ctx,
 		http.MethodGet,
