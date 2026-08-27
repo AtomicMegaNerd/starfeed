@@ -97,7 +97,7 @@
             # The packages we need for this project
             buildInputs = [
               # Go tools
-              pkgs.go_1_26
+              pkgs.go_1_27
               pkgs.gotools
               pkgs.gopls
               pkgs.golangci-lint
