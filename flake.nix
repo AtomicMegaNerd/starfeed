@@ -1,7 +1,7 @@
 {
   description = "This is a program that creates RSS feeds for any starred GitHub repos";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.zst";
     git-hooks.url = "github:cachix/git-hooks.nix";
   };
 
