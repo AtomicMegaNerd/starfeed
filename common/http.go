@@ -8,23 +8,19 @@ import (
 	"net/http"
 )
 
+type ApiClient struct {
+	client *http.Client
+}
+
 // This is a common HTTP method that can be used by any of our client objects.
-func DoAPIRequest(
+func (c ApiClient) DoRequest(
 	ctx context.Context,
 	method string,
 	reqURL string,
 	payload []byte,
 	headers http.Header,
-	client *http.Client,
 ) ([]byte, http.Header, error) {
-	var req *http.Request
-	var err error
-	if payload != nil {
-		reader := bytes.NewReader(payload)
-		req, err = http.NewRequestWithContext(ctx, method, reqURL, reader)
-	} else {
-		req, err = http.NewRequestWithContext(ctx, method, reqURL, nil)
-	}
+	req, err := http.NewRequestWithContext(ctx, method, reqURL, bytes.NewReader(payload))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -32,7 +28,7 @@ func DoAPIRequest(
 	// Set headers
 	req.Header = headers.Clone()
 
-	res, err := client.Do(req)
+	res, err := c.client.Do(req)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -20,13 +20,13 @@ type FreshRSSClient struct {
 	url     string
 	logger  *slog.Logger
 	headers http.Header
-	client  *http.Client
+	client  *common.ApiClient
 }
 
 func NewFreshRSSClient(
 	user, url string,
 	logger *slog.Logger,
-	client *http.Client,
+	client *common.ApiClient,
 ) *FreshRSSClient {
 	headers := http.Header{}
 	headers.Set("Content-type", "application/x-www-form-urlencoded")
@@ -52,9 +52,7 @@ func (c *FreshRSSClient) Authenticate(
 			"Passwd": {token},
 		}.Encode(),
 	)
-	data, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, reqURL, formData, c.headers, c.client,
-	)
+	data, _, err := c.client.DoRequest(ctx, http.MethodPost, reqURL, formData, c.headers)
 	if err != nil {
 		return fmt.Errorf("error authenticating to freshrss: %w, url: %s", err, reqURL)
 	}
@@ -84,7 +82,7 @@ func (c *FreshRSSClient) LoadFeeds(
 	loadUrl := fmt.Sprintf(
 		"%s/api/greader.php/reader/api/0/subscription/list?output=json", c.url,
 	)
-	res, _, err := common.DoAPIRequest(ctx, http.MethodGet, loadUrl, nil, c.headers, c.client)
+	res, _, err := c.client.DoRequest(ctx, http.MethodGet, loadUrl, nil, c.headers)
 	if err != nil {
 		return nil, err
 	}
@@ -126,8 +124,12 @@ func (c *FreshRSSClient) AddFeed(
 	formData := url.Values{
 		"quickadd": {feedURL.String()},
 	}
-	res, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, addUrl, []byte(formData.Encode()), c.headers, c.client,
+	res, _, err := c.client.DoRequest(
+		ctx,
+		http.MethodPost,
+		addUrl,
+		[]byte(formData.Encode()),
+		c.headers,
 	)
 	if err != nil {
 		return err
@@ -158,8 +160,12 @@ func (c *FreshRSSClient) RemoveFeed(ctx context.Context, feedURL common.FeedURL)
 	}
 
 	// We do not care about the response
-	if _, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, editUrl, []byte(formData.Encode()), c.headers, c.client,
+	if _, _, err := c.client.DoRequest(
+		ctx,
+		http.MethodPost,
+		editUrl,
+		[]byte(formData.Encode()),
+		c.headers,
 	); err != nil {
 		return err
 	}
@@ -185,8 +191,8 @@ func (c *FreshRSSClient) addFeedToCategory(
 		"a":  {fmt.Sprintf("user/%s/label/%s", c.user, category)},
 	}
 
-	if _, _, err := common.DoAPIRequest(
-		ctx, http.MethodPost, addCategoryUrl, []byte(formData.Encode()), c.headers, c.client,
+	if _, _, err := c.client.DoRequest(
+		ctx, http.MethodPost, addCategoryUrl, []byte(formData.Encode()), c.headers,
 	); err != nil {
 		return err
 	}

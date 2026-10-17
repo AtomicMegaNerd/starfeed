@@ -24,13 +24,13 @@ type GitForgeClient struct {
 	fetchRepoURL string
 	headers      http.Header
 	logger       *slog.Logger
-	client       *http.Client
+	client       *common.ApiClient
 }
 
 func NewGitForgeClient(
 	forgeType, fqdn, token string,
 	logger *slog.Logger,
-	client *http.Client,
+	client *common.ApiClient,
 ) GitForgeClient {
 	return GitForgeClient{
 		fetchRepoURL: buildStarredRepoUrl(forgeType, fqdn),
@@ -84,13 +84,12 @@ func (c GitForgeClient) fetchStarredRepos(
 	nextPageURL := c.fetchRepoURL
 	for {
 		c.logger.Debug("Fetching starred repos", "url", nextPageURL)
-		data, respHeaders, err := common.DoAPIRequest(
+		data, respHeaders, err := c.client.DoRequest(
 			ctx,
 			http.MethodGet,
 			nextPageURL,
 			nil,
 			c.headers,
-			c.client,
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -131,13 +130,12 @@ func (c GitForgeClient) repoHasReleaseFeed(
 
 	logger := c.logger.With("repo", repo.Name, "feed", repo.FeedURL)
 	logger.Debug("Checking if repo has release feed")
-	data, _, err := common.DoAPIRequest(
+	data, _, err := c.client.DoRequest(
 		ctx,
 		http.MethodGet,
 		repo.FeedURL.String(),
 		nil,
 		c.headers,
-		c.client,
 	)
 	if err != nil {
 		result.Err = err

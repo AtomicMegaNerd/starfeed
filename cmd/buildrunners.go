@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 
+	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/gitforge"
 	"github.com/atomicmeganerd/starfeed/rss"
@@ -18,7 +18,7 @@ func buildRunners(
 	ctx context.Context,
 	cfg config.Config,
 	logger *slog.Logger,
-	client *http.Client,
+	client *common.ApiClient,
 ) ([]runners.StarfeedRunner, error) {
 	// We build a shared RSS server that we publish too. All runners share it.
 	rssServerName := cfg.RSSServer.Name
