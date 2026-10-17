@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/atomicmeganerd/starfeed/common"
 	"github.com/atomicmeganerd/starfeed/config"
 	"github.com/atomicmeganerd/starfeed/runners"
 )
@@ -35,7 +36,7 @@ func run() error {
 		return err
 	}
 
-	client := &http.Client{Timeout: 60 * time.Second}
+	client := common.NewApiClient(&http.Client{Timeout: 60 * time.Second})
 	logger := buildLogger(cfg.Debug)
 
 	logger.Info("***********************************************")

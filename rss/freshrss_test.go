@@ -65,12 +65,13 @@ func TestAuthenticate(t *testing.T) {
 			t.Parallel()
 			mockTransport := testutils.NewMockMultiResponseRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
+			apiClient := common.NewApiClient(mockClient)
 
 			f := NewFreshRSSClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
-				mockClient,
+				apiClient,
 			)
 			err := f.Authenticate(context.Background(), testutils.FreshRSSToken)
 
@@ -189,12 +190,13 @@ func TestAddFeed(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := testutils.NewMockRoutedResponseRoundTripper(tc.mocks)
 			mockClient := &http.Client{Transport: &mockTransport}
+			apiClient := common.NewApiClient(mockClient)
 
 			f := NewFreshRSSClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
-				mockClient,
+				apiClient,
 			)
 
 			err := f.AddFeed(ctx, "http://localhost/feeds/123", "name", "category")
@@ -289,12 +291,13 @@ func TestLoadFeeds(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := testutils.NewMockMultiResponseRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
+			apiClient := common.NewApiClient(mockClient)
 
 			f := NewFreshRSSClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
-				mockClient,
+				apiClient,
 			)
 
 			feeds, err := f.LoadFeeds(ctx, FeedCategory(tc.gitForge))
@@ -361,12 +364,13 @@ func TestRemoveFeed(t *testing.T) {
 			ctx := context.Background()
 			mockTransport := testutils.NewMockMultiResponseRoundTripper(tc.responses)
 			mockClient := &http.Client{Transport: &mockTransport}
+			apiClient := common.NewApiClient(mockClient)
 
 			f := NewFreshRSSClient(
 				testutils.FreshRSSUser,
 				testutils.FreshRSSURL,
 				testutils.TestLogger(t),
-				mockClient,
+				apiClient,
 			)
 
 			err := f.RemoveFeed(ctx, tc.feedURL)

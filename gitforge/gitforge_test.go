@@ -318,13 +318,14 @@ func TestLoadFeeds(t *testing.T) {
 
 			mockTransport := testutils.NewMockRoutedResponseRoundTripper(tc.mocks)
 			mockClient := &http.Client{Transport: &mockTransport}
+			apiClient := common.NewApiClient(mockClient)
 
 			gh := NewGitForgeClient(
 				GitHubForgeType,
 				testutils.GitHubFqdn,
 				testutils.GitHubToken,
 				testutils.TestLogger(t),
-				mockClient,
+				apiClient,
 			)
 
 			actual, err := gh.LoadFeeds(ctx)

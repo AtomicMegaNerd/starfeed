@@ -12,6 +12,12 @@ type ApiClient struct {
 	client *http.Client
 }
 
+func NewApiClient(client *http.Client) *ApiClient {
+	return &ApiClient{
+		client: client,
+	}
+}
+
 // This is a common HTTP method that can be used by any of our client objects.
 func (c ApiClient) DoRequest(
 	ctx context.Context,
