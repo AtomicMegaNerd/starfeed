@@ -3,7 +3,7 @@ module github.com/atomicmeganerd/starfeed
 go 1.27
 
 require (
-	github.com/go-playground/validator/v10 v10.30.5
+	github.com/go-playground/validator/v10 v10.30.6
 	github.com/lmittmann/tint v1.2.1
 	github.com/pelletier/go-toml/v2 v2.4.3
 	golang.org/x/sync v0.24.0
